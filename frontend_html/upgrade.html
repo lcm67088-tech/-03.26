@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 플랜 변경</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ── 주기 토글 ─────────────────────────────── */
+.cycle-toggle {
+  display:inline-flex; align-items:center;
+  background:var(--bg-tab);
+  border:1px solid var(--border); border-radius:30px; padding:3px;
+  position:relative;
+}
+.cycle-btn {
+  padding:7px 20px; border-radius:26px; border:none;
+  background:none; color:var(--text3); font-size:13px; font-weight:500;
+  cursor:pointer; transition:all .2s; z-index:1; position:relative;
+}
+.cycle-btn.active { background:var(--bg-hover); color:var(--text-title); font-weight:600; }
+.annual-badge {
+  background:rgba(34,197,94,0.15); color:#4ade80;
+  border:1px solid rgba(34,197,94,0.25);
+  border-radius:20px; padding:3px 10px;
+  font-size:11px; font-weight:700; margin-left:8px;
+}
+
+/* ── 플랜 카드 ────────────────────────────── */
+.plans-grid {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px; margin-bottom:28px;
+}
+.plan-card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:16px; padding:24px 20px;
+  position:relative; cursor:pointer;
+  transition:all .2s;
+}
+.plan-card:hover { border-color:var(--border2); transform:translateY(-2px); }
+.plan-card.selected {
+  border-color:var(--cyan);
+  background:rgba(0,212,255,0.05);
+  box-shadow:0 0 0 1px rgba(0,212,255,0.2);
+}
+.plan-card.current-plan {
+  border-color:rgba(124,58,237,0.4);
+  background:rgba(124,58,237,0.06);
+}
+.plan-card.popular {
+  border-color:rgba(124,58,237,0.45);
+}
+
+/* 추천 배지 */
+.popular-badge {
+  position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+  background:linear-gradient(135deg,#7c3aed,#6d28d9);
+  color:#fff; border-radius:20px; padding:4px 14px;
+  font-size:11px; font-weight:700; white-space:nowrap;
+}
+.current-badge {
+  position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+  background:rgba(0,212,255,0.15); color:var(--cyan);
+  border:1px solid rgba(0,212,255,0.3);
+  border-radius:20px; padding:4px 14px;
+  font-size:11px; font-weight:700; white-space:nowrap;
+}
+
+.plan-name  { font-size:16px; font-weight:700; color:var(--text-title); margin-bottom:4px; }
+.plan-price { margin-bottom:14px; }
+.plan-price .price { font-size:28px; font-weight:800; color:var(--text-title); }
+.plan-price .unit  { font-size:13px; color:var(--text3); margin-left:3px; }
+.plan-price .orig  { font-size:12px; color:var(--text3); text-decoration:line-through; margin-right:6px; }
+.plan-price .free-text { font-size:22px; font-weight:700; color:var(--text2); }
+
+.features-list { list-style:none; padding:0; margin:0; }
+.features-list li {
+  font-size:12px; color:var(--text3); padding:4px 0;
+  display:flex; align-items:flex-start; gap:8px; line-height:1.4;
+}
+.features-list li::before { content:'✓'; color:#4ade80; flex-shrink:0; font-weight:700; }
+.features-list li.limit { color:var(--text3); }
+.features-list li.limit::before { content:'✕'; color:#f87171; }
+
+.plan-select-btn {
+  width:100%; margin-top:18px; padding:10px;
+  border-radius:8px; border:none; font-size:13px; font-weight:600;
+  cursor:pointer; transition:all .2s;
+}
+.plan-select-btn.outline {
+  background:none; border:1px solid var(--border); color:var(--text2);
+}
+.plan-select-btn.outline:hover { border-color:var(--border2); color:var(--text); }
+.plan-select-btn.primary {
+  background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff;
+}
+.plan-select-btn.primary:hover { opacity:.85; }
+.plan-select-btn.cyan {
+  background:rgba(0,212,255,0.15); border:1px solid rgba(0,212,255,0.35);
+  color:var(--cyan);
+}
+.plan-select-btn.cyan:hover { background:rgba(0,212,255,0.22); }
+.plan-select-btn.disabled {
+  background:var(--bg-hover2); border:1px solid var(--border);
+  color:var(--text3); cursor:default;
+}
+
+/* ── 비교표 ─────────────────────────────── */
+.compare-table { width:100%; border-collapse:collapse; }
+.compare-table th {
+  font-size:12px; font-weight:600; color:var(--text3);
+  padding:10px 14px; border-bottom:1px solid var(--border); text-align:center;
+}
+.compare-table th:first-child { text-align:left; }
+.compare-table td {
+  padding:11px 14px; border-bottom:1px solid var(--border);
+  font-size:13px; color:var(--text2); text-align:center;
+}
+.compare-table td:first-child { text-align:left; color:var(--text3); }
+.compare-table tr:last-child td { border-bottom:none; }
+.compare-table tr:hover td { background:rgba(255,255,255,0.015); }
+.check-yes { color:#4ade80; font-weight:700; }
+.check-no  { color:rgba(255,255,255,0.15); }
+.highlight-col { background:rgba(124,58,237,0.05); }
+
+/* ── 결제 폼 ─────────────────────────────── */
+.payment-form {
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border); border-radius:14px;
+  padding:24px; margin-bottom:20px;
+}
+.form-input {
+  width:100%; background:rgba(255,255,255,0.05);
+  border:1px solid var(--border); border-radius:8px;
+  padding:10px 12px; color:#fff; font-size:14px;
+  outline:none; transition:border-color .2s; box-sizing:border-box;
+}
+.form-input:focus { border-color:var(--cyan); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.form-label { font-size:12px; font-weight:600; color:var(--text3); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:.4px; }
+
+/* ── 다운그레이드 경고 ────────────────────── */
+.downgrade-warn {
+  background:rgba(245,158,11,0.08);
+  border:1px solid rgba(245,158,11,0.25);
+  border-radius:12px; padding:16px 18px; margin-bottom:20px;
+}
+.downgrade-warn-title { font-size:13px; font-weight:700; color:#fbbf24; margin-bottom:8px; }
+.downgrade-warn-list  { font-size:12px; color:#fcd34d; line-height:1.8; padding-left:16px; }
+
+/* ── 요약 박스 ───────────────────────────── */
+.summary-box {
+  background:rgba(0,212,255,0.05);
+  border:1px solid rgba(0,212,255,0.2);
+  border-radius:12px; padding:18px 20px; margin-bottom:20px;
+}
+.summary-row {
+  display:flex; justify-content:space-between;
+  font-size:13px; padding:4px 0;
+}
+.summary-row.total {
+  border-top:1px solid rgba(0,212,255,0.2);
+  margin-top:8px; padding-top:12px;
+  font-size:16px; font-weight:700;
+}
+
+/* ── 반응형 ─────────────────────────────── */
+@media (max-width:1100px) {
+  .plans-grid { grid-template-columns:repeat(2,1fr); }
+}
+@media (max-width:680px) {
+  .plans-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+<script src="js/app.js"></script>
+<script>
+// ── 상수 ─────────────────────────────────────────────────────
+const CURRENT_PLAN = 'pro';
+
+const PLAN_PRICES = {
+  free:       { monthly:0,      annual:0 },
+  starter:    { monthly:29000,  annual:23200 },
+  pro:        { monthly:79000,  annual:63200 },
+  enterprise: { monthly:199000, annual:159200 },
+};
+
+const PLANS = [
+  {
+    key: 'free',
+    label: 'Free',
+    desc: '개인·소규모 테스트',
+    features: ['플레이스 1개', '키워드 5개', '일 1회 크롤링', '기본 순위 조회'],
+    limits: ['광고 서비스 불가', '알림 미지원', '팀원 초대 불가'],
+  },
+  {
+    key: 'starter',
+    label: 'Starter',
+    desc: '소상공인·1인 사업자',
+    features: ['플레이스 5개', '키워드 30개', '일 2회 크롤링', '주문 서비스', '이메일 알림'],
+    limits: ['팀원 최대 2명', '어드민 기능 없음'],
+  },
+  {
+    key: 'pro',
+    label: 'Pro',
+    popular: true,
+    desc: '성장하는 사업체',
+    features: ['플레이스 20개', '키워드 100개', '일 4회 크롤링', '모든 주문 서비스', '알림 전채널', '팀원 최대 10명', '우선 지원'],
+    limits: [],
+  },
+  {
+    key: 'enterprise',
+    label: 'Enterprise',
+    desc: '대규모·에이전시',
+    features: ['플레이스 무제한', '키워드 무제한', '일 4회 크롤링', '모든 주문 서비스', '알림 전채널', '팀원 무제한', '전담 지원', 'API 접근'],
+    limits: [],
+  },
+];
+
+const COMPARE_ROWS = [
+  { label:'등록 플레이스',    free:'1개',     starter:'5개',   pro:'20개',    enterprise:'무제한' },
+  { label:'키워드',       free:'5개',     starter:'30개',  pro:'100개',   enterprise:'무제한' },
+  { label:'일일 크롤링',  free:'1회',     starter:'2회',   pro:'4회',     enterprise:'4회' },
+  { label:'주문 서비스',  free:'✕',       starter:'✓',    pro:'✓',       enterprise:'✓' },
+  { label:'팀원 관리',    free:'✕',       starter:'2명',  pro:'10명',    enterprise:'무제한' },
+  { label:'이메일 알림',  free:'✕',       starter:'✓',    pro:'✓',       enterprise:'✓' },
+  { label:'카카오 알림',  free:'✕',       starter:'✕',    pro:'✓',       enterprise:'✓' },
+  { label:'우선 지원',    free:'✕',       starter:'✕',    pro:'✓',       enterprise:'✓' },
+  { label:'전담 매니저',  free:'✕',       starter:'✕',    pro:'✕',       enterprise:'✓' },
+  { label:'API 접근',     free:'✕',       starter:'✕',    pro:'✕',       enterprise:'✓' },
+];
+
+let billingCycle   = 'monthly';
+let selectedPlan   = CURRENT_PLAN;
+let showCompare    = false;
+let submitting     = false;
+
+// ── 유틸 ──────────────────────────────────────────────────────
+function formatKRW(n) {
+  if (n === 0) return '무료';
+  return n >= 10000 ? `${n/10000}만원` : `₩${n.toLocaleString()}`;
+}
+
+function planRank(p) {
+  const order = ['free','starter','pro','enterprise'];
+  return order.indexOf(p);
+}
+
+function isDowngrade() {
+  return planRank(selectedPlan) < planRank(CURRENT_PLAN);
+}
+function isUpgrade() {
+  return planRank(selectedPlan) > planRank(CURRENT_PLAN);
+}
+function isSame() {
+  return selectedPlan === CURRENT_PLAN;
+}
+
+// ── 렌더 ─────────────────────────────────────────────────────
+function renderPage() {
+  const html = `
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">플랜 변경</h1>
+      <p class="page-subtitle">비즈니스에 맞는 플랜을 선택하세요</p>
+    </div>
+    <a href="billing.html" style="text-decoration:none;">
+      <button class="btn-secondary">← 구독·결제로 돌아가기</button>
+    </a>
+  </div>
+
+  <!-- ── 결제 주기 토글 ───────────────────────────────────── -->
+  <div style="display:flex;justify-content:center;align-items:center;margin-bottom:28px;gap:12px;">
+    <div class="cycle-toggle">
+      <button class="cycle-btn ${billingCycle==='monthly'?'active':''}" onclick="setCycle('monthly')">월간 결제</button>
+      <button class="cycle-btn ${billingCycle==='annual'?'active':''}" onclick="setCycle('annual')">연간 결제</button>
+    </div>
+    ${billingCycle==='annual' ? '<span class="annual-badge">20% 할인</span>' : ''}
+  </div>
+
+  <!-- ── 플랜 카드 그리드 ──────────────────────────────────── -->
+  <div class="plans-grid">
+    ${PLANS.map(p => renderPlanCard(p)).join('')}
+  </div>
+
+  <!-- ── 비교표 토글 ───────────────────────────────────────── -->
+  <div style="text-align:center;margin-bottom:20px;">
+    <button onclick="toggleCompare()" class="btn-secondary" style="font-size:13px;">
+      ${showCompare ? '▲ 기능 비교 접기' : '▼ 전체 기능 비교 보기'}
+    </button>
+  </div>
+
+  ${showCompare ? renderCompare() : ''}
+
+  <!-- ── 결제 폼 + 요약 ───────────────────────────────────── -->
+  ${selectedPlan !== CURRENT_PLAN ? renderPaymentSection() : `
+  <div style="text-align:center;padding:20px;color:var(--text3);font-size:13px;">
+    현재 플랜을 사용 중입니다. 다른 플랜을 선택해 변경하세요.
+  </div>`}
+  `;
+
+  document.getElementById('main-content').innerHTML = html;
+}
+
+function renderPlanCard(p) {
+  const isSelected  = selectedPlan === p.key;
+  const isCurrent   = p.key === CURRENT_PLAN;
+  const price       = PLAN_PRICES[p.key][billingCycle];
+  const origPrice   = PLAN_PRICES[p.key].monthly;
+  const isDiscounted = billingCycle === 'annual' && price < origPrice && price > 0;
+
+  let btnClass = 'outline', btnLabel = '선택';
+  if (isCurrent && !isSelected) { btnClass = 'disabled'; btnLabel = '현재 플랜'; }
+  else if (isSelected && isCurrent) { btnClass = 'disabled'; btnLabel = '현재 플랜'; }
+  else if (isSelected) { btnClass = 'cyan'; btnLabel = '✓ 선택됨'; }
+  else if (planRank(p.key) > planRank(CURRENT_PLAN)) { btnClass = 'primary'; btnLabel = '업그레이드'; }
+  else if (planRank(p.key) < planRank(CURRENT_PLAN)) { btnClass = 'outline'; btnLabel = '다운그레이드'; }
+
+  return `
+  <div class="plan-card ${isSelected?'selected':''} ${isCurrent&&!isSelected?'current-plan':''} ${p.popular&&!isCurrent?'popular':''}"
+       onclick="selectPlan('${p.key}')">
+    ${p.popular && !isCurrent ? '<div class="popular-badge">⭐ 추천</div>' : ''}
+    ${isCurrent ? '<div class="current-badge">현재 플랜</div>' : ''}
+
+    <div class="plan-name">${p.label}</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px;">${p.desc}</div>
+
+    <div class="plan-price">
+      ${price === 0
+        ? '<span class="free-text">무료</span>'
+        : `${isDiscounted ? `<span class="orig">₩${origPrice.toLocaleString()}</span>` : ''}
+           <span class="price">₩${price.toLocaleString()}</span>
+           <span class="unit">/ 월</span>`
+      }
+      ${billingCycle === 'annual' && price > 0 ? '<div style="font-size:11px;color:#4ade80;margin-top:2px;">연간 청구 (20% 절약)</div>' : ''}
+    </div>
+
+    <ul class="features-list">
+      ${p.features.map(f => `<li>${f}</li>`).join('')}
+      ${p.limits.map(f => `<li class="limit">${f}</li>`).join('')}
+    </ul>
+
+    <button class="plan-select-btn ${btnClass}" ${btnClass==='disabled'?'disabled':''} onclick="event.stopPropagation();selectPlan('${p.key}')">
+      ${btnLabel}
+    </button>
+  </div>`;
+}
+
+function renderCompare() {
+  const planKeys = ['free','starter','pro','enterprise'];
+  const planLabels = { free:'Free', starter:'Starter', pro:'Pro', enterprise:'Enterprise' };
+  const checkVal = v => {
+    if (v === '✓') return `<span class="check-yes">✓</span>`;
+    if (v === '✕') return `<span class="check-no">✕</span>`;
+    return `<span style="color:var(--text2)">${v}</span>`;
+  };
+
+  return `
+  <div class="card" style="margin-bottom:20px;overflow-x:auto;">
+    <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-title">기능 상세 비교</div>
+    </div>
+    <table class="compare-table">
+      <thead>
+        <tr>
+          <th>기능</th>
+          ${planKeys.map(k => `<th ${k==='pro'?'class="highlight-col"':''}>${planLabels[k]}${k===CURRENT_PLAN?'<br><span style="font-size:10px;color:var(--cyan);">현재</span>':''}</th>`).join('')}
+        </tr>
+      </thead>
+      <tbody>
+        ${COMPARE_ROWS.map(row => `
+        <tr>
+          <td>${row.label}</td>
+          ${planKeys.map(k => `<td ${k==='pro'?'class="highlight-col"':''}>${checkVal(row[k])}</td>`).join('')}
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderPaymentSection() {
+  const price = PLAN_PRICES[selectedPlan][billingCycle];
+  const planLabel = PLANS.find(p => p.key === selectedPlan)?.label || '';
+  const isDown  = isDowngrade();
+  const isUp    = isUpgrade();
+  const isFree  = selectedPlan === 'free';
+
+  return `
+  ${isDown ? `
+  <div class="downgrade-warn">
+    <div class="downgrade-warn-title">⚠️ 다운그레이드 주의사항</div>
+    <ul class="downgrade-warn-list">
+      <li>등록된 플레이스/키워드가 새 플랜 한도 초과 시 비활성화됩니다</li>
+      <li>비활성화된 플레이스/키워드의 순위 데이터는 보존됩니다</li>
+      <li>결제 주기 종료 시 즉시 적용됩니다 (즉시 변경 아님)</li>
+      ${isFree ? '<li>무료 플랜 전환 시 환불은 제공되지 않습니다</li>' : ''}
+    </ul>
+  </div>` : ''}
+
+  <!-- 결제 수단 -->
+  ${!isFree ? `
+  <div class="payment-form">
+    <div style="font-size:14px;font-weight:700;color:#fff;margin-bottom:18px;">결제 수단</div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label">카드 번호 끝 4자리</label>
+      <input type="text" class="form-input" id="cardLast4" placeholder="4242" maxlength="4" value="4242" inputmode="numeric">
+    </div>
+    <div class="form-row" style="margin-bottom:0;">
+      <div>
+        <label class="form-label">유효기간</label>
+        <input type="text" class="form-input" id="cardExpiry" placeholder="MM/YY" value="08/27">
+      </div>
+      <div>
+        <label class="form-label">카드사</label>
+        <input type="text" class="form-input" id="cardBrand" placeholder="VISA / MASTER / 국내 카드" value="VISA">
+      </div>
+    </div>
+  </div>` : ''}
+
+  <!-- 결제 요약 -->
+  <div class="summary-box">
+    <div style="font-size:13px;font-weight:700;color:#fff;margin-bottom:12px;">변경 요약</div>
+    <div class="summary-row">
+      <span style="color:var(--text3)">현재 플랜</span>
+      <span style="color:var(--text2)">Pro · 월간 · ₩79,000/월</span>
+    </div>
+    <div class="summary-row">
+      <span style="color:var(--text3)">변경 플랜</span>
+      <span style="color:#fff;font-weight:600;">${planLabel} · ${billingCycle==='monthly'?'월간':'연간'} · ${price===0?'무료':'₩'+price.toLocaleString()+'/월'}</span>
+    </div>
+    <div class="summary-row">
+      <span style="color:var(--text3)">결제 방식</span>
+      <span style="color:var(--text2)">${isDown||isFree ? '다음 결제 주기부터 적용' : '즉시 적용'}</span>
+    </div>
+    <div class="summary-row total">
+      <span style="color:#fff;">결제 예정 금액</span>
+      <span style="color:var(--cyan);">${isFree ? '무료' : '₩'+price.toLocaleString()}</span>
+    </div>
+  </div>
+
+  <!-- 제출 버튼 -->
+  <button onclick="submitPlanChange()" id="submit-btn"
+    style="width:100%;padding:14px;border-radius:10px;border:none;font-size:15px;font-weight:700;cursor:pointer;
+           background:${isDown?'rgba(245,158,11,0.15)':'linear-gradient(135deg,#7c3aed,#6d28d9)'};
+           color:${isDown?'#fbbf24':'#fff'};
+           border:${isDown?'1px solid rgba(245,158,11,0.3)':'none'};
+           transition:opacity .2s;">
+    ${isDown ? '⬇ 다운그레이드 확인' : isFree ? '무료 플랜으로 전환' : '⬆ 업그레이드 결제하기'}
+  </button>
+  <p style="text-align:center;font-size:11px;color:var(--text3);margin-top:10px;">
+    ${isFree ? '무료 플랜 전환은 다음 결제 주기 종료 후 적용됩니다.' : '결제는 즉시 처리되며, 30일 환불 보장 정책이 적용됩니다.'}
+  </p>`;
+}
+
+// ── 이벤트 핸들러 ────────────────────────────────────────────
+function setCycle(cycle) {
+  billingCycle = cycle;
+  renderPage();
+}
+
+function selectPlan(plan) {
+  if (plan === CURRENT_PLAN && selectedPlan === CURRENT_PLAN) return;
+  selectedPlan = plan;
+  renderPage();
+}
+
+function toggleCompare() {
+  showCompare = !showCompare;
+  renderPage();
+}
+
+function submitPlanChange() {
+  if (submitting) return;
+
+  // 결제 정보 검증 (유료 플랜인 경우)
+  if (selectedPlan !== 'free') {
+    const last4 = document.getElementById('cardLast4')?.value.trim();
+    if (!last4 || last4.length !== 4) {
+      showToast('카드 번호 끝 4자리를 입력해 주세요.', 'error');
+      return;
+    }
+  }
+
+  submitting = true;
+  const btn = document.getElementById('submit-btn');
+  if (btn) { btn.textContent = '처리 중...'; btn.disabled = true; }
+
+  // 2초 딜레이 (Mock API 호출)
+  setTimeout(() => {
+    submitting = false;
+    const planLabel = PLANS.find(p => p.key === selectedPlan)?.label;
+    const msg = isDowngrade()
+      ? `${planLabel} 플랜으로 다운그레이드 신청되었습니다.`
+      : selectedPlan === 'free'
+        ? '무료 플랜으로 전환 신청되었습니다.'
+        : `${planLabel} 플랜으로 업그레이드되었습니다! 🎉`;
+    showToast(msg, 'success');
+    setTimeout(() => { window.location.href = 'billing.html'; }, 1500);
+  }, 2000);
+}
+
+// ── 초기화 ───────────────────────────────────────────────────
+renderLayout({ title: '플랜 변경', activePage: 'upgrade.html' });
+renderPage();
+</script>
+</body>
+</html>

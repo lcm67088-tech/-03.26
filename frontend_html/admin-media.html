@@ -1,0 +1,1611 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 매체사 관리</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ══════════════════════════════════════════
+   매체사 관리 전용 스타일
+══════════════════════════════════════════ */
+
+/* ── 탭 네비게이션 ────────────────────── */
+.page-tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+.page-tab {
+  padding: 10px 20px; border: none; background: none;
+  color: var(--text3); font-size: 13px; font-weight: 500;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; transition: all .15s; font-family: inherit;
+}
+.page-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); font-weight: 700; }
+.page-tab:hover:not(.active) { color: var(--text2); }
+
+/* ── 매체사 카드 ─────────────────────── */
+.media-list { display: flex; flex-direction: column; gap: 8px; }
+.media-row {
+  display: grid;
+  grid-template-columns: 28px 1fr 90px 90px 80px 110px 80px 100px;
+  align-items: center; gap: 14px;
+  padding: 14px 16px;
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 10px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.media-row:hover { border-color: var(--border2); background: var(--bg-hover2); }
+.media-row.selected { border-color: var(--cyan); background: rgba(0,212,255,0.04); }
+.media-col-label {
+  font-size: 11px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.media-name { font-size: 14px; font-weight: 700; color: var(--text-title); }
+.media-sub  { font-size: 11px; color: var(--text3); margin-top: 2px; }
+.media-stat { font-size: 13px; font-weight: 600; color: #fff; }
+.media-stat-sub { font-size: 10px; color: var(--text3); margin-top: 1px; }
+
+/* ── 뱃지 ────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 600;
+}
+.badge-active   { background: rgba(34,197,94,0.12);   color: #4ade80; }
+.badge-inactive { background: rgba(107,114,128,0.12); color: #9ca3af; }
+.badge-pending  { background: rgba(251,191,36,0.12);  color: #fbbf24; }
+.badge-done     { background: rgba(34,197,94,0.12);   color: #4ade80; }
+
+/* ── 상세 패널 ───────────────────────── */
+.detail-panel {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: 14px; padding: 0; overflow: hidden;
+}
+.detail-tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3);
+}
+.detail-tab {
+  padding: 11px 18px; border: none; background: none;
+  color: var(--text3); font-size: 12px; font-weight: 500;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -1px; transition: all .15s; font-family: inherit;
+}
+.detail-tab.active { color: var(--cyan); border-bottom-color: var(--cyan); font-weight: 700; background: transparent; }
+.detail-tab:hover:not(.active) { color: var(--text2); }
+.detail-body { padding: 20px 22px; }
+
+/* ── 입력 폼 ─────────────────────────── */
+.form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+.form-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+.form-row { margin-bottom: 14px; }
+.form-label {
+  display: block; font-size: 11px; font-weight: 600;
+  color: var(--text3); text-transform: uppercase;
+  letter-spacing: .4px; margin-bottom: 6px;
+}
+.form-input {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-input); border: 1px solid var(--border-input);
+  border-radius: 8px; padding: 9px 12px;
+  color: var(--text); font-size: 13px; outline: none;
+  font-family: inherit; transition: border-color .15s;
+}
+.form-input:focus { border-color: var(--cyan); }
+.form-input[type=number] { -moz-appearance: textfield; }
+.form-input[type=number]::-webkit-inner-spin-button { display: none; }
+.form-textarea {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-input); border: 1px solid var(--border-input);
+  border-radius: 8px; padding: 9px 12px;
+  color: var(--text); font-size: 13px; outline: none;
+  font-family: inherit; resize: vertical; min-height: 80px;
+  transition: border-color .15s;
+}
+.form-textarea:focus { border-color: var(--cyan); }
+.form-select {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-input); border: 1px solid var(--border-input);
+  border-radius: 8px; padding: 9px 12px;
+  color: var(--text); font-size: 13px; outline: none;
+  font-family: inherit; cursor: pointer;
+}
+.form-select option { background: var(--bg3); }
+
+/* ── 토글 스위치 ─────────────────────── */
+.toggle-wrap { display: flex; align-items: center; gap: 10px; }
+.toggle {
+  position: relative; width: 42px; height: 22px;
+  background: var(--border); border-radius: 11px;
+  cursor: pointer; transition: background .2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--cyan); }
+.toggle::after {
+  content: ''; position: absolute;
+  top: 3px; left: 3px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: #fff; transition: transform .2s;
+}
+.toggle.on::after { transform: translateX(20px); }
+.toggle-label { font-size: 13px; color: var(--text2); }
+
+/* ── 리워드 설정 테이블 ───────────────── */
+.reward-table { width: 100%; border-collapse: collapse; }
+.reward-table th {
+  font-size: 11px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .4px;
+  padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left;
+}
+.reward-table td {
+  padding: 10px 12px; border-bottom: 1px solid rgba(255,255,255,0.04);
+  vertical-align: middle;
+}
+.reward-table tr:last-child td { border-bottom: none; }
+.reward-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* ── 레퍼런스 링크 아코디언 ─────────────── */
+.ref-item {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 10px; overflow: hidden; margin-bottom: 8px;
+}
+.ref-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 14px; cursor: pointer;
+  transition: background .15s;
+}
+.ref-header:hover { background: rgba(255,255,255,0.03); }
+.ref-header-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.ref-header-meta  { font-size: 11px; color: var(--text3); }
+.ref-arrow { color: var(--text3); transition: transform .2s; font-size: 12px; }
+.ref-arrow.open { transform: rotate(180deg); }
+.ref-body { padding: 0 14px 14px; }
+
+/* ── 발행금지 날짜 태그 ───────────────── */
+.date-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.date-tag {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 4px 10px; background: rgba(239,68,68,0.1);
+  border: 1px solid rgba(239,68,68,0.2);
+  border-radius: 20px; font-size: 11px; color: #f87171;
+}
+.date-tag-del {
+  background: none; border: none; color: #f87171;
+  cursor: pointer; font-size: 14px; line-height: 1; padding: 0;
+}
+
+/* ── 원고 에디터 ─────────────────────── */
+.draft-toolbar {
+  display: flex; gap: 4px; padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg3); border-radius: 8px 8px 0 0;
+  flex-wrap: wrap;
+}
+.draft-btn {
+  padding: 4px 10px; background: none;
+  border: 1px solid var(--border); border-radius: 5px;
+  color: var(--text2); font-size: 11px; cursor: pointer;
+  transition: all .15s; font-family: inherit;
+}
+.draft-btn:hover { background: var(--bg-hover); color: #fff; }
+.draft-editor {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-input);
+  border: 1px solid var(--border-input);
+  border-top: none; border-radius: 0 0 8px 8px;
+  padding: 12px 14px; color: var(--text);
+  font-size: 13px; outline: none;
+  font-family: inherit; resize: vertical; min-height: 120px;
+  line-height: 1.7;
+}
+.draft-editor:focus { border-color: var(--cyan); }
+
+/* ── 빈 상태 ─────────────────────────── */
+.empty-panel {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 48px 24px; text-align: center;
+}
+.empty-icon { font-size: 36px; margin-bottom: 12px; }
+.empty-msg  { font-size: 14px; color: var(--text3); }
+
+/* ── 섹션 헤더 ───────────────────────── */
+.section-hd {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 14px;
+}
+.section-title { font-size: 14px; font-weight: 700; color: var(--text-title); }
+.section-sub   { font-size: 12px; color: var(--text3); margin-top: 2px; }
+
+/* ── 인포 박스 ───────────────────────── */
+.info-box {
+  background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.15);
+  border-radius: 8px; padding: 10px 14px;
+  font-size: 12px; color: var(--text2); line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* ── 반응형 ─────────────────────────── */
+@media (max-width: 1100px) {
+  .media-row { grid-template-columns: 28px 1fr 80px 90px 70px; }
+  .media-row > *:nth-child(n+6) { display: none; }
+  .form-grid-3 { grid-template-columns: 1fr 1fr; }
+  .form-grid-4 { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 700px) {
+  .media-row { grid-template-columns: 1fr; gap: 8px; }
+  .form-grid-2, .form-grid-3, .form-grid-4 { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+
+<!-- ── 매체사 추가/편집 모달 ─────────────────────── -->
+<div class="modal-overlay" id="modal-media-edit" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:1000;align-items:center;justify-content:center">
+  <div style="background:var(--bg-modal);border:1px solid var(--border);border-radius:16px;width:500px;max-width:calc(100vw - 32px);max-height:90vh;overflow-y:auto">
+    <div style="padding:22px 24px 0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+        <div>
+          <div style="font-size:17px;font-weight:700;color:var(--text-title)" id="media-modal-title">새 매체사 추가</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:3px">매체사 기본 정보를 입력하세요</div>
+        </div>
+        <button onclick="closeMediaModal()" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:20px;line-height:1">✕</button>
+      </div>
+      <div id="media-modal-body"></div>
+    </div>
+    <div style="padding:0 24px 22px;display:flex;gap:10px;justify-content:flex-end" id="media-modal-footer"></div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+/* ════════════════════════════════════════════════
+   Mock 데이터
+════════════════════════════════════════════════ */
+
+// 매체사 목록
+let MEDIA_LIST = [
+  {
+    id: 1, name: '미디어코리아', contact: 'media@korea.com', phone: '02-1234-5678',
+    bank: '국민은행 123-456-789012', isActive: true,
+    orders: 24, pending: 3, total: 2100000, rating: 4.8,
+    commissionRate: 70,
+    rewardSettings: {
+      traffic: {
+        t1: { minQty: 100, dailyOnly: true  },
+        t2: { minQty: 100, dailyOnly: true  },
+        t3: { minQty: 200, dailyOnly: true  },
+        t4: { minQty: 100, dailyOnly: false },
+        t5: { minQty: 500, dailyOnly: true  },
+      },
+      save: {
+        s1: { minQty: 100, dailyOnly: true  },
+        s2: { minQty: 100, dailyOnly: true  },
+        s3: { minQty: 200, dailyOnly: true  },
+        s4: { minQty: 100, dailyOnly: false },
+        s5: { minQty: 500, dailyOnly: true  },
+      },
+    },
+    blogSettings: [
+      {
+        id: 'bs1', brandId: 'b1', brandName: '블로그A',
+        minChars: 500, maxChars: 1500,
+        minPhotos: 5, maxPhotos: 15,
+        photoCrawl: true,
+        refs: [
+          { id:'r1', title:'강남역 맛집 리뷰 레퍼런스', url:'https://blog.naver.com/sample1', desc:'스타일 참고용', expanded: false },
+          { id:'r2', title:'메뉴 사진 촬영 가이드', url:'https://blog.naver.com/sample2', desc:'사진 각도 및 구도 참고', expanded: false },
+        ]
+      },
+      {
+        id: 'bs2', brandId: 'b2', brandName: '블로그B',
+        minChars: 700, maxChars: 2000,
+        minPhotos: 8, maxPhotos: 20,
+        photoCrawl: false,
+        refs: [
+          { id:'r3', title:'파워블로거 작성 가이드', url:'https://blog.naver.com/guide', desc:'필수 문구 및 해시태그 포함', expanded: false },
+        ]
+      },
+      {
+        id: 'bs3', brandId: 'b3', brandName: '블로그C',
+        minChars: 600, maxChars: 1800,
+        minPhotos: 6, maxPhotos: 12,
+        photoCrawl: true,
+        refs: []
+      },
+    ],
+    receiptSettings: [
+      {
+        id: 'rs1', brandId: 'r1', brandName: '영수증A',
+        hasPhoto: true,
+        allowWeekend: false,
+        blockedDates: ['2026-04-05', '2026-04-06', '2026-05-05'],
+        draft: '영수증 리뷰 작성 시 반드시 실제 방문 후 작성해 주세요.\n음식 사진을 최소 1장 이상 첨부하고, 전체적인 방문 경험을 솔직하게 작성 부탁드립니다.\n해시태그: #강남맛집 #네이버리뷰 #영수증리뷰',
+      },
+      {
+        id: 'rs2', brandId: 'r2', brandName: '영수증B',
+        hasPhoto: false,
+        allowWeekend: true,
+        blockedDates: [],
+        draft: '방문 영수증을 첨부하여 리뷰를 작성해 주세요.\n별점 5점 기준으로 각 항목별 솔직한 평가 부탁드립니다.',
+      },
+    ],
+  },
+  {
+    id: 2, name: '광고닷컴', contact: 'ad@dotcom.kr', phone: '02-9876-5432',
+    bank: '신한은행 110-234-567890', isActive: true,
+    orders: 18, pending: 1, total: 1540000, rating: 4.5,
+    commissionRate: 65,
+    rewardSettings: {
+      traffic: {
+        t1: { minQty: 200, dailyOnly: true  },
+        t2: { minQty: 200, dailyOnly: true  },
+        t3: { minQty: 300, dailyOnly: true  },
+        t4: { minQty: 200, dailyOnly: false },
+        t5: { minQty: 500, dailyOnly: true  },
+      },
+      save: {
+        s1: { minQty: 200, dailyOnly: true  },
+        s2: { minQty: 200, dailyOnly: true  },
+        s3: { minQty: 300, dailyOnly: true  },
+        s4: { minQty: 200, dailyOnly: false },
+        s5: { minQty: 500, dailyOnly: true  },
+      },
+    },
+    blogSettings: [
+      {
+        id: 'bs4', brandId: 'b1', brandName: '블로그A',
+        minChars: 400, maxChars: 1200,
+        minPhotos: 4, maxPhotos: 10,
+        photoCrawl: false,
+        refs: []
+      },
+    ],
+    receiptSettings: [],
+  },
+  {
+    id: 3, name: '블로그팩토리', contact: 'blog@factory.com', phone: '031-555-7777',
+    bank: '우리은행 1002-345-678901', isActive: true,
+    orders: 12, pending: 2, total: 980000, rating: 4.2,
+    commissionRate: 72,
+    rewardSettings: {
+      traffic: {
+        t1: { minQty: 50,  dailyOnly: false },
+        t2: { minQty: 50,  dailyOnly: false },
+        t3: { minQty: 100, dailyOnly: false },
+        t4: { minQty: 50,  dailyOnly: false },
+        t5: { minQty: 200, dailyOnly: false },
+      },
+      save: {
+        s1: { minQty: 50,  dailyOnly: false },
+        s2: { minQty: 50,  dailyOnly: false },
+        s3: { minQty: 100, dailyOnly: false },
+        s4: { minQty: 50,  dailyOnly: false },
+        s5: { minQty: 200, dailyOnly: false },
+      },
+    },
+    blogSettings: [],
+    receiptSettings: [],
+  },
+  {
+    id: 4, name: 'SNS마스터', contact: 'sns@master.io', phone: '070-1234-5678',
+    bank: '카카오뱅크 333-12-3456789', isActive: false,
+    orders: 9, pending: 0, total: 720000, rating: 4.6,
+    commissionRate: 68,
+    rewardSettings: {
+      traffic: {
+        t1: { minQty: 100, dailyOnly: true  },
+        t2: { minQty: 100, dailyOnly: true  },
+        t3: { minQty: 100, dailyOnly: true  },
+        t4: { minQty: 100, dailyOnly: false },
+        t5: { minQty: 300, dailyOnly: true  },
+      },
+      save: {
+        s1: { minQty: 100, dailyOnly: true  },
+        s2: { minQty: 100, dailyOnly: true  },
+        s3: { minQty: 100, dailyOnly: true  },
+        s4: { minQty: 100, dailyOnly: false },
+        s5: { minQty: 300, dailyOnly: true  },
+      },
+    },
+    blogSettings: [],
+    receiptSettings: [],
+  },
+];
+
+// 카테고리 레이블 맵
+const CAT_LABELS = {
+  blog: '블로그 리뷰', receipt: '영수증 리뷰',
+  traffic: '리워드 유입', save: '리워드 저장', sns: 'SNS'
+};
+
+// 브랜드 카탈로그 (orders.html과 동기화)
+const BRAND_CATALOG = {
+  blog:    ['블로그A','블로그B','블로그C','블로그D','블로그E'],
+  receipt: ['영수증A','영수증B','영수증C','영수증D','영수증E'],
+  traffic: ['유입A','유입B','유입C','유입D','유입E'],
+  save:    ['저장A','저장B','저장C','저장D','저장E'],
+  sns:     ['SNSA','SNSB','SNSC','SNSD','SNSE'],
+};
+
+const BRAND_IDS = {
+  blog:    ['b1','b2','b3','b4','b5'],
+  receipt: ['r1','r2','r3','r4','r5'],
+  traffic: ['t1','t2','t3','t4','t5'],
+  save:    ['s1','s2','s3','s4','s5'],
+  sns:     ['sn1','sn2','sn3','sn4','sn5'],
+};
+
+/* ════════════════════════════════════════════════
+   페이지 상태
+════════════════════════════════════════════════ */
+let selectedMediaId = MEDIA_LIST[0].id;
+let currentPageTab  = 'list';        // 'list' | 'detail'
+let currentDetailTab = 'reward';     // 'reward' | 'blog' | 'receipt' | 'info'
+
+/* ════════════════════════════════════════════════
+   메인 렌더
+════════════════════════════════════════════════ */
+function renderPage() {
+  document.getElementById('page-content').innerHTML = `
+  <div class="page-header">
+    <div>
+      <div class="page-title">매체사 관리</div>
+      <div class="page-subtitle">매체사별 리워드·블로그·영수증 설정을 관리합니다</div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" onclick="exportCSV()">
+        ${iconDownload()} CSV 내보내기
+      </button>
+      <button class="btn btn-primary" onclick="openAddMedia()">
+        ${iconPlus()} 매체사 추가
+      </button>
+    </div>
+  </div>
+
+  <!-- 상단 KPI -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">
+    ${[
+      { label:'전체 매체사',  val: MEDIA_LIST.length + '개', sub: `활성 ${MEDIA_LIST.filter(m=>m.isActive).length}개`, color:'var(--cyan)' },
+      { label:'이번 달 주문', val: MEDIA_LIST.reduce((a,m)=>a+m.orders,0) + '건', sub:'전월 대비 +12%', color:'var(--purple)' },
+      { label:'총 정산 금액', val: formatKRW(MEDIA_LIST.reduce((a,m)=>a+m.total,0)), sub:'이번 달', color:'var(--green)' },
+      { label:'평균 평점',    val: (MEDIA_LIST.reduce((a,m)=>a+m.rating,0)/MEDIA_LIST.length).toFixed(1) + '점', sub:'전체 매체사', color:'var(--amber,#f59e0b)' },
+    ].map(s => `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px 18px">
+        <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px;text-transform:uppercase;letter-spacing:.4px">${s.label}</div>
+        <div style="font-size:22px;font-weight:800;color:${s.color};margin-bottom:3px">${s.val}</div>
+        <div style="font-size:11px;color:var(--text3)">${s.sub}</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <!-- 2열 레이아웃: 좌=매체사 목록, 우=상세 패널 -->
+  <div style="display:grid;grid-template-columns:1fr 1.5fr;gap:16px;align-items:start">
+
+    <!-- 좌: 매체사 목록 -->
+    <div>
+      <!-- 검색 + 필터 -->
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input class="form-input" id="media-search" placeholder="매체사명 검색..."
+          oninput="renderMediaList()" style="flex:1">
+        <select class="form-select" id="media-filter" onchange="renderMediaList()" style="width:100px">
+          <option value="all">전체</option>
+          <option value="active">활성</option>
+          <option value="inactive">비활성</option>
+        </select>
+      </div>
+      <div id="media-list-wrap" class="media-list"></div>
+    </div>
+
+    <!-- 우: 상세 패널 -->
+    <div id="media-detail-wrap"></div>
+
+  </div>`;
+
+  renderMediaList();
+  renderDetail(selectedMediaId);
+}
+
+/* ════════════════════════════════════════════════
+   매체사 목록 렌더
+════════════════════════════════════════════════ */
+function renderMediaList() {
+  const q = (document.getElementById('media-search')?.value || '').trim().toLowerCase();
+  const f = document.getElementById('media-filter')?.value || 'all';
+
+  let list = MEDIA_LIST.filter(m => {
+    const matchQ = !q || m.name.toLowerCase().includes(q);
+    const matchF = f === 'all' || (f === 'active' ? m.isActive : !m.isActive);
+    return matchQ && matchF;
+  });
+
+  if (!list.length) {
+    document.getElementById('media-list-wrap').innerHTML = `
+      <div class="empty-panel">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-msg">검색 결과가 없습니다</div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('media-list-wrap').innerHTML = `
+  <!-- 헤더 행 -->
+  <div style="display:grid;grid-template-columns:28px 1fr 90px 90px 80px;gap:14px;padding:6px 16px;margin-bottom:2px">
+    <span></span>
+    <span class="media-col-label">매체사명</span>
+    <span class="media-col-label">주문수</span>
+    <span class="media-col-label">정산금액</span>
+    <span class="media-col-label">상태</span>
+  </div>
+  ${list.map(m => `
+  <div class="media-row${m.id === selectedMediaId ? ' selected' : ''}"
+    style="grid-template-columns:28px 1fr 90px 90px 80px"
+    onclick="selectMedia(${m.id})">
+    <div style="width:28px;height:28px;border-radius:50%;background:${m.isActive ? 'rgba(0,212,255,0.15)' : 'rgba(107,114,128,0.2)'};
+      display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${m.isActive ? 'var(--cyan)' : 'var(--text3)'}">
+      ${m.name[0]}
+    </div>
+    <div>
+      <div class="media-name">${m.name}</div>
+      <div class="media-sub">${m.contact}</div>
+    </div>
+    <div>
+      <div class="media-stat">${m.orders}건</div>
+      <div class="media-stat-sub">대기 ${m.pending}건</div>
+    </div>
+    <div>
+      <div class="media-stat" style="font-size:12px">${formatKRW(m.total)}</div>
+      <div class="media-stat-sub">★ ${m.rating}</div>
+    </div>
+    <div>
+      <span class="badge ${m.isActive ? 'badge-active' : 'badge-inactive'}">
+        ${m.isActive ? '활성' : '비활성'}
+      </span>
+    </div>
+  </div>`).join('')}`;
+}
+
+/* ════════════════════════════════════════════════
+   매체사 선택
+════════════════════════════════════════════════ */
+function selectMedia(id) {
+  selectedMediaId = id;
+  currentDetailTab = 'reward';
+  renderMediaList();
+  renderDetail(id);
+}
+
+/* ════════════════════════════════════════════════
+   상세 패널 렌더 (탭 포함)
+════════════════════════════════════════════════ */
+function renderDetail(id) {
+  const m = MEDIA_LIST.find(x => x.id === id);
+  if (!m) {
+    document.getElementById('media-detail-wrap').innerHTML = `
+      <div class="detail-panel"><div class="empty-panel">
+        <div class="empty-icon">🏢</div>
+        <div class="empty-msg">매체사를 선택하세요</div>
+      </div></div>`;
+    return;
+  }
+
+  const tabs = [
+    { id: 'reward',  label: '🎁 리워드 설정' },
+    { id: 'blog',    label: '📝 블로그 리뷰' },
+    { id: 'receipt', label: '🧾 영수증 리뷰' },
+    { id: 'info',    label: '🏢 기본 정보' },
+  ];
+
+  let tabBody = '';
+  if      (currentDetailTab === 'reward')  tabBody = renderRewardTab(m);
+  else if (currentDetailTab === 'blog')    tabBody = renderBlogTab(m);
+  else if (currentDetailTab === 'receipt') tabBody = renderReceiptTab(m);
+  else if (currentDetailTab === 'info')    tabBody = renderInfoTab(m);
+
+  document.getElementById('media-detail-wrap').innerHTML = `
+  <div class="detail-panel">
+    <!-- 패널 헤더 -->
+    <div style="padding:16px 20px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <div style="width:40px;height:40px;border-radius:50%;
+            background:${m.isActive ? 'rgba(0,212,255,0.15)' : 'rgba(107,114,128,0.2)'};
+            display:flex;align-items:center;justify-content:center;
+            font-size:16px;font-weight:800;color:${m.isActive ? 'var(--cyan)' : 'var(--text3)'}">
+            ${m.name[0]}
+          </div>
+          <div>
+            <div style="font-size:16px;font-weight:700;color:var(--text-title)">${m.name}</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">${m.contact} · 수수료 ${m.commissionRate}%</div>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <span class="badge ${m.isActive ? 'badge-active' : 'badge-inactive'}">${m.isActive ? '활성' : '비활성'}</span>
+          <button class="btn btn-ghost btn-sm" onclick="toggleMediaActive(${m.id})" title="${m.isActive ? '비활성화' : '활성화'}">
+            ${m.isActive ? '🔴 비활성화' : '🟢 활성화'}
+          </button>
+          <button class="btn btn-ghost btn-sm" onclick="openEditMedia(${m.id})">${iconEdit()} 편집</button>
+        </div>
+      </div>
+      <!-- 탭 -->
+      <div class="detail-tabs" style="background:transparent;border-bottom:none">
+        ${tabs.map(t => `
+          <button class="detail-tab${currentDetailTab === t.id ? ' active' : ''}"
+            onclick="switchDetailTab('${t.id}')">
+            ${t.label}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+    <!-- 탭 본문 -->
+    <div class="detail-body">${tabBody}</div>
+  </div>`;
+}
+
+function switchDetailTab(tab) {
+  currentDetailTab = tab;
+  renderDetail(selectedMediaId);
+}
+
+/* ════════════════════════════════════════════════
+   탭 1: 리워드 설정 (유입/저장 브랜드별)
+════════════════════════════════════════════════ */
+
+// 리워드 브랜드 카탈로그 (orders.html과 동기화)
+const REWARD_BRANDS = {
+  traffic: [
+    { id:'t1', name:'유입A', sub:'네이버 플레이스 클릭 유입' },
+    { id:'t2', name:'유입B', sub:'카카오맵 길찾기 유입' },
+    { id:'t3', name:'유입C', sub:'네이버 지도 유입' },
+    { id:'t4', name:'유입D', sub:'구글맵 유입' },
+    { id:'t5', name:'유입E', sub:'플레이스 프리미엄 유입' },
+  ],
+  save: [
+    { id:'s1', name:'저장A', sub:'네이버 플레이스 저장' },
+    { id:'s2', name:'저장B', sub:'카카오 즐겨찾기 저장' },
+    { id:'s3', name:'저장C', sub:'네이버 마이플레이스 저장' },
+    { id:'s4', name:'저장D', sub:'구글 저장 목록' },
+    { id:'s5', name:'저장E', sub:'플레이스 프리미엄 저장' },
+  ],
+};
+
+function renderRewardBrandTable(m, catKey) {
+  const brands = REWARD_BRANDS[catKey];
+  const rs = m.rewardSettings[catKey] || {};
+  const catLabel = catKey === 'traffic' ? '🚀 리워드 유입' : '🔖 리워드 저장';
+
+  return `
+  <div style="margin-bottom:28px">
+    <div class="section-hd" style="margin-bottom:12px">
+      <div>
+        <div class="section-title">${catLabel} 브랜드별 설정</div>
+        <div class="section-sub">최소 주문 수량 · 일키 전용 여부</div>
+      </div>
+    </div>
+    <table class="reward-table">
+      <thead>
+        <tr>
+          <th style="width:110px">브랜드</th>
+          <th style="font-size:11px;color:var(--text3);font-weight:500">상세</th>
+          <th style="width:160px">최소 주문 수량</th>
+          <th style="width:160px">일키 전용</th>
+          <th style="width:70px">상태</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${brands.map(b => {
+          const s = rs[b.id] || { minQty: 100, dailyOnly: false };
+          return `
+          <tr>
+            <td>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">${b.name}</div>
+            </td>
+            <td>
+              <div style="font-size:11px;color:var(--text3)">${b.sub}</div>
+            </td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="number" class="form-input" style="width:80px;padding:6px 10px"
+                  id="reward-minQty-${m.id}-${catKey}-${b.id}"
+                  value="${s.minQty}" min="1"
+                  onchange="updateRewardField(${m.id},'${catKey}','${b.id}','minQty',+this.value)">
+                <span style="font-size:12px;color:var(--text3)">회</span>
+              </div>
+            </td>
+            <td>
+              <div class="toggle-wrap">
+                <div class="toggle${s.dailyOnly ? ' on' : ''}"
+                  id="reward-toggle-${m.id}-${catKey}-${b.id}"
+                  onclick="toggleDailyOnly(${m.id},'${catKey}','${b.id}')"></div>
+                <span class="toggle-label" id="reward-toggle-label-${m.id}-${catKey}-${b.id}">
+                  ${s.dailyOnly
+                    ? '<span style="color:var(--cyan);font-weight:600">일키 전용 ON</span>'
+                    : '<span style="color:var(--text3)">OFF</span>'}
+                </span>
+              </div>
+            </td>
+            <td>
+              <span class="badge ${s.dailyOnly ? 'badge-active' : 'badge-pending'}">
+                ${s.dailyOnly ? '일키만' : '자유'}
+              </span>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderRewardTab(m) {
+  return `
+  <div class="info-box">
+    💡 <strong>리워드 유입 · 저장</strong> 브랜드별 최소 주문 수량과 일키 전용 여부를 설정합니다.
+    일키 전용 ON 시, 해당 브랜드 상품은 반드시 일일 수량(일키)으로만 주문이 가능합니다.
+  </div>
+
+  <div style="display:flex;justify-content:flex-end;margin-bottom:16px">
+    <button class="btn btn-primary btn-sm" onclick="saveRewardSettings(${m.id})">
+      💾 저장
+    </button>
+  </div>
+
+  ${renderRewardBrandTable(m, 'traffic')}
+  ${renderRewardBrandTable(m, 'save')}
+
+  <div style="margin-top:4px;padding:14px 16px;background:rgba(255,255,255,0.03);border-radius:10px;border:1px solid var(--border)">
+    <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">수수료율 설정</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <label class="form-label" style="margin:0;white-space:nowrap">수수료율 (%)</label>
+      <input type="number" class="form-input" style="width:100px"
+        id="commission-rate-${m.id}"
+        value="${m.commissionRate}" min="0" max="100"
+        onchange="updateCommissionRate(${m.id},+this.value)">
+      <span style="font-size:12px;color:var(--text3)">정산금액 = 주문금액 × ${m.commissionRate}%</span>
+    </div>
+  </div>`;
+}
+
+function updateRewardField(mediaId, catKey, brandId, field, val) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  if (!m.rewardSettings[catKey]) m.rewardSettings[catKey] = {};
+  if (!m.rewardSettings[catKey][brandId]) m.rewardSettings[catKey][brandId] = { minQty: 100, dailyOnly: false };
+  m.rewardSettings[catKey][brandId][field] = val;
+}
+
+function toggleDailyOnly(mediaId, catKey, brandId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  if (!m.rewardSettings[catKey]) m.rewardSettings[catKey] = {};
+  if (!m.rewardSettings[catKey][brandId]) m.rewardSettings[catKey][brandId] = { minQty: 100, dailyOnly: false };
+  m.rewardSettings[catKey][brandId].dailyOnly = !m.rewardSettings[catKey][brandId].dailyOnly;
+  const on = m.rewardSettings[catKey][brandId].dailyOnly;
+  const tog = document.getElementById(`reward-toggle-${mediaId}-${catKey}-${brandId}`);
+  const lbl = document.getElementById(`reward-toggle-label-${mediaId}-${catKey}-${brandId}`);
+  if (tog) tog.className = 'toggle' + (on ? ' on' : '');
+  if (lbl) lbl.innerHTML = on
+    ? '<span style="color:var(--cyan);font-weight:600">일키 전용 ON</span>'
+    : '<span style="color:var(--text3)">OFF</span>';
+  // 상태 뱃지 즉시 갱신
+  if (tog) {
+    const badge = tog.closest('tr') ? tog.closest('tr').querySelector('.badge') : null;
+    if (badge) {
+      badge.className = 'badge ' + (on ? 'badge-active' : 'badge-pending');
+      badge.textContent = on ? '일키만' : '자유';
+    }
+  }
+}
+
+function updateCommissionRate(mediaId, val) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (m) m.commissionRate = val;
+}
+
+function saveRewardSettings(mediaId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  // 입력값 최종 수집 (traffic + save 각 브랜드)
+  ['traffic', 'save'].forEach(catKey => {
+    REWARD_BRANDS[catKey].forEach(b => {
+      const el = document.getElementById(`reward-minQty-${mediaId}-${catKey}-${b.id}`);
+      if (el) {
+        if (!m.rewardSettings[catKey]) m.rewardSettings[catKey] = {};
+        if (!m.rewardSettings[catKey][b.id]) m.rewardSettings[catKey][b.id] = { minQty: 100, dailyOnly: false };
+        m.rewardSettings[catKey][b.id].minQty = +el.value;
+      }
+    });
+  });
+  const rateEl = document.getElementById(`commission-rate-${mediaId}`);
+  if (rateEl) m.commissionRate = +rateEl.value;
+  toast(`${m.name} 리워드 설정이 저장되었습니다`, 'success');
+}
+
+/* ════════════════════════════════════════════════
+   탭 2: 블로그 리뷰 설정
+════════════════════════════════════════════════ */
+function renderBlogTab(m) {
+  const bs = m.blogSettings || [];
+
+  return `
+  <div class="info-box">
+    📝 <strong>블로그 리뷰 설정</strong>은 브랜드별 글자수 범위, 사진 수, 사진 크롤링 활성화,
+    그리고 레퍼런스 링크를 관리합니다. 레퍼런스는 기본 접힌 상태로 표시됩니다.
+  </div>
+
+  <div class="section-hd">
+    <div>
+      <div class="section-title">브랜드별 블로그 리뷰 설정</div>
+      <div class="section-sub">${bs.length}개 브랜드 설정됨</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openAddBlogSetting(${m.id})">
+      ${iconPlus()} 브랜드 추가
+    </button>
+  </div>
+
+  ${bs.length === 0 ? `
+    <div class="empty-panel" style="padding:32px">
+      <div class="empty-icon">📝</div>
+      <div class="empty-msg">블로그 리뷰 브랜드 설정이 없습니다</div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="openAddBlogSetting(${m.id})">
+        첫 브랜드 설정 추가
+      </button>
+    </div>` :
+    bs.map((setting, sIdx) => renderBlogSettingCard(m, setting, sIdx)).join('')
+  }`;
+}
+
+function renderBlogSettingCard(m, setting, sIdx) {
+  return `
+  <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px;font-weight:700;color:var(--text-title)">${setting.brandName}</span>
+        <span style="font-size:11px;background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.2);border-radius:4px;padding:2px 7px;color:var(--cyan)">블로그 리뷰</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="color:#f87171"
+        onclick="removeBlogSetting(${m.id},'${setting.id}')">
+        🗑 삭제
+      </button>
+    </div>
+
+    <div class="form-grid-4" style="margin-bottom:14px">
+      <div>
+        <label class="form-label">최소 글자수</label>
+        <input type="number" class="form-input"
+          value="${setting.minChars}"
+          onchange="updateBlogField(${m.id},'${setting.id}','minChars',+this.value)">
+      </div>
+      <div>
+        <label class="form-label">최대 글자수</label>
+        <input type="number" class="form-input"
+          value="${setting.maxChars}"
+          onchange="updateBlogField(${m.id},'${setting.id}','maxChars',+this.value)">
+      </div>
+      <div>
+        <label class="form-label">최소 사진 수</label>
+        <input type="number" class="form-input"
+          value="${setting.minPhotos}"
+          onchange="updateBlogField(${m.id},'${setting.id}','minPhotos',+this.value)">
+      </div>
+      <div>
+        <label class="form-label">최대 사진 수</label>
+        <input type="number" class="form-input"
+          value="${setting.maxPhotos}"
+          onchange="updateBlogField(${m.id},'${setting.id}','maxPhotos',+this.value)">
+      </div>
+    </div>
+
+    <!-- 사진 크롤링 -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;
+      background:rgba(255,255,255,0.02);border-radius:8px;margin-bottom:14px">
+      <div>
+        <div style="font-size:13px;font-weight:600;color:var(--text)">사진 크롤링</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">플레이스 대표사진을 자동 크롤링하여 리뷰에 활용</div>
+      </div>
+      <div class="toggle-wrap">
+        <div class="toggle${setting.photoCrawl ? ' on' : ''}"
+          id="blog-crawl-${m.id}-${setting.id}"
+          onclick="toggleBlogCrawl(${m.id},'${setting.id}')"></div>
+        <span style="font-size:12px;color:${setting.photoCrawl ? 'var(--cyan)' : 'var(--text3)'}" id="blog-crawl-label-${m.id}-${setting.id}">
+          ${setting.photoCrawl ? '활성화' : '비활성화'}
+        </span>
+      </div>
+    </div>
+
+    <!-- 레퍼런스 링크 -->
+    <div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2)">
+          레퍼런스 링크
+          <span style="font-size:11px;font-weight:400;color:var(--text3);margin-left:4px">(${setting.refs.length}개)</span>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="addRefLink(${m.id},'${setting.id}')">
+          ${iconPlus()} 링크 추가
+        </button>
+      </div>
+
+      ${setting.refs.length === 0 ?
+        `<div style="padding:12px;text-align:center;color:var(--text3);font-size:12px;background:rgba(255,255,255,0.02);border-radius:8px">
+          레퍼런스 링크가 없습니다
+        </div>` :
+        setting.refs.map((ref, rIdx) => `
+        <div class="ref-item" id="ref-${setting.id}-${ref.id}">
+          <div class="ref-header" onclick="toggleRef('${setting.id}','${ref.id}')">
+            <div>
+              <div class="ref-header-title">🔗 ${ref.title || '(제목 없음)'}</div>
+              <div class="ref-header-meta" style="margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px">
+                ${ref.url}
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button class="btn btn-ghost btn-sm" style="color:#f87171;padding:2px 6px"
+                onclick="event.stopPropagation();removeRef(${m.id},'${setting.id}','${ref.id}')">✕</button>
+              <span class="ref-arrow${ref.expanded ? ' open' : ''}" id="ref-arrow-${setting.id}-${ref.id}">▼</span>
+            </div>
+          </div>
+          <div id="ref-body-${setting.id}-${ref.id}" style="display:${ref.expanded ? 'block' : 'none'}">
+            <div class="ref-body">
+              <div class="form-row">
+                <label class="form-label">제목</label>
+                <input class="form-input" value="${ref.title}"
+                  onchange="updateRef(${m.id},'${setting.id}','${ref.id}','title',this.value)"
+                  placeholder="레퍼런스 제목">
+              </div>
+              <div class="form-row">
+                <label class="form-label">URL</label>
+                <input class="form-input" value="${ref.url}"
+                  onchange="updateRef(${m.id},'${setting.id}','${ref.id}','url',this.value)"
+                  placeholder="https://blog.naver.com/...">
+              </div>
+              <div class="form-row" style="margin-bottom:0">
+                <label class="form-label">설명</label>
+                <textarea class="form-textarea" style="min-height:60px"
+                  onchange="updateRef(${m.id},'${setting.id}','${ref.id}','desc',this.value)"
+                  placeholder="레퍼런스 설명 및 참고 사항">${ref.desc}</textarea>
+              </div>
+            </div>
+          </div>
+        </div>`).join('')
+      }
+    </div>
+
+    <div style="margin-top:12px;text-align:right">
+      <button class="btn btn-primary btn-sm" onclick="saveBlogSetting(${m.id},'${setting.id}')">
+        💾 이 브랜드 저장
+      </button>
+    </div>
+  </div>`;
+}
+
+/* 블로그 설정 함수들 */
+function updateBlogField(mediaId, settingId, field, val) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.blogSettings.find(x => x.id === settingId);
+  if (s) s[field] = val;
+}
+
+function toggleBlogCrawl(mediaId, settingId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.blogSettings.find(x => x.id === settingId);
+  if (!s) return;
+  s.photoCrawl = !s.photoCrawl;
+  const tog = document.getElementById(`blog-crawl-${mediaId}-${settingId}`);
+  const lbl = document.getElementById(`blog-crawl-label-${mediaId}-${settingId}`);
+  if (tog) tog.className = 'toggle' + (s.photoCrawl ? ' on' : '');
+  if (lbl) { lbl.textContent = s.photoCrawl ? '활성화' : '비활성화'; lbl.style.color = s.photoCrawl ? 'var(--cyan)' : 'var(--text3)'; }
+}
+
+function toggleRef(settingId, refId) {
+  // 전체 매체사에서 해당 setting 탐색
+  for (const m of MEDIA_LIST) {
+    const s = m.blogSettings.find(x => x.id === settingId);
+    if (s) {
+      const r = s.refs.find(x => x.id === refId);
+      if (r) {
+        r.expanded = !r.expanded;
+        const body  = document.getElementById(`ref-body-${settingId}-${refId}`);
+        const arrow = document.getElementById(`ref-arrow-${settingId}-${refId}`);
+        if (body) body.style.display = r.expanded ? 'block' : 'none';
+        if (arrow) arrow.className = 'ref-arrow' + (r.expanded ? ' open' : '');
+        return;
+      }
+    }
+  }
+}
+
+function addRefLink(mediaId, settingId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.blogSettings.find(x => x.id === settingId);
+  if (!s) return;
+  const newId = 'r' + Date.now();
+  s.refs.push({ id: newId, title: '', url: '', desc: '', expanded: true });
+  renderDetail(mediaId);
+  toast('레퍼런스 링크가 추가되었습니다', 'success');
+}
+
+function removeRef(mediaId, settingId, refId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.blogSettings.find(x => x.id === settingId);
+  if (!s) return;
+  s.refs = s.refs.filter(r => r.id !== refId);
+  renderDetail(mediaId);
+  toast('레퍼런스 링크가 삭제되었습니다', 'info');
+}
+
+function updateRef(mediaId, settingId, refId, field, val) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.blogSettings.find(x => x.id === settingId);
+  if (!s) return;
+  const r = s.refs.find(x => x.id === refId);
+  if (r) r[field] = val;
+}
+
+function removeBlogSetting(mediaId, settingId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  m.blogSettings = m.blogSettings.filter(s => s.id !== settingId);
+  renderDetail(mediaId);
+  toast('블로그 리뷰 설정이 삭제되었습니다', 'info');
+}
+
+function saveBlogSetting(mediaId, settingId) {
+  toast('블로그 리뷰 설정이 저장되었습니다', 'success');
+}
+
+function openAddBlogSetting(mediaId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  // 이미 설정된 브랜드 ID 목록
+  const usedBrandIds = m.blogSettings.map(s => s.brandId);
+  const available = BRAND_IDS.blog.filter(id => !usedBrandIds.includes(id));
+
+  if (!available.length) {
+    toast('모든 블로그 브랜드가 이미 설정되었습니다', 'warning');
+    return;
+  }
+
+  document.getElementById('media-modal-title').textContent = '블로그 리뷰 브랜드 추가';
+  document.getElementById('media-modal-body').innerHTML = `
+    <div class="form-row">
+      <label class="form-label">브랜드 선택</label>
+      <select class="form-select" id="new-blog-brand">
+        ${available.map((id, i) => {
+          const name = BRAND_CATALOG.blog[BRAND_IDS.blog.indexOf(id)];
+          return `<option value="${id}">${name}</option>`;
+        }).join('')}
+      </select>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label class="form-label">최소 글자수</label>
+        <input type="number" class="form-input" id="new-blog-minChars" value="500">
+      </div>
+      <div class="form-row">
+        <label class="form-label">최대 글자수</label>
+        <input type="number" class="form-input" id="new-blog-maxChars" value="1500">
+      </div>
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label class="form-label">최소 사진 수</label>
+        <input type="number" class="form-input" id="new-blog-minPhotos" value="5">
+      </div>
+      <div class="form-row" style="margin-bottom:0">
+        <label class="form-label">최대 사진 수</label>
+        <input type="number" class="form-input" id="new-blog-maxPhotos" value="15">
+      </div>
+    </div>`;
+  document.getElementById('media-modal-footer').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeMediaModal()">취소</button>
+    <button class="btn btn-primary" onclick="confirmAddBlogSetting(${mediaId})">추가</button>`;
+  openMediaModal();
+}
+
+function confirmAddBlogSetting(mediaId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const brandId   = document.getElementById('new-blog-brand').value;
+  const brandIdx  = BRAND_IDS.blog.indexOf(brandId);
+  const brandName = BRAND_CATALOG.blog[brandIdx];
+  const newSetting = {
+    id: 'bs' + Date.now(), brandId, brandName,
+    minChars:  +document.getElementById('new-blog-minChars').value,
+    maxChars:  +document.getElementById('new-blog-maxChars').value,
+    minPhotos: +document.getElementById('new-blog-minPhotos').value,
+    maxPhotos: +document.getElementById('new-blog-maxPhotos').value,
+    photoCrawl: false, refs: [],
+  };
+  m.blogSettings.push(newSetting);
+  closeMediaModal();
+  currentDetailTab = 'blog';
+  renderDetail(mediaId);
+  toast(`${brandName} 블로그 리뷰 설정이 추가되었습니다`, 'success');
+}
+
+/* ════════════════════════════════════════════════
+   탭 3: 영수증 리뷰 설정
+════════════════════════════════════════════════ */
+function renderReceiptTab(m) {
+  const rs = m.receiptSettings || [];
+
+  return `
+  <div class="info-box">
+    🧾 <strong>영수증 리뷰 설정</strong>은 브랜드별 포토 첨부 여부, 주말 발행 허용, 발행 금지 날짜,
+    그리고 리뷰어에게 전달할 발행 원고를 관리합니다.
+  </div>
+
+  <div class="section-hd">
+    <div>
+      <div class="section-title">브랜드별 영수증 리뷰 설정</div>
+      <div class="section-sub">${rs.length}개 브랜드 설정됨</div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="openAddReceiptSetting(${m.id})">
+      ${iconPlus()} 브랜드 추가
+    </button>
+  </div>
+
+  ${rs.length === 0 ? `
+    <div class="empty-panel" style="padding:32px">
+      <div class="empty-icon">🧾</div>
+      <div class="empty-msg">영수증 리뷰 브랜드 설정이 없습니다</div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="openAddReceiptSetting(${m.id})">
+        첫 브랜드 설정 추가
+      </button>
+    </div>` :
+    rs.map((setting, sIdx) => renderReceiptCard(m, setting, sIdx)).join('')
+  }`;
+}
+
+function renderReceiptCard(m, setting) {
+  return `
+  <div style="background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:14px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:14px;font-weight:700;color:var(--text-title)">${setting.brandName}</span>
+        <span style="font-size:11px;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.25);border-radius:4px;padding:2px 7px;color:#a5b4fc">영수증 리뷰</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="color:#f87171"
+        onclick="removeReceiptSetting(${m.id},'${setting.id}')">
+        🗑 삭제
+      </button>
+    </div>
+
+    <!-- 토글 설정들 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px">
+      <!-- 포토 여부 -->
+      <div style="padding:12px 14px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">📷 포토 첨부</div>
+        <div class="toggle-wrap">
+          <div class="toggle${setting.hasPhoto ? ' on' : ''}"
+            id="receipt-photo-${m.id}-${setting.id}"
+            onclick="toggleReceiptField(${m.id},'${setting.id}','hasPhoto')"></div>
+          <span style="font-size:12px;color:${setting.hasPhoto ? 'var(--cyan)' : 'var(--text3)'};" id="receipt-photo-lbl-${m.id}-${setting.id}">
+            ${setting.hasPhoto ? '필수' : '선택'}
+          </span>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">
+          ON: 영수증 사진 첨부 필수
+        </div>
+      </div>
+      <!-- 주말 발행 여부 -->
+      <div style="padding:12px 14px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:10px">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">📅 주말 발행</div>
+        <div class="toggle-wrap">
+          <div class="toggle${setting.allowWeekend ? ' on' : ''}"
+            id="receipt-weekend-${m.id}-${setting.id}"
+            onclick="toggleReceiptField(${m.id},'${setting.id}','allowWeekend')"></div>
+          <span style="font-size:12px;color:${setting.allowWeekend ? 'var(--cyan)' : 'var(--text3)'};" id="receipt-weekend-lbl-${m.id}-${setting.id}">
+            ${setting.allowWeekend ? '허용' : '금지'}
+          </span>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:6px">
+          OFF: 토·일 발행 불가
+        </div>
+      </div>
+    </div>
+
+    <!-- 발행 금지 날짜 -->
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">🚫 발행 금지 날짜</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="date" class="form-input" style="width:160px"
+          id="blocked-date-input-${m.id}-${setting.id}"
+          min="${new Date().toISOString().split('T')[0]}">
+        <button class="btn btn-secondary btn-sm"
+          onclick="addBlockedDate(${m.id},'${setting.id}')">
+          ${iconPlus()} 날짜 추가
+        </button>
+      </div>
+      <div class="date-tags" id="date-tags-${m.id}-${setting.id}">
+        ${setting.blockedDates.map(d => `
+          <span class="date-tag">
+            🚫 ${d}
+            <button class="date-tag-del" onclick="removeBlockedDate(${m.id},'${setting.id}','${d}')">×</button>
+          </span>
+        `).join('')}
+        ${setting.blockedDates.length === 0 ? `<span style="font-size:11px;color:var(--text3)">금지 날짜 없음</span>` : ''}
+      </div>
+    </div>
+
+    <!-- 발행 원고 -->
+    <div style="margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">
+        📄 발행 원고
+        <span style="font-size:10px;font-weight:400;color:var(--text3);margin-left:4px">리뷰어에게 전달되는 작성 가이드</span>
+      </div>
+      <div class="draft-toolbar">
+        <button class="draft-btn" onclick="insertDraftText('${m.id}-${setting.id}','[업체명]')">업체명</button>
+        <button class="draft-btn" onclick="insertDraftText('${m.id}-${setting.id}','[주소]')">주소</button>
+        <button class="draft-btn" onclick="insertDraftText('${m.id}-${setting.id}','[해시태그]')">해시태그</button>
+        <button class="draft-btn" onclick="insertDraftText('${m.id}-${setting.id}','[별점]')">별점</button>
+        <button class="draft-btn" onclick="insertDraftText('${m.id}-${setting.id}','[방문날짜]')">방문날짜</button>
+        <button class="draft-btn" onclick="insertDraftText('${m.id}-${setting.id}','[메뉴명]')">메뉴명</button>
+      </div>
+      <textarea class="draft-editor"
+        id="draft-editor-${m.id}-${setting.id}"
+        oninput="updateReceiptDraft(${m.id},'${setting.id}',this.value)"
+        placeholder="리뷰어에게 전달할 작성 가이드 및 원고를 입력하세요...">${setting.draft || ''}</textarea>
+      <div style="font-size:10px;color:var(--text3);margin-top:4px">
+        문자 수: <span id="draft-count-${m.id}-${setting.id}">${(setting.draft || '').length}</span>자
+      </div>
+    </div>
+
+    <div style="text-align:right">
+      <button class="btn btn-primary btn-sm" onclick="saveReceiptSetting(${m.id},'${setting.id}')">
+        💾 이 브랜드 저장
+      </button>
+    </div>
+  </div>`;
+}
+
+/* 영수증 설정 함수들 */
+function toggleReceiptField(mediaId, settingId, field) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.receiptSettings.find(x => x.id === settingId);
+  if (!s) return;
+  s[field] = !s[field];
+  // 토글 UI 업데이트
+  const tog = document.getElementById(`receipt-${field === 'hasPhoto' ? 'photo' : 'weekend'}-${mediaId}-${settingId}`);
+  const lbl = document.getElementById(`receipt-${field === 'hasPhoto' ? 'photo' : 'weekend'}-lbl-${mediaId}-${settingId}`);
+  if (tog) tog.className = 'toggle' + (s[field] ? ' on' : '');
+  if (lbl) {
+    if (field === 'hasPhoto') { lbl.textContent = s[field] ? '필수' : '선택'; }
+    else { lbl.textContent = s[field] ? '허용' : '금지'; }
+    lbl.style.color = s[field] ? 'var(--cyan)' : 'var(--text3)';
+  }
+}
+
+function addBlockedDate(mediaId, settingId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.receiptSettings.find(x => x.id === settingId);
+  if (!s) return;
+  const input = document.getElementById(`blocked-date-input-${mediaId}-${settingId}`);
+  const date = input?.value;
+  if (!date) { toast('날짜를 선택하세요', 'warning'); return; }
+  if (s.blockedDates.includes(date)) { toast('이미 추가된 날짜입니다', 'warning'); return; }
+  s.blockedDates.push(date);
+  s.blockedDates.sort();
+  if (input) input.value = '';
+
+  // 태그 영역 업데이트
+  const tagsEl = document.getElementById(`date-tags-${mediaId}-${settingId}`);
+  if (tagsEl) {
+    tagsEl.innerHTML = s.blockedDates.map(d => `
+      <span class="date-tag">
+        🚫 ${d}
+        <button class="date-tag-del" onclick="removeBlockedDate(${mediaId},'${settingId}','${d}')">×</button>
+      </span>`).join('') || `<span style="font-size:11px;color:var(--text3)">금지 날짜 없음</span>`;
+  }
+  toast(`${date} 발행 금지 날짜가 추가되었습니다`, 'success');
+}
+
+function removeBlockedDate(mediaId, settingId, date) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.receiptSettings.find(x => x.id === settingId);
+  if (!s) return;
+  s.blockedDates = s.blockedDates.filter(d => d !== date);
+  const tagsEl = document.getElementById(`date-tags-${mediaId}-${settingId}`);
+  if (tagsEl) {
+    tagsEl.innerHTML = s.blockedDates.map(d => `
+      <span class="date-tag">
+        🚫 ${d}
+        <button class="date-tag-del" onclick="removeBlockedDate(${mediaId},'${settingId}','${d}')">×</button>
+      </span>`).join('') || `<span style="font-size:11px;color:var(--text3)">금지 날짜 없음</span>`;
+  }
+}
+
+function updateReceiptDraft(mediaId, settingId, val) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const s = m.receiptSettings.find(x => x.id === settingId);
+  if (s) s.draft = val;
+  const counter = document.getElementById(`draft-count-${mediaId}-${settingId}`);
+  if (counter) counter.textContent = val.length;
+}
+
+function insertDraftText(compositeId, text) {
+  // compositeId = "mediaId-settingId" 형식 (예: "1-rs1")
+  const el = document.getElementById(`draft-editor-${compositeId}`);
+  if (!el) return;
+  const start = el.selectionStart;
+  const end   = el.selectionEnd;
+  el.value = el.value.substring(0, start) + text + el.value.substring(end);
+  el.selectionStart = el.selectionEnd = start + text.length;
+  el.focus();
+  // "mediaId-settingId" → 첫 번째 '-' 기준으로 분리
+  const dashIdx   = compositeId.indexOf('-');
+  const mediaId   = +compositeId.substring(0, dashIdx);
+  const settingId = compositeId.substring(dashIdx + 1);
+  updateReceiptDraft(mediaId, settingId, el.value);
+}
+
+function removeReceiptSetting(mediaId, settingId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  m.receiptSettings = m.receiptSettings.filter(s => s.id !== settingId);
+  renderDetail(mediaId);
+  toast('영수증 리뷰 설정이 삭제되었습니다', 'info');
+}
+
+function saveReceiptSetting(mediaId, settingId) {
+  toast('영수증 리뷰 설정이 저장되었습니다', 'success');
+}
+
+function openAddReceiptSetting(mediaId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const usedBrandIds = m.receiptSettings.map(s => s.brandId);
+  const available = BRAND_IDS.receipt.filter(id => !usedBrandIds.includes(id));
+  if (!available.length) {
+    toast('모든 영수증 브랜드가 이미 설정되었습니다', 'warning');
+    return;
+  }
+  document.getElementById('media-modal-title').textContent = '영수증 리뷰 브랜드 추가';
+  document.getElementById('media-modal-body').innerHTML = `
+    <div class="form-row" style="margin-bottom:14px">
+      <label class="form-label">브랜드 선택</label>
+      <select class="form-select" id="new-receipt-brand">
+        ${available.map(id => {
+          const name = BRAND_CATALOG.receipt[BRAND_IDS.receipt.indexOf(id)];
+          return `<option value="${id}">${name}</option>`;
+        }).join('')}
+      </select>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:10px;padding:14px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid var(--border)">
+      <div class="toggle-wrap">
+        <div class="toggle" id="new-receipt-photo-toggle" onclick="this.classList.toggle('on')"></div>
+        <span class="toggle-label">포토 첨부 필수</span>
+      </div>
+      <div class="toggle-wrap">
+        <div class="toggle" id="new-receipt-weekend-toggle" onclick="this.classList.toggle('on')"></div>
+        <span class="toggle-label">주말 발행 허용</span>
+      </div>
+    </div>`;
+  document.getElementById('media-modal-footer').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeMediaModal()">취소</button>
+    <button class="btn btn-primary" onclick="confirmAddReceiptSetting(${mediaId})">추가</button>`;
+  openMediaModal();
+}
+
+function confirmAddReceiptSetting(mediaId) {
+  const m = MEDIA_LIST.find(x => x.id === mediaId);
+  if (!m) return;
+  const brandId   = document.getElementById('new-receipt-brand').value;
+  const brandIdx  = BRAND_IDS.receipt.indexOf(brandId);
+  const brandName = BRAND_CATALOG.receipt[brandIdx];
+  const hasPhoto     = document.getElementById('new-receipt-photo-toggle').classList.contains('on');
+  const allowWeekend = document.getElementById('new-receipt-weekend-toggle').classList.contains('on');
+  m.receiptSettings.push({
+    id: 'rs' + Date.now(), brandId, brandName,
+    hasPhoto, allowWeekend, blockedDates: [], draft: '',
+  });
+  closeMediaModal();
+  currentDetailTab = 'receipt';
+  renderDetail(mediaId);
+  toast(`${brandName} 영수증 리뷰 설정이 추가되었습니다`, 'success');
+}
+
+/* ════════════════════════════════════════════════
+   탭 4: 기본 정보
+════════════════════════════════════════════════ */
+function renderInfoTab(m) {
+  return `
+  <div class="section-hd">
+    <div class="section-title">기본 정보</div>
+    <button class="btn btn-primary btn-sm" onclick="openEditMedia(${m.id})">
+      ${iconEdit()} 편집
+    </button>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:0">
+    ${[
+      ['매체사명', m.name],
+      ['연락처 이메일', m.contact],
+      ['전화번호', m.phone],
+      ['계좌 정보', m.bank],
+      ['수수료율', m.commissionRate + '%'],
+      ['총 주문수', m.orders + '건'],
+      ['누적 정산금액', formatKRW(m.total)],
+      ['평점', '★ ' + m.rating],
+      ['상태', m.isActive ? '<span class="badge badge-active">활성</span>' : '<span class="badge badge-inactive">비활성</span>'],
+    ].map(([k, v]) => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:13px">
+        <span style="color:var(--text3);font-size:12px;font-weight:500">${k}</span>
+        <span style="font-weight:500;color:#fff">${v}</span>
+      </div>`).join('')}
+  </div>
+
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+    <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:12px;text-transform:uppercase;letter-spacing:.4px">설정 요약</div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+      ${[
+        { label: '리워드 설정', val: '5개 카테고리', icon: '🎁' },
+        { label: '블로그 설정', val: m.blogSettings.length + '개 브랜드', icon: '📝' },
+        { label: '영수증 설정', val: m.receiptSettings.length + '개 브랜드', icon: '🧾' },
+      ].map(s => `
+        <div style="padding:12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;text-align:center">
+          <div style="font-size:20px;margin-bottom:6px">${s.icon}</div>
+          <div style="font-size:14px;font-weight:700;color:#fff">${s.val}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">${s.label}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>`;
+}
+
+/* ════════════════════════════════════════════════
+   매체사 추가 / 편집 모달
+════════════════════════════════════════════════ */
+function openAddMedia() {
+  document.getElementById('media-modal-title').textContent = '새 매체사 추가';
+  document.getElementById('media-modal-body').innerHTML = buildMediaForm(null);
+  document.getElementById('media-modal-footer').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeMediaModal()">취소</button>
+    <button class="btn btn-primary" onclick="confirmAddMedia()">추가</button>`;
+  openMediaModal();
+}
+
+function openEditMedia(id) {
+  const m = MEDIA_LIST.find(x => x.id === id);
+  if (!m) return;
+  document.getElementById('media-modal-title').textContent = m.name + ' 편집';
+  document.getElementById('media-modal-body').innerHTML = buildMediaForm(m);
+  document.getElementById('media-modal-footer').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeMediaModal()">취소</button>
+    <button class="btn btn-primary" onclick="confirmEditMedia(${id})">저장</button>`;
+  openMediaModal();
+}
+
+function buildMediaForm(m) {
+  return `
+    <div class="form-row">
+      <label class="form-label">매체사명 *</label>
+      <input class="form-input" id="mf-name" value="${m?.name || ''}" placeholder="매체사 이름을 입력하세요">
+    </div>
+    <div class="form-grid-2">
+      <div class="form-row">
+        <label class="form-label">이메일</label>
+        <input class="form-input" type="email" id="mf-email" value="${m?.contact || ''}" placeholder="contact@example.com">
+      </div>
+      <div class="form-row">
+        <label class="form-label">전화번호</label>
+        <input class="form-input" id="mf-phone" value="${m?.phone || ''}" placeholder="02-0000-0000">
+      </div>
+    </div>
+    <div class="form-row">
+      <label class="form-label">계좌 정보</label>
+      <input class="form-input" id="mf-bank" value="${m?.bank || ''}" placeholder="은행명 계좌번호">
+    </div>
+    <div class="form-row" style="margin-bottom:0">
+      <label class="form-label">수수료율 (%)</label>
+      <input type="number" class="form-input" id="mf-commission" value="${m?.commissionRate || 70}" min="0" max="100">
+    </div>`;
+}
+
+function confirmAddMedia() {
+  const name = document.getElementById('mf-name').value.trim();
+  if (!name) { toast('매체사명을 입력하세요', 'warning'); return; }
+  const newId = Math.max(...MEDIA_LIST.map(m => m.id)) + 1;
+  MEDIA_LIST.push({
+    id: newId, name,
+    contact: document.getElementById('mf-email').value,
+    phone:   document.getElementById('mf-phone').value,
+    bank:    document.getElementById('mf-bank').value,
+    commissionRate: +document.getElementById('mf-commission').value || 70,
+    isActive: true, orders: 0, pending: 0, total: 0, rating: 0,
+    rewardSettings: {
+      traffic: {
+        t1: { minQty: 100, dailyOnly: true  },
+        t2: { minQty: 100, dailyOnly: true  },
+        t3: { minQty: 100, dailyOnly: true  },
+        t4: { minQty: 100, dailyOnly: false },
+        t5: { minQty: 500, dailyOnly: true  },
+      },
+      save: {
+        s1: { minQty: 100, dailyOnly: true  },
+        s2: { minQty: 100, dailyOnly: true  },
+        s3: { minQty: 100, dailyOnly: true  },
+        s4: { minQty: 100, dailyOnly: false },
+        s5: { minQty: 500, dailyOnly: true  },
+      },
+    },
+    blogSettings: [], receiptSettings: [],
+  });
+  closeMediaModal();
+  selectedMediaId = newId;
+  currentDetailTab = 'reward';
+  renderPage();
+  toast(`${name} 매체사가 추가되었습니다`, 'success');
+}
+
+function confirmEditMedia(id) {
+  const m = MEDIA_LIST.find(x => x.id === id);
+  if (!m) return;
+  const name = document.getElementById('mf-name').value.trim();
+  if (!name) { toast('매체사명을 입력하세요', 'warning'); return; }
+  m.name   = name;
+  m.contact = document.getElementById('mf-email').value;
+  m.phone  = document.getElementById('mf-phone').value;
+  m.bank   = document.getElementById('mf-bank').value;
+  m.commissionRate = +document.getElementById('mf-commission').value || m.commissionRate;
+  closeMediaModal();
+  renderMediaList();
+  renderDetail(id);
+  toast(`${name} 정보가 수정되었습니다`, 'success');
+}
+
+function toggleMediaActive(id) {
+  const m = MEDIA_LIST.find(x => x.id === id);
+  if (!m) return;
+  m.isActive = !m.isActive;
+  renderMediaList();
+  renderDetail(id);
+  toast(`${m.name} 매체사가 ${m.isActive ? '활성화' : '비활성화'}되었습니다`, m.isActive ? 'success' : 'info');
+}
+
+function openMediaModal() {
+  const el = document.getElementById('modal-media-edit');
+  el.style.display = 'flex';
+}
+function closeMediaModal() {
+  document.getElementById('modal-media-edit').style.display = 'none';
+}
+
+/* ════════════════════════════════════════════════
+   CSV 내보내기
+════════════════════════════════════════════════ */
+function exportCSV() {
+  const headers = ['매체사명', '이메일', '전화번호', '수수료율', '총주문', '누적정산', '평점', '상태'];
+  const rows = MEDIA_LIST.map(m => [
+    m.name, m.contact, m.phone, m.commissionRate + '%',
+    m.orders, m.total, m.rating, m.isActive ? '활성' : '비활성'
+  ]);
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `media_companies_${new Date().toISOString().split('T')[0]}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+  toast('CSV 파일 다운로드가 시작되었습니다', 'success');
+}
+
+/* ════════════════════════════════════════════════
+   초기화
+════════════════════════════════════════════════ */
+renderLayout({ title: '매체사 관리', activePage: 'admin-media.html', isAdmin: true });
+renderPage();
+</script>
+</body>
+</html>

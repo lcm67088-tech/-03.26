@@ -1,0 +1,1738 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 주문 관리</title>
+<link rel="stylesheet" href="css/style.css">
+<!-- SheetJS for Excel import/export -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+/* ── 주문 전용 추가 스타일 ─────────────────────── */
+.category-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+.cat-tab { padding:7px 16px; border-radius:20px; border:1px solid var(--border); background:transparent;
+  color:var(--text2); font-size:12px; font-weight:600; cursor:pointer; transition:all 0.2s; white-space:nowrap; }
+.cat-tab.active { background:var(--cyan); border-color:var(--cyan); color:#000; }
+
+.brand-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:10px; margin-bottom:16px; }
+.brand-card { padding:14px 16px; border-radius:12px; border:2px solid var(--border); background:var(--bg-hover2);
+  cursor:pointer; transition:all 0.2s; }
+.brand-card:hover { border-color:rgba(0,212,255,0.4); background:rgba(0,212,255,0.03); }
+.brand-card.selected { border-color:var(--cyan); background:rgba(0,212,255,0.07); }
+.brand-card-name { font-size:13px; font-weight:700; color:var(--text-title); margin-bottom:3px; }
+.brand-card-sub { font-size:11px; color:var(--text3); margin-bottom:8px; }
+.brand-card-price { font-size:14px; font-weight:800; color:var(--cyan); }
+
+/* 카트 아이템 */
+.cart-table { width:100%; border-collapse:collapse; }
+.cart-table th { font-size:11px; color:var(--text3); font-weight:600; padding:8px 12px; border-bottom:1px solid var(--border); text-align:left; background:var(--bg-table-head); }
+.cart-table td { padding:10px 12px; border-bottom:1px solid var(--border); font-size:13px; vertical-align:middle; color:var(--text); }
+.cart-table tr:last-child td { border-bottom:none; }
+.cart-qty-input { width:70px; padding:4px 8px; border-radius:6px; border:1px solid var(--border-input); background:var(--bg-input); color:var(--text); text-align:center; font-size:13px; font-family:inherit; }
+.cart-date-input { width:130px; padding:4px 8px; border-radius:6px; border:1px solid var(--border-input); background:var(--bg-input); color:var(--text); font-size:12px; font-family:inherit; }
+.cart-keyword-input { width:160px; padding:4px 8px; border-radius:6px; border:1px solid var(--border-input); background:var(--bg-input); color:var(--text); font-size:12px; font-family:inherit; }
+.remove-btn { background:none; border:none; color:var(--text3); cursor:pointer; font-size:16px; padding:2px 6px; border-radius:4px; }
+.remove-btn:hover { color:#ef4444; background:rgba(239,68,68,0.1); }
+
+/* 엑셀 모달 */
+.paste-area { width:100%; min-height:140px; padding:12px; border-radius:8px; border:1px dashed rgba(0,212,255,0.3);
+  background:var(--bg-input); color:var(--text); font-size:12px; font-family:monospace; resize:vertical; }
+.paste-area:focus { outline:none; border-color:var(--cyan); }
+.drop-zone { border:2px dashed rgba(0,212,255,0.3); border-radius:12px; padding:32px; text-align:center; cursor:pointer;
+  transition:all 0.2s; }
+.drop-zone:hover, .drop-zone.dragover { border-color:var(--cyan); background:rgba(0,212,255,0.05); }
+
+/* 키워드 분할 토글 */
+.kw-split-group { display:flex; gap:6px; }
+.kw-split-btn { padding:4px 10px; border-radius:6px; border:1px solid var(--border); background:transparent;
+  color:var(--text2); font-size:11px; cursor:pointer; transition:all 0.15s; }
+.kw-split-btn.active { background:var(--cyan); border-color:var(--cyan); color:#000; font-weight:700; }
+
+/* 작업 키워드 필터 버튼 */
+.kw-filter-btn { padding:3px 9px; border-radius:20px; border:1px solid var(--border); background:transparent;
+  color:var(--text3); font-size:11px; cursor:pointer; transition:all 0.15s; white-space:nowrap; }
+.kw-filter-btn:hover { border-color:var(--cyan); color:var(--cyan); }
+.kw-filter-btn.active { background:rgba(0,212,255,0.12); border-color:var(--cyan); color:var(--cyan); font-weight:600; }
+
+/* 단계 표시기 */
+.wizard-steps { display:flex; align-items:center; gap:0; margin-bottom:24px; }
+.w-step { display:flex; flex-direction:column; align-items:center; gap:4px; flex:1; position:relative; }
+.w-step-num { width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  font-size:13px; font-weight:700; border:2px solid var(--border); color:var(--text3); background:var(--bg2); z-index:1; }
+.w-step.active .w-step-num { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.1); }
+.w-step.done .w-step-num { border-color:var(--green); background:rgba(34,197,94,0.15); color:var(--green); }
+.w-step-label { font-size:10px; color:var(--text3); white-space:nowrap; }
+.w-step.active .w-step-label { color:var(--text-title); }
+.w-step-line { flex:1; height:2px; background:var(--border); margin-bottom:18px; }
+.w-step.done ~ .w-step-line { background:var(--green); }
+
+/* 플레이스 체크박스 그리드 */
+.place-check-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px; }
+.place-check-item { display:flex; align-items:center; gap:8px; padding:10px 12px; border-radius:8px;
+  border:1px solid var(--border); cursor:pointer; transition:all 0.15s; }
+.place-check-item:hover { border-color:rgba(0,212,255,0.3); }
+.place-check-item.selected { border-color:var(--cyan); background:rgba(0,212,255,0.06); }
+.place-check-item input[type=checkbox] { accent-color:var(--cyan); width:14px; height:14px; }
+.place-name { font-size:12px; color:var(--text); font-weight:500; }
+
+/* 요약 배지 */
+.total-badge { background:rgba(0,212,255,0.1); border:1px solid rgba(0,212,255,0.25); border-radius:20px; padding:4px 12px; font-size:12px; color:var(--cyan); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+<div id="modal-order-detail" class="modal-overlay"></div>
+<div id="modal-new-order" class="modal-overlay" style="align-items:flex-start;padding-top:40px;overflow-y:auto"></div>
+<div id="modal-bulk" class="modal-overlay"></div>
+
+<script src="js/app.js"></script>
+<script>
+// ══════════════════════════════════════════════════════
+// 상품 카탈로그 (5개 대분류 × 5개 브랜드)
+// ══════════════════════════════════════════════════════
+const CATEGORIES = [
+  { id:'blog',    label:'블로그 리뷰',    emoji:'📝' },
+  { id:'receipt', label:'영수증 리뷰',    emoji:'🧾' },
+  { id:'traffic', label:'리워드 유입',    emoji:'🚀' },
+  { id:'save',    label:'리워드 저장',    emoji:'🔖' },
+  { id:'sns',     label:'SNS',           emoji:'📸' },
+];
+
+const BRANDS = {
+  blog: [
+    { id:'b1', name:'블로그A', sub:'네이버 블로그 상위 리뷰', unit:'개', price:15000, min:1, max:50, needKw:true },
+    { id:'b2', name:'블로그B', sub:'파워블로거 진성 후기', unit:'개', price:18000, min:1, max:30, needKw:true },
+    { id:'b3', name:'블로그C', sub:'지역 맘카페 연동', unit:'건', price:22000, min:1, max:20, needKw:true },
+    { id:'b4', name:'블로그D', sub:'SEO 최적화 리뷰', unit:'개', price:25000, min:1, max:20, needKw:true },
+    { id:'b5', name:'블로그E', sub:'체험단 연계 패키지', unit:'패키지', price:120000, min:1, max:10, needKw:false },
+  ],
+  receipt: [
+    { id:'r1', name:'영수증A', sub:'카카오맵 영수증 리뷰', unit:'개', price:5000, min:5, max:200, needKw:false },
+    { id:'r2', name:'영수증B', sub:'네이버 영수증 인증', unit:'개', price:6000, min:5, max:150, needKw:false },
+    { id:'r3', name:'영수증C', sub:'구글맵 영수증 리뷰', unit:'개', price:7000, min:5, max:100, needKw:false },
+    { id:'r4', name:'영수증D', sub:'배민 주문 인증 리뷰', unit:'개', price:8000, min:5, max:100, needKw:false },
+    { id:'r5', name:'영수증E', sub:'토스리뷰 영수증 연동', unit:'개', price:9000, min:5, max:80, needKw:false },
+  ],
+  traffic: [
+    { id:'t1', name:'유입A', sub:'네이버 플레이스 클릭 유입', unit:'회', price:90, min:100, max:10000, needKw:true, splitOpts:[10,25,50] },
+    { id:'t2', name:'유입B', sub:'카카오맵 길찾기 유입', unit:'회', price:85, min:100, max:8000, needKw:true, splitOpts:[10,25,50] },
+    { id:'t3', name:'유입C', sub:'구글맵 플레이스 유입', unit:'회', price:95, min:100, max:5000, needKw:true, splitOpts:[10,25,50] },
+    { id:'t4', name:'유입D', sub:'통합 멀티 유입 패키지', unit:'회', price:100, min:500, max:20000, needKw:true, splitOpts:[10,25,50] },
+    { id:'t5', name:'유입E', sub:'블랙리스트 IP 필터링 유입', unit:'회', price:110, min:200, max:10000, needKw:true, splitOpts:[10,25,50] },
+  ],
+  save: [
+    { id:'s1', name:'저장A', sub:'네이버 플레이스 저장', unit:'회', price:90, min:100, max:10000, needKw:true, splitOpts:[10,25,50] },
+    { id:'s2', name:'저장B', sub:'카카오 저장하기', unit:'회', price:85, min:100, max:8000, needKw:true, splitOpts:[10,25,50] },
+    { id:'s3', name:'저장C', sub:'네이버 지도 저장', unit:'회', price:95, min:100, max:5000, needKw:true, splitOpts:[10,25,50] },
+    { id:'s4', name:'저장D', sub:'즐겨찾기 저장 패키지', unit:'회', price:100, min:200, max:10000, needKw:true, splitOpts:[10,25,50] },
+    { id:'s5', name:'저장E', sub:'통합 멀티 저장', unit:'회', price:105, min:200, max:10000, needKw:true, splitOpts:[10,25,50] },
+  ],
+  sns: [
+    { id:'sn1', name:'SNSA', sub:'인스타그램 팔로워 10만+ 홍보', unit:'패키지', price:89000, min:1, max:10, needKw:false },
+    { id:'sn2', name:'SNSB', sub:'틱톡 숏폼 바이럴', unit:'건', price:65000, min:1, max:20, needKw:false },
+    { id:'sn3', name:'SNSC', sub:'유튜브 쇼츠 노출', unit:'건', price:79000, min:1, max:15, needKw:false },
+    { id:'sn4', name:'SNSD', sub:'카카오 채널 메시지 발송', unit:'건', price:50000, min:1, max:30, needKw:false },
+    { id:'sn5', name:'SNSE', sub:'네이버 카페 바이럴', unit:'건', price:30000, min:1, max:30, needKw:false },
+  ],
+};
+
+// ══════════════════════════════════════════════════════
+// 플레이스 데이터
+// - mainKeywords : 네이버 플레이스에 직접 등록한 대표 키워드 (최대 5개)
+// - rankKeywords : 순위를 높이고 싶은 키워드 (작업 대상)
+//   └ rank        : 현재 네이버 플레이스 순위 (null = 미진입)
+//   └ topSection  : 플레이스 섹션 최상단 노출 여부
+//   └ noCpc       : 플레이스 섹션 내 CPC 광고 없음 여부
+// ══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// MY_PLACES: 네이버 플레이스 목록
+//  repKeywords  : 네이버 플레이스에 등록한 대표 키워드 5개
+//  rankKeywords : 순위를 높이고 싶은 순위 키워드 풀 (C안 작업 키워드 선택 소스)
+// ═══════════════════════════════════════════════════════
+const MY_PLACES = [
+  {
+    id: 'p1', name: '맛있는 식당 본점', url: 'https://naver.me/xxx',
+    /* 대표 키워드: 네이버 플레이스에 직접 등록한 5개 키워드 */
+    repKeywords: ['강남 맛집', '강남 한식', '테헤란로 맛집', '서초 점심', '강남 한정식'],
+    /* 순위 키워드: 순위를 올리고 싶은 키워드 풀 */
+    rankKeywords: [
+      { id:'k1',  kw:'강남 맛집',       rank:3,    isRankKw:true,  topSection:true,  noCpc:true  },
+      { id:'k2',  kw:'강남 한식 맛집',  rank:7,    isRankKw:false, topSection:false, noCpc:true  },
+      { id:'k3',  kw:'테헤란로 점심',   rank:null, isRankKw:false, topSection:false, noCpc:false },
+      { id:'k4',  kw:'강남역 맛집',     rank:12,   isRankKw:false, topSection:false, noCpc:false },
+      { id:'k5',  kw:'강남 한정식',     rank:5,    isRankKw:true,  topSection:true,  noCpc:true  },
+    ],
+  },
+  {
+    id: 'p2', name: '맛있는 식당 강남점', url: 'https://naver.me/yyy',
+    repKeywords: ['강남 한식', '강남역 점심', '직장인 맛집', '강남 구내식당', '역삼 점심'],
+    rankKeywords: [
+      { id:'k6',  kw:'강남 한식',        rank:1,    isRankKw:true,  topSection:true,  noCpc:true  },
+      { id:'k7',  kw:'강남역 점심',      rank:3,    isRankKw:true,  topSection:true,  noCpc:false },
+      { id:'k8',  kw:'강남 직장인 맛집', rank:12,   isRankKw:false, topSection:false, noCpc:false },
+      { id:'k9',  kw:'역삼 점심',        rank:null, isRankKw:false, topSection:false, noCpc:false },
+    ],
+  },
+  {
+    id: 'p3', name: '행복한 카페', url: 'https://naver.me/zzz',
+    repKeywords: ['강남 카페', '강남역 카페', '강남 디저트', '테헤란로 카페', '역삼 커피'],
+    rankKeywords: [
+      { id:'k10', kw:'강남 카페',    rank:4,    isRankKw:true,  topSection:true,  noCpc:true  },
+      { id:'k11', kw:'강남역 카페',  rank:8,    isRankKw:false, topSection:false, noCpc:true  },
+      { id:'k12', kw:'강남 디저트',  rank:null, isRankKw:false, topSection:false, noCpc:false },
+      { id:'k13', kw:'테헤란로 카페',rank:6,    isRankKw:true,  topSection:true,  noCpc:false },
+    ],
+  },
+];
+
+// ══════════════════════════════════════════════════════
+// 주문 Mock 데이터 — C안 계층 구조
+// orders: 주문 헤더 (브랜드/카테고리/기간/총금액)
+// items:  플레이스별 작업 단위 (수량/키워드/상태/매체사)
+// ══════════════════════════════════════════════════════
+let orders = [
+  {
+    id: 'ORD-0041', brand: '블로그A', brandId: 'b1', category: 'blog',
+    dailyQty: 2, startDate: '2026-03-18', endDate: '2026-03-22',
+    splitUnit: null, unitPrice: 15000,
+    totalQty: 10, totalAmount: 150000,
+    status: 'completed', date: '2026-03-18 14:23',
+    items: [
+      { id:'i001', placeId:'p1', placeName:'맛있는 식당 본점',
+        qty: 10, keywords: ['맛집 강남'], status:'completed', mediaCompany:'리뷰마스터' },
+    ],
+  },
+  {
+    id: 'ORD-0040', brand: 'SNSA', brandId: 'sn1', category: 'sns',
+    dailyQty: null, startDate: '2026-03-17', endDate: '2026-03-17',
+    splitUnit: null, unitPrice: 89000,
+    totalQty: 1, totalAmount: 89000,
+    status: 'in_progress', date: '2026-03-17 09:15',
+    items: [
+      { id:'i002', placeId:'p3', placeName:'행복한 카페',
+        qty: 1, keywords: [], status:'in_progress', mediaCompany:'SNS킹' },
+    ],
+  },
+  {
+    id: 'ORD-0039', brand: '유입A', brandId: 't1', category: 'traffic',
+    dailyQty: 100, startDate: '2026-03-16', endDate: '2026-03-20',
+    splitUnit: 10, unitPrice: 90,
+    totalQty: 800, totalAmount: 72000,
+    status: 'in_progress', date: '2026-03-16 16:40',
+    items: [
+      { id:'i003', placeId:'p2', placeName:'맛있는 식당 강남점',
+        qty: 500, keywords: ['강남 맛집', '강남 한식'], status:'in_progress', mediaCompany:'유입마스터' },
+      { id:'i004', placeId:'p1', placeName:'맛있는 식당 본점',
+        qty: 300, keywords: ['강남 맛집'], status:'pending', mediaCompany: null },
+    ],
+  },
+  {
+    id: 'ORD-0038', brand: '블로그B', brandId: 'b2', category: 'blog',
+    dailyQty: 1, startDate: '2026-03-15', endDate: '2026-03-19',
+    splitUnit: null, unitPrice: 18000,
+    totalQty: 8, totalAmount: 144000,
+    status: 'pending', date: '2026-03-15 11:20',
+    items: [
+      { id:'i005', placeId:'p1', placeName:'맛있는 식당 본점',
+        qty: 5, keywords: ['서울 맛집'], status:'pending', mediaCompany: null },
+      { id:'i006', placeId:'p3', placeName:'행복한 카페',
+        qty: 3, keywords: ['강남 카페'], status:'pending', mediaCompany: null },
+    ],
+  },
+  {
+    id: 'ORD-0037', brand: '영수증A', brandId: 'r1', category: 'receipt',
+    dailyQty: 5, startDate: '2026-03-10', endDate: '2026-03-13',
+    splitUnit: null, unitPrice: 5000,
+    totalQty: 20, totalAmount: 100000,
+    status: 'refund_requested', date: '2026-03-10 08:00',
+    items: [
+      { id:'i007', placeId:'p1', placeName:'맛있는 식당 본점',
+        qty: 20, keywords: [], status:'refund_requested', mediaCompany:'리뷰프로' },
+    ],
+  },
+  {
+    id: 'ORD-0036', brand: '저장A', brandId: 's1', category: 'save',
+    dailyQty: 200, startDate: '2026-03-08', endDate: '2026-03-12',
+    splitUnit: 25, unitPrice: 90,
+    totalQty: 1500, totalAmount: 135000,
+    status: 'cancelled', date: '2026-03-08 13:45',
+    items: [
+      { id:'i008', placeId:'p3', placeName:'행복한 카페',
+        qty: 800, keywords: ['강남 카페', '강남역 카페'], status:'cancelled', mediaCompany: null },
+      { id:'i009', placeId:'p2', placeName:'맛있는 식당 강남점',
+        qty: 700, keywords: ['강남 한식'], status:'cancelled', mediaCompany: null },
+    ],
+  },
+];
+
+// ══════════════════════════════════════════════════════
+// 어드민 설정 Mock 데이터 (admin-media.html과 동기화)
+// 실제 서비스에서는 API로 수신
+// ══════════════════════════════════════════════════════
+const BRAND_SETTINGS = {
+  // 블로그 리뷰 브랜드별 설정
+  blog: {
+    b1: {
+      minChars: 500, maxChars: 1500,
+      minPhotos: 5, maxPhotos: 15,
+      photoCrawl: true,
+      refs: [
+        { title: '강남역 맛집 리뷰 레퍼런스', url: 'https://blog.naver.com/sample1', desc: '스타일 참고용' },
+        { title: '메뉴 사진 촬영 가이드', url: 'https://blog.naver.com/sample2', desc: '사진 각도 및 구도 참고' },
+      ],
+    },
+    b2: {
+      minChars: 700, maxChars: 2000,
+      minPhotos: 8, maxPhotos: 20,
+      photoCrawl: false,
+      refs: [
+        { title: '파워블로거 작성 가이드', url: 'https://blog.naver.com/guide', desc: '필수 문구 및 해시태그 포함' },
+      ],
+    },
+    b3: { minChars: 600, maxChars: 1800, minPhotos: 6, maxPhotos: 12, photoCrawl: true, refs: [] },
+    b4: { minChars: 800, maxChars: 2500, minPhotos: 8, maxPhotos: 20, photoCrawl: false, refs: [] },
+    b5: { minChars: 1000, maxChars: 3000, minPhotos: 10, maxPhotos: 25, photoCrawl: true, refs: [] },
+  },
+  // 영수증 리뷰 브랜드별 설정
+  receipt: {
+    r1: {
+      hasPhoto: true,
+      allowWeekend: false,
+      blockedDates: ['2026-04-05', '2026-04-06', '2026-05-05'],
+      draft: '영수증 리뷰 작성 시 반드시 실제 방문 후 작성해 주세요.\n음식 사진을 최소 1장 이상 첨부하고, 전체적인 방문 경험을 솔직하게 작성 부탁드립니다.\n해시태그: #강남맛집 #네이버리뷰 #영수증리뷰',
+    },
+    r2: {
+      hasPhoto: false,
+      allowWeekend: true,
+      blockedDates: [],
+      draft: '방문 영수증을 첨부하여 리뷰를 작성해 주세요.\n별점 5점 기준으로 각 항목별 솔직한 평가 부탁드립니다.',
+    },
+    r3: { hasPhoto: true, allowWeekend: false, blockedDates: [], draft: '' },
+    r4: { hasPhoto: false, allowWeekend: true, blockedDates: [], draft: '' },
+    r5: { hasPhoto: true, allowWeekend: false, blockedDates: [], draft: '' },
+  },
+  // 리워드 최소 수량 설정
+  rewardMinQty: {
+    blog:    { b1:3, b2:3, b3:3, b4:3, b5:1 },
+    receipt: { r1:10, r2:10, r3:10, r4:10, r5:10 },
+    traffic: { t1:100, t2:100, t3:100, t4:100, t5:100 },
+    save:    { s1:100, s2:100, s3:100, s4:100, s5:100 },
+    sns:     { sn1:1, sn2:1, sn3:1, sn4:1, sn5:1 },
+  },
+  // 일키 전용 설정
+  dailyOnly: {
+    blog:    { b1:false, b2:false, b3:false, b4:false, b5:false },
+    receipt: { r1:false, r2:false, r3:false, r4:false, r5:false },
+    traffic: { t1:true,  t2:true,  t3:true,  t4:true,  t5:true  },
+    save:    { s1:true,  s2:true,  s3:true,  s4:true,  s5:true  },
+    sns:     { sn1:false, sn2:false, sn3:false, sn4:false, sn5:false },
+  },
+};
+
+// 브랜드 설정 패널 토글 상태
+let brandSettingExpanded = {};
+
+// ── 위저드 상태 ──────────────────────────────
+let wizard = {
+  step: 1,
+  category: 'blog',
+  brand: null,
+  selectedPlaces: [],       // [{id, name}]
+  cartItems: [],
+  // cartItems 구조 (C안):
+  // [{
+  //   brandId, brand, category,
+  //   splitUnit, startDate, endDate,
+  //   placeItems: [  // 플레이스별 작업 단위
+  //     { placeId, placeName, qty, dailyQty, selectedKwIds: [] }
+  //   ]
+  // }]
+};
+// 위저드 Step1 인라인 설정 상태 (C안: placeItems 내부에 저장)
+let wizardSettings = {};     // 미사용 (하위 호환용 빈 객체 유지)
+let kwTableFilter = {};      // { idx: { hasRankKw: false, topSection: false, noCpc: false } }
+let currentStatus = 'all';
+let currentPage = 1;
+const PAGE_SIZE = 10;
+let filterGroupBy = 'default'; // 'default' | 'product' | 'place'
+let filterBrand  = 'all';
+let filterPlace  = 'all';
+let orderSortCol = 'date';
+let orderSortAsc = false;
+
+// ── 레이아웃 초기화 ───────────────────────────
+buildModals();
+renderLayout({ title: '주문 관리', activePage: 'orders.html' });
+
+function buildModals() {
+  document.getElementById('modal-order-detail').innerHTML = `
+  <div class="modal modal-lg">
+    <div class="modal-header">
+      <span class="modal-title" id="detail-modal-title">주문 상세</span>
+      <button class="modal-close" onclick="closeModal('modal-order-detail')">${iconClose()}</button>
+    </div>
+    <div class="modal-body" id="detail-modal-body"></div>
+    <div class="modal-footer" id="detail-modal-footer"></div>
+  </div>`;
+
+  document.getElementById('modal-new-order').innerHTML = `
+  <div class="modal" style="width:720px;max-width:96vw">
+    <div class="modal-header">
+      <span class="modal-title">새 주문 만들기</span>
+      <button class="modal-close" onclick="closeModal('modal-new-order')">${iconClose()}</button>
+    </div>
+    <div class="modal-body" id="wizard-body" style="max-height:72vh;overflow-y:auto;padding-right:4px"></div>
+    <div class="modal-footer" id="wizard-footer"></div>
+  </div>`;
+
+  document.getElementById('modal-bulk').innerHTML = `
+  <div class="modal" style="width:640px;max-width:96vw">
+    <div class="modal-header">
+      <span class="modal-title">📊 엑셀 대량 등록</span>
+      <button class="modal-close" onclick="closeModal('modal-bulk')">${iconClose()}</button>
+    </div>
+    <div class="modal-body" id="bulk-body"></div>
+    <div class="modal-footer" id="bulk-footer"></div>
+  </div>`;
+
+  renderBulkModal();
+}
+
+// ═══════════════════════════════════════════════
+// 메인 페이지 렌더
+// ═══════════════════════════════════════════════
+function renderPage() {
+  let filtered = currentStatus === 'all' ? orders : orders.filter(o => o.status === currentStatus);
+  // 상품 필터
+  if (filterBrand !== 'all') filtered = filtered.filter(o => o.brand === filterBrand);
+  // 플레이스 필터
+  if (filterPlace !== 'all') filtered = filtered.filter(o => o.items.some(i => i.placeName === filterPlace));
+  // 정렬
+  filtered = [...filtered].sort((a,b) => {
+    let va, vb;
+    if (orderSortCol==='id')        { va=a.id; vb=b.id; }
+    else if (orderSortCol==='place')  { va=a.items[0]?.placeName||''; vb=b.items[0]?.placeName||''; }
+    else if (orderSortCol==='brand')  { va=a.brand; vb=b.brand; }
+    else if (orderSortCol==='date')   { va=a.date; vb=b.date; }
+    else if (orderSortCol==='startDate') { va=a.startDate; vb=b.startDate; }
+    else if (orderSortCol==='endDate')   { va=a.endDate; vb=b.endDate; }
+    else if (orderSortCol==='amount') { va=a.totalAmount; vb=b.totalAmount; }
+    else return 0;
+    if (typeof va==='string') return orderSortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return orderSortAsc ? va-vb : vb-va;
+  });
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+  const paged = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+
+  const thisMonth = orders.filter(o => o.date.startsWith('2026-03'));
+  const inProgress = orders.filter(o => o.status === 'in_progress').length;
+  const done = orders.filter(o => o.status === 'completed').length;
+  const totalSpent = thisMonth.reduce((a, o) => a + o.totalAmount, 0);
+
+  document.getElementById('page-content').innerHTML = `
+  <div class="page-header">
+    <div>
+      <div class="page-title">주문 관리</div>
+      <div class="page-subtitle">마케팅 서비스를 주문하고 진행 현황을 확인합니다</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-secondary" onclick="openModal('modal-bulk')">
+        ${iconUpload()} 엑셀 대량등록
+      </button>
+      <button class="btn btn-primary" onclick="startWizard()">
+        ${iconPlus()} 새 주문
+      </button>
+    </div>
+  </div>
+
+  <!-- 요약 카드 -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+    ${[
+      {label:'이번 달 주문', val: thisMonth.length + '건', color:'var(--cyan)'},
+      {label:'총 지출', val: formatKRW(totalSpent), color:'var(--yellow)'},
+      {label:'진행 중', val: inProgress + '건', color:'var(--purple)'},
+      {label:'완료', val: done + '건', color:'var(--green)'},
+    ].map(s => `
+      <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:16px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${s.label}</div>
+        <div style="font-size:20px;font-weight:800;color:${s.color}">${s.val}</div>
+      </div>
+    `).join('')}
+  </div>
+
+  <!-- 상품/플레이스 필터 행 -->
+  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+    <span style="font-size:12px;color:var(--text3)">묶음:</span>
+    <button class="tab-btn${filterGroupBy==='default'?' active':''}" onclick="setGroupBy('default')">기본</button>
+    <button class="tab-btn${filterGroupBy==='product'?' active':''}" onclick="setGroupBy('product')">상품별</button>
+    <button class="tab-btn${filterGroupBy==='place'?' active':''}" onclick="setGroupBy('place')">플레이스별</button>
+    <span style="margin-left:8px;font-size:12px;color:var(--text3)">상품:</span>
+    <select class="form-select" style="padding:5px 10px;font-size:12px;width:auto" onchange="setFilterBrand(this.value)">
+      <option value="all">전체 상품</option>
+      ${[...new Set(orders.map(o=>o.brand))].map(b=>`<option value="${b}" ${filterBrand===b?'selected':''}>${b}</option>`).join('')}
+    </select>
+    <span style="font-size:12px;color:var(--text3)">플레이스:</span>
+    <select class="form-select" style="padding:5px 10px;font-size:12px;width:auto" onchange="setFilterPlace(this.value)">
+      <option value="all">전체 플레이스</option>
+      ${[...new Set(orders.flatMap(o=>o.items.map(i=>i.placeName)))].map(p=>`<option value="${p}" ${filterPlace===p?'selected':''}>${p}</option>`).join('')}
+    </select>
+  </div>
+
+  <!-- 상태 탭 -->
+  <div class="tabs" style="margin-bottom:16px;overflow-x:auto">
+    ${[
+      {val:'all', label:`전체 (${orders.length})`},
+      {val:'pending', label:'결제 대기'},
+      {val:'confirmed', label:'확인 완료'},
+      {val:'in_progress', label:'진행 중'},
+      {val:'completed', label:'완료'},
+      {val:'cancelled', label:'취소'},
+      {val:'refund_requested', label:'환불 요청'},
+    ].map(t => `
+      <button class="tab-btn${currentStatus === t.val ? ' active' : ''}" onclick="filterStatus('${t.val}')">${t.label}</button>
+    `).join('')}
+  </div>
+
+  <!-- 주문 목록 테이블 -->
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="table-wrap" style="border:none">
+      <table>
+        <thead><tr>
+          <th onclick="sortOrders('id')" style="cursor:pointer">주문번호</th>
+          <th onclick="sortOrders('place')" style="cursor:pointer">플레이스</th>
+          <th onclick="sortOrders('brand')" style="cursor:pointer">상품 <span style="opacity:0.5">↕</span></th>
+          <th>수량</th><th>일수량</th>
+          <th onclick="sortOrders('date')" style="cursor:pointer">접수일 <span style="opacity:0.5">↕</span></th>
+          <th onclick="sortOrders('startDate')" style="cursor:pointer">시작일 <span style="opacity:0.5">↕</span></th>
+          <th onclick="sortOrders('endDate')" style="cursor:pointer">종료일 <span style="opacity:0.5">↕</span></th>
+          <th>진행일수</th><th>남은일수</th>
+          <th onclick="sortOrders('amount')" style="cursor:pointer">금액 <span style="opacity:0.5">↕</span></th>
+          <th>상태</th><th></th>
+        </tr></thead>
+        <tbody>
+          ${paged.length === 0
+            ? `<tr><td colspan="13"><div class="empty-state">
+                <div class="empty-icon">📦</div>
+                <div class="empty-title">주문 내역이 없습니다</div>
+                <button class="btn btn-primary" onclick="startWizard()">첫 주문 시작하기</button>
+              </div></td></tr>`
+            : paged.map(o => {
+                const today = new Date('2026-03-19');
+                const start = new Date(o.startDate);
+                const end   = new Date(o.endDate);
+                const totalDays = Math.round((end-start)/(1000*60*60*24)) + 1;
+                const elapsed   = Math.max(0, Math.min(totalDays, Math.round((today-start)/(1000*60*60*24))+1));
+                const remaining = Math.max(0, Math.round((end-today)/(1000*60*60*24)));
+                const isPast    = today > end;
+                return `
+              <tr style="cursor:pointer" onclick="showDetail('${o.id}')">
+                <td style="color:var(--cyan);font-weight:700;font-size:12px">${o.id}</td>
+                <td style="font-size:12px">
+                  ${o.items.length === 1
+                    ? `<span style="font-weight:500">${o.items[0].placeName}</span>`
+                    : `<span style="font-weight:500">${o.items[0].placeName}</span> <span class="total-badge" title="${o.items.map(i=>i.placeName).join(', ')}">+${o.items.length-1}</span>`}
+                </td>
+                <td>
+                  <div style="font-size:12px;font-weight:600">${o.brand}</div>
+                  <div style="font-size:10px;color:var(--text3)">${CATEGORIES.find(c=>c.id===o.category)?.label}</div>
+                  ${(o.category==='traffic'||o.category==='save') && o.items[0]?.keywords?.length
+                    ? `<div style="font-size:10px;color:var(--cyan)">🔑 ${o.items.flatMap(i=>i.keywords).filter((v,i,a)=>a.indexOf(v)===i).slice(0,2).join(', ')}${o.items.flatMap(i=>i.keywords).filter((v,i,a)=>a.indexOf(v)===i).length>2?'…':''}</div>` : ''}
+                </td>
+                <td style="font-size:12px">${(o.totalQty||o.qty||0).toLocaleString()}</td>
+                <td style="font-size:12px;color:var(--text3)">${o.items?.[0]?.dailyQty ? o.items[0].dailyQty.toLocaleString() : (o.dailyQty ? o.dailyQty.toLocaleString() : '-')}</td>
+                <td style="font-size:11px;color:var(--text3)">${o.date.split(' ')[0]}</td>
+                <td style="font-size:12px;color:var(--text)">${o.startDate}</td>
+                <td style="font-size:12px;color:var(--text)">${o.endDate}</td>
+                <td style="font-size:12px">
+                  <span style="color:${elapsed>=totalDays?'var(--green)':'var(--cyan)'};font-weight:600">${elapsed}</span>
+                  <span style="color:var(--text3)">/${totalDays}일</span>
+                  <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;width:60px">
+                    <div style="height:100%;border-radius:2px;background:${elapsed>=totalDays?'var(--green)':'var(--cyan)'};width:${Math.round(elapsed/totalDays*100)}%"></div>
+                  </div>
+                </td>
+                <td style="font-size:12px">
+                  ${isPast
+                    ? `<span style="color:var(--text3)">종료</span>`
+                    : `<span style="color:${remaining<=1?'var(--red)':remaining<=3?'var(--yellow)':'var(--text)'}; font-weight:${remaining<=3?700:400}">${remaining}일</span>`}
+                </td>
+                <td style="font-weight:700;font-size:13px">${formatKRW(o.totalAmount||o.amount||0)}</td>
+                <td>${orderBadge(o.status)}</td>
+                <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();showDetail('${o.id}')">${iconEye()}</button></td>
+              </tr>`;
+              }).join('')}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  ${renderPagination(currentPage, totalPages, 'goPage')}
+  `;
+}
+
+function filterStatus(s) { currentStatus = s; currentPage = 1; renderPage(); }
+function goPage(p) { currentPage = p; renderPage(); }
+function setGroupBy(g) { filterGroupBy = g; currentPage = 1; renderPage(); }
+function setFilterBrand(b) { filterBrand = b; currentPage = 1; renderPage(); }
+function setFilterPlace(p) { filterPlace = p; currentPage = 1; renderPage(); }
+function sortOrders(col) {
+  if (orderSortCol===col) orderSortAsc=!orderSortAsc;
+  else { orderSortCol=col; orderSortAsc=col==='date'?false:true; }
+  renderPage();
+}
+
+// ═══════════════════════════════════════════════
+// 주문 상세 모달
+// ═══════════════════════════════════════════════
+function showDetail(id) {
+  const o = orders.find(x => x.id === id);
+  if (!o) return;
+
+  const steps = [
+    { label:'주문 접수', done:true, date: o.date },
+    { label:'결제 확인', done:['confirmed','in_progress','completed','refunded'].includes(o.status) },
+    { label:'작업 배정', done:['in_progress','completed','refunded'].includes(o.status) },
+    { label:'작업 진행', done:['in_progress','completed'].includes(o.status) },
+    { label:'작업 완료', done: o.status === 'completed' },
+  ];
+
+  document.getElementById('detail-modal-title').textContent = o.id + ' 상세';
+  document.getElementById('detail-modal-body').innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+      <div>
+        <h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px">주문 정보</h4>
+        ${[
+          ['주문 번호', o.id],
+          ['브랜드/상품', o.brand],
+          ['분류', CATEGORIES.find(c=>c.id===o.category)?.label],
+          ['분할 단위', o.splitUnit ? o.splitUnit + '개' : '-'],
+          ['총 수량', (o.totalQty||o.qty||0).toLocaleString()],
+          ['시작일', o.startDate], ['종료일', o.endDate],
+          ['총 금액', formatKRW(o.totalAmount||o.amount||0)],
+          ['상태', orderBadge(o.status)],
+        ].map(([k,v]) => `
+          <div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px">
+            <span style="color:var(--text3)">${k}</span>
+            <span style="font-weight:500;text-align:right;max-width:200px">${v}</span>
+          </div>
+        `).join('')}
+
+        ${/* ── 블로그 설정 요약 ── */
+          (() => {
+            if (o.category !== 'blog') return '';
+            const bs = BRAND_SETTINGS.blog?.[o.brandId];
+            if (!bs) return '';
+            return `
+            <div style="margin-top:12px;padding:10px 12px;background:rgba(0,212,255,0.05);border:1px solid rgba(0,212,255,0.15);border-radius:8px">
+              <div style="font-size:11px;font-weight:600;color:var(--cyan);margin-bottom:6px">📝 블로그 리뷰 가이드</div>
+              <div style="font-size:11px;color:var(--text2)">글자수: ${bs.minChars}~${bs.maxChars}자 | 사진: ${bs.minPhotos}~${bs.maxPhotos}장</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:2px">사진크롤링: ${bs.photoCrawl ? '✅ 활성' : '❌ 비활성'} | 레퍼런스: ${bs.refs?.length||0}개</div>
+            </div>`;
+          })()
+        }
+        ${/* ── 영수증 설정 요약 ── */
+          (() => {
+            if (o.category !== 'receipt') return '';
+            const rs = BRAND_SETTINGS.receipt?.[o.brandId];
+            if (!rs) return '';
+            return `
+            <div style="margin-top:12px;padding:10px 12px;background:rgba(99,102,241,0.06);border:1px solid rgba(99,102,241,0.2);border-radius:8px">
+              <div style="font-size:11px;font-weight:600;color:#a5b4fc;margin-bottom:6px">🧾 영수증 리뷰 가이드</div>
+              <div style="font-size:11px;color:var(--text2)">포토: ${rs.hasPhoto?'필수':'선택'} | 주말발행: ${rs.allowWeekend?'허용':'금지'}</div>
+              ${(rs.blockedDates||[]).length ? `<div style="font-size:11px;color:#f87171;margin-top:2px">🚫 금지날짜: ${rs.blockedDates.join(', ')}</div>` : ''}
+            </div>`;
+          })()
+        }
+
+        <!-- C안: 플레이스별 작업 단위 -->
+        <h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-top:16px;margin-bottom:10px">
+          📍 플레이스별 현황 (${(o.items||[]).length}개)
+        </h4>
+        ${(o.items||[]).map(item => `
+          <div style="margin-bottom:8px;padding:10px 12px;background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <span style="font-size:12px;font-weight:600;color:#fff">📍 ${item.placeName}</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:11px;color:var(--cyan)">${(item.qty||0).toLocaleString()}${o.category==='traffic'||o.category==='save'?'회':'개'}</span>
+                ${orderBadge(item.status)}
+              </div>
+            </div>
+            ${item.keywords?.length > 0 ? `
+            <div style="display:flex;flex-wrap:wrap;gap:3px;margin-top:4px">
+              ${item.keywords.map(kw => `<span style="padding:2px 7px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);border-radius:10px;font-size:10px;color:var(--cyan)">${kw}</span>`).join('')}
+            </div>` : ''}
+            <div style="font-size:10px;color:var(--text3);margin-top:4px">
+              매체사: ${item.mediaCompany || '<span style="color:var(--text3)">미배정</span>'}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div>
+        <h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px">진행 상태</h4>
+        <div class="timeline">
+          ${steps.map(s => `
+            <div class="timeline-item">
+              <div class="timeline-dot" style="background:${s.done ? 'var(--green)' : 'rgba(255,255,255,0.15)'}"></div>
+              <div class="timeline-title" style="color:${s.done ? '#fff' : 'var(--text3)'}">${s.label}</div>
+              ${s.date ? `<div class="timeline-time">${s.date}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+
+  const footer = document.getElementById('detail-modal-footer');
+  footer.innerHTML = o.status === 'pending'
+    ? `<button class="btn btn-danger" onclick="cancelOrder('${o.id}')">주문 취소</button>
+       <button class="btn btn-primary" onclick="confirmPayment('${o.id}')">결제 완료</button>`
+    : o.status === 'in_progress'
+    ? `<button class="btn btn-secondary" onclick="closeModal('modal-order-detail')">닫기</button>
+       <button class="btn btn-danger" onclick="refundReq('${o.id}')">환불 요청</button>`
+    : `<button class="btn btn-secondary" onclick="closeModal('modal-order-detail')">닫기</button>`;
+
+  openModal('modal-order-detail');
+}
+
+function cancelOrder(id) { updateStatus(id, 'cancelled'); closeModal('modal-order-detail'); toast('주문이 취소되었습니다', 'info'); }
+function refundReq(id) { updateStatus(id, 'refund_requested'); closeModal('modal-order-detail'); toast('환불 요청이 접수되었습니다', 'warning'); }
+function confirmPayment(id) { updateStatus(id, 'confirmed'); closeModal('modal-order-detail'); toast('결제 완료 처리되었습니다', 'success'); }
+function updateStatus(id, s) { const o = orders.find(x => x.id === id); if (o) o.status = s; renderPage(); }
+
+// ═══════════════════════════════════════════════
+// 새 주문 위저드 (3단계)
+// Step 1: 카테고리 → 브랜드 선택 (카트에 추가)
+// Step 1: 상품 선택 + 주문 설정 (통합)
+// Step 2: 결제 확인
+// ═══════════════════════════════════════════════
+function startWizard() {
+  wizard = { step:1, category:'blog', brand:null, cartItems:[] };
+  wizardSettings = {}; kwTableFilter = {};
+  renderWizard();
+  openModal('modal-new-order');
+}
+
+function renderWizard() {
+  // 단계 표시기 (2단계)
+  const stepsHtml = `
+  <div class="wizard-steps">
+    ${['상품 선택 · 설정','최종 확인 · 결제'].map((label, i) => {
+      const n = i + 1;
+      const cls = wizard.step === n ? 'active' : wizard.step > n ? 'done' : '';
+      return `
+        ${i > 0 ? `<div class="w-step-line"></div>` : ''}
+        <div class="w-step ${cls}">
+          <div class="w-step-num">${wizard.step > n ? '✓' : n}</div>
+          <div class="w-step-label">${label}</div>
+        </div>`;
+    }).join('')}
+  </div>`;
+
+  let body = stepsHtml;
+  let footer = '';
+
+  /* ══════════════════════════════════════════════════════
+     Step 1: 카테고리 탭 + 브랜드 선택 + 인라인 설정 + 카트
+  ══════════════════════════════════════════════════════ */
+  if (wizard.step === 1) {
+    const brands = BRANDS[wizard.category] || [];
+    const cartCount = wizard.cartItems.length;
+    const selectedBrand = wizard.brand;
+
+    // ── 블로그 스펙/레퍼런스 패널 ──
+    const blogSpecHtml = (() => {
+      if (wizard.category !== 'blog' || !selectedBrand) return '';
+      const bs = BRAND_SETTINGS.blog?.[selectedBrand.id];
+      if (!bs) return '';
+      const key = `spec-${selectedBrand.id}`;
+      return `
+      <div style="margin:10px 0 4px;border:1px solid rgba(0,212,255,0.2);border-radius:10px;overflow:hidden">
+        <!-- 스펙 항상 표시 -->
+        <div style="padding:12px 16px;background:rgba(0,212,255,0.04)">
+          <div style="font-size:11px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">
+            📐 스펙
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            ${[
+              { label:'최소 글자수', val: bs.minChars.toLocaleString()+'자' },
+              { label:'최대 글자수', val: bs.maxChars.toLocaleString()+'자' },
+              { label:'최소 사진수', val: bs.minPhotos+'장' },
+              { label:'최대 사진수', val: bs.maxPhotos+'장' },
+            ].map(s => `
+              <div style="background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center">
+                <div style="font-size:16px;font-weight:700;color:var(--cyan)">${s.val}</div>
+                <div style="font-size:10px;color:var(--text3);margin-top:3px">${s.label}</div>
+              </div>`).join('')}
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:8px 12px;background:rgba(255,255,255,0.02);border-radius:8px;border:1px solid var(--border)">
+            <span style="font-size:12px;font-weight:600;color:var(--text2)">📷 사진 크롤링</span>
+            <span style="font-size:12px;color:${bs.photoCrawl ? 'var(--cyan)' : 'var(--text3)'}">
+              ${bs.photoCrawl ? '✅ 플레이스 대표사진 자동 크롤링 활성화' : '❌ 비활성화 (직접 촬영 필요)'}
+            </span>
+          </div>
+        </div>
+        <!-- 레퍼런스 접힘/펼침 -->
+        ${bs.refs && bs.refs.length > 0 ? `
+        <div style="border-top:1px solid rgba(0,212,255,0.15)">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 16px;cursor:pointer;background:rgba(0,212,255,0.02)"
+            onclick="toggleBrandPanel('ref-list-${selectedBrand.id}','ref-list-body-${selectedBrand.id}')">
+            <span style="font-size:12px;font-weight:600;color:var(--cyan)">🔗 레퍼런스 (${bs.refs.length}개)</span>
+            <span style="color:var(--cyan);font-size:11px;transition:transform .2s;display:inline-block;
+              transform:rotate(${brandSettingExpanded['ref-list-'+selectedBrand.id] ? '180deg':'0deg'})"
+              id="ref-list-arrow-${selectedBrand.id}">▼</span>
+          </div>
+          <div id="ref-list-body-${selectedBrand.id}"
+            style="display:${brandSettingExpanded['ref-list-'+selectedBrand.id] ? 'block':'none'};padding:0 16px 14px">
+            ${bs.refs.map((r, ri) => `
+            <div style="border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-top:8px">
+              <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 12px;cursor:pointer;background:rgba(255,255,255,0.02)"
+                onclick="toggleBrandPanel('ref-item-${selectedBrand.id}-${ri}','ref-item-body-${selectedBrand.id}-${ri}')">
+                <div>
+                  <div style="font-size:12px;font-weight:600;color:var(--text)">🔗 ${r.title || '(제목 없음)'}</div>
+                  <div style="font-size:10px;color:var(--text3);margin-top:2px">${r.url}</div>
+                </div>
+                <span style="color:var(--text3);font-size:10px;display:inline-block;transition:transform .2s;
+                  transform:rotate(${brandSettingExpanded['ref-item-'+selectedBrand.id+'-'+ri] ? '180deg':'0deg'})"
+                  id="ref-item-arrow-${selectedBrand.id}-${ri}">▼</span>
+              </div>
+              <div id="ref-item-body-${selectedBrand.id}-${ri}"
+                style="display:${brandSettingExpanded['ref-item-'+selectedBrand.id+'-'+ri] ? 'block':'none'};padding:10px 12px;border-top:1px solid var(--border)">
+                <div style="font-size:12px;color:var(--text2);line-height:1.6">${r.desc || '설명 없음'}</div>
+                <a href="${r.url}" target="_blank" rel="noopener"
+                  style="display:inline-block;margin-top:8px;font-size:11px;color:var(--cyan);text-decoration:underline">
+                  🔗 새 탭에서 열기
+                </a>
+              </div>
+            </div>`).join('')}
+          </div>
+        </div>` : `
+        <div style="padding:10px 16px;border-top:1px solid rgba(0,212,255,0.1);font-size:12px;color:var(--text3)">레퍼런스 없음</div>`}
+      </div>`;
+    })();
+
+    body += `
+    <!-- 카테고리 탭 -->
+    <div class="category-tabs">
+      ${CATEGORIES.map(c => `
+        <button class="cat-tab${wizard.category === c.id ? ' active' : ''}" onclick="selectCategory('${c.id}')">
+          ${c.emoji} ${c.label}
+        </button>
+      `).join('')}
+    </div>
+
+    <!-- 브랜드 카드 -->
+    <div class="brand-grid">
+      ${brands.map(b => `
+        <div class="brand-card${wizard.brand?.id === b.id ? ' selected' : ''}" onclick="selectBrand('${b.id}')">
+          <div class="brand-card-name">${b.name}</div>
+          <div class="brand-card-sub">${b.sub}</div>
+          <div class="brand-card-price">${formatKRW(b.price)}<span style="font-size:10px;color:var(--text3);font-weight:400"> /${b.unit}</span></div>
+        </div>
+      `).join('')}
+    </div>
+
+    <!-- 블로그 스펙 + 레퍼런스 (브랜드 선택 시) -->
+    ${blogSpecHtml}
+
+    <!-- 카트에 추가 버튼 -->
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:12px;background:rgba(255,255,255,0.03);border-radius:10px;margin-top:10px;margin-bottom:16px">
+      <span style="font-size:13px;color:var(--text2)">${wizard.brand ? `선택: <strong style="color:#fff">${wizard.brand.name}</strong>` : '브랜드를 선택하세요'}</span>
+      <button class="btn btn-secondary btn-sm" onclick="addToCart()" ${!wizard.brand ? 'disabled' : ''}>${iconPlus()} 카트에 추가</button>
+    </div>
+
+    <!-- ══ 카트 아이템 + 인라인 설정 ══ -->
+    ${cartCount > 0 ? `
+    <div style="margin-bottom:8px">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:10px">🛒 장바구니 (${cartCount}건)</div>
+      ${wizard.cartItems.map((item, idx) => {
+        const brand = Object.values(BRANDS).flat().find(b => b.id === item.brandId);
+        const today = new Date().toISOString().split('T')[0];
+        const isReward = item.category === 'traffic' || item.category === 'save';
+        const placeItems = item.placeItems || [];
+        const totalQty = placeItems.reduce((s, pi) => s + (pi.qty||0), 0);
+        const filter = kwTableFilter[idx] || {};
+
+        // 플레이스별 패널 렌더
+        const placeItemPanels = placeItems.map(pi => {
+          const pl = MY_PLACES.find(p => p.id === pi.placeId);
+          const rankKws = pl?.rankKeywords || [];
+          const selectedKwIds = pi.selectedKwIds || [];
+          const dailyOnly = BRAND_SETTINGS.dailyOnly?.[item.category]?.[item.brandId];
+          const minQty    = BRAND_SETTINGS.rewardMinQty?.[item.category]?.[item.brandId];
+
+          // 필터 적용
+          const filtered = rankKws.filter(kw => {
+            if (filter.hasRankKw && !kw.isRankKw) return false;
+            if (filter.topSection && !kw.topSection) return false;
+            if (filter.noCpc && !kw.noCpc) return false;
+            return true;
+          });
+
+          return `
+          <div style="margin-bottom:10px;border:1px solid rgba(255,255,255,0.1);border-radius:10px;overflow:hidden">
+            <!-- 플레이스 패널 헤더 -->
+            <div style="padding:10px 14px;background:rgba(255,255,255,0.04);display:flex;justify-content:space-between;align-items:center">
+              <div style="display:flex;align-items:center;gap:8px">
+                <span style="font-size:13px;font-weight:600;color:#fff">📍 ${pi.placeName}</span>
+                ${selectedKwIds.length > 0 ? `<span style="font-size:11px;color:#4ade80">${selectedKwIds.length}개 키워드 선택</span>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:12px;font-weight:600;color:var(--cyan)">${formatKRW((brand?.price||0) * (pi.qty||0))}</span>
+              </div>
+            </div>
+            <div style="padding:12px 14px">
+              <!-- 수량 입력 -->
+              <div style="display:grid;grid-template-columns:${isReward ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr'};gap:10px;margin-bottom:12px">
+                <div class="input-group" style="margin-bottom:0">
+                  <label class="input-label">시작일</label>
+                  <input type="date" class="input cart-date-input" value="${item.startDate || today}"
+                    oninput="setItemField(${idx},'startDate',this.value);calcDays(${idx})">
+                </div>
+                <div class="input-group" style="margin-bottom:0">
+                  <label class="input-label">종료일</label>
+                  <input type="date" class="input cart-date-input" value="${item.endDate || today}"
+                    oninput="setItemField(${idx},'endDate',this.value);calcDays(${idx})">
+                </div>
+                ${isReward ? `
+                <div class="input-group" style="margin-bottom:0">
+                  <label class="input-label">일 수량</label>
+                  <input type="number" class="input cart-qty-input" placeholder="일 수량" value="${pi.dailyQty || ''}"
+                    oninput="setPlaceItemField(${idx},'${pi.placeId}','dailyQty',+this.value)" style="width:100%">
+                </div>` : ''}
+                <div class="input-group" style="margin-bottom:0">
+                  <label class="input-label">수량</label>
+                  <input type="number" class="input cart-qty-input"
+                    placeholder="${minQty ? `최소 ${minQty}` : '수량'}" value="${pi.qty || ''}"
+                    min="${brand?.min||1}" max="${brand?.max||99999}"
+                    oninput="setPlaceItemField(${idx},'${pi.placeId}','qty',+this.value)" style="width:100%">
+                </div>
+              </div>
+              <div style="font-size:10px;color:var(--text3);margin-bottom:8px" id="days-info-${idx}-${pi.placeId}">
+                ${item.startDate && item.endDate ? calcDaysInfo(item.startDate, item.endDate) : '기간을 선택하면 일수가 표시됩니다'}
+              </div>
+
+              ${isReward ? `
+              <!-- ══ 순위 키워드 선택 섹션 (플레이스별) ══ -->
+              <div style="border:1px solid rgba(0,212,255,0.2);border-radius:8px;overflow:hidden">
+                <!-- 키워드 섹션 헤더 -->
+                <div style="padding:8px 12px;background:rgba(0,212,255,0.05);border-bottom:1px solid rgba(0,212,255,0.1)">
+                  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+                    <div style="display:flex;align-items:center;gap:6px">
+                      <span style="font-size:12px;font-weight:700;color:var(--cyan)">🎯 작업 키워드 선택</span>
+                      <span style="font-size:11px;color:#4ade80" data-kw-counter="${idx}-${pi.placeId}">${selectedKwIds.length > 0 ? selectedKwIds.length + '개 선택됨' : ''}</span>
+                    </div>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+                      <span style="font-size:11px;color:var(--text3)">필터:</span>
+                      <button class="kw-filter-btn${filter.hasRankKw ? ' active' : ''}"
+                        onclick="toggleKwFilter(${idx},'hasRankKw')">순위 키워드</button>
+                      <button class="kw-filter-btn${filter.topSection ? ' active' : ''}"
+                        onclick="toggleKwFilter(${idx},'topSection')">섹션 최상단</button>
+                      <button class="kw-filter-btn${filter.noCpc ? ' active' : ''}"
+                        onclick="toggleKwFilter(${idx},'noCpc')">CPC 없음</button>
+                      <button class="kw-filter-btn" onclick="selectAllKws(${idx},'${pi.placeId}',${JSON.stringify(filtered.map(k=>k.id))})">전체선택</button>
+                      <button class="kw-filter-btn" onclick="clearAllKws(${idx},'${pi.placeId}')">전체해제</button>
+                    </div>
+                  </div>
+                </div>
+                <!-- 키워드 테이블 -->
+                <div style="overflow-x:auto">
+                  <table style="width:100%;border-collapse:collapse;font-size:12px">
+                    <thead>
+                      <tr style="background:rgba(255,255,255,0.03)">
+                        <th style="padding:8px 10px;text-align:left;width:32px;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border)">
+                          <input type="checkbox"
+                            ${filtered.length > 0 && filtered.every(k => selectedKwIds.includes(k.id)) ? 'checked' : ''}
+                            onchange="toggleAllKws(${idx},'${pi.placeId}',this.checked,${JSON.stringify(filtered.map(k=>k.id))})">
+                        </th>
+                        <th style="padding:8px 10px;text-align:left;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border)">작업 키워드</th>
+                        <th style="padding:8px 10px;text-align:center;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">순위<br>키워드</th>
+                        <th style="padding:8px 10px;text-align:center;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">섹션<br>최상단</th>
+                        <th style="padding:8px 10px;text-align:center;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">CPC<br>없음</th>
+                        <th style="padding:8px 10px;text-align:center;color:var(--text3);font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap">플레이스<br>순위</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      ${filtered.length === 0 ? `
+                      <tr><td colspan="6" style="padding:14px;text-align:center;color:var(--text3)">조건에 맞는 키워드가 없습니다</td></tr>
+                      ` : filtered.map(kw => {
+                        const isChecked = selectedKwIds.includes(kw.id);
+                        return `
+                        <tr data-kw-row="${idx}-${pi.placeId}-${kw.id}"
+                          style="border-bottom:1px solid rgba(255,255,255,0.04);${isChecked ? 'background:rgba(0,212,255,0.04)' : ''}">
+                          <td style="padding:8px 10px">
+                            <input type="checkbox" ${isChecked ? 'checked' : ''}
+                              onchange="toggleKwSelection(${idx},'${pi.placeId}','${kw.id}',this.checked)">
+                          </td>
+                          <td style="padding:8px 10px">
+                            <div class="kw-cell-text" style="font-size:13px;font-weight:600;color:${isChecked ? 'var(--cyan)' : 'var(--text)'}">${kw.kw}</div>
+                          </td>
+                          <td style="padding:8px 10px;text-align:center">
+                            ${kw.isRankKw ? '<span style="color:#4ade80;font-size:14px">✅</span>' : '<span style="color:var(--text3)">—</span>'}
+                          </td>
+                          <td style="padding:8px 10px;text-align:center">
+                            ${kw.topSection ? '<span style="color:#4ade80;font-size:14px">✅</span>' : '<span style="color:var(--text3)">—</span>'}
+                          </td>
+                          <td style="padding:8px 10px;text-align:center">
+                            ${kw.noCpc ? '<span style="color:#4ade80;font-size:14px">✅</span>' : '<span style="color:var(--text3)">—</span>'}
+                          </td>
+                          <td style="padding:8px 10px;text-align:center">
+                            ${kw.rank != null
+                              ? `<span style="font-size:13px;font-weight:700;color:${kw.rank <= 3 ? '#4ade80' : kw.rank <= 10 ? 'var(--cyan)' : 'var(--text2)'}">${kw.rank}위</span>`
+                              : '<span style="color:var(--text3);font-size:11px">미진입</span>'}
+                          </td>
+                        </tr>`;
+                      }).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              </div>` : `
+              <!-- 블로그/영수증: 키워드 직접 입력 -->
+              ${brand?.needKw ? `
+              <div class="input-group" style="margin-bottom:0">
+                <label class="input-label">키워드</label>
+                <input class="input" placeholder="검색 키워드 입력 (예: 강남 맛집)" value="${pi.keyword || ''}"
+                  oninput="setPlaceItemField(${idx},'${pi.placeId}','keyword',this.value)" style="margin-bottom:0">
+              </div>` : ''}
+              `}
+            </div>
+          </div>`;
+        }).join('');
+
+        return `
+        <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px">
+          <!-- 카트 아이템 헤더 -->
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:14px;font-weight:700;color:#fff">${item.brand}</span>
+              <span style="font-size:11px;color:var(--text3);background:rgba(255,255,255,0.06);padding:2px 8px;border-radius:20px">
+                ${CATEGORIES.find(c=>c.id===item.category)?.label}
+              </span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:13px;font-weight:600;color:var(--cyan)">
+                총 ${formatKRW((brand?.price||0) * totalQty)} · ${placeItems.length}개 플레이스
+              </span>
+              <button class="remove-btn" onclick="removeFromCart(${idx})" title="삭제">×</button>
+            </div>
+          </div>
+
+          <!-- 블로그 스펙 (이 아이템이 블로그 카테고리면 표시) -->
+          ${item.category === 'blog' && BRAND_SETTINGS.blog?.[item.brandId] ? (() => {
+            const bs = BRAND_SETTINGS.blog[item.brandId];
+            const key = `blog-${idx}-${item.brandId}`;
+            const isOpen = brandSettingExpanded[key] || false;
+            return `
+          <div style="margin-bottom:12px;border:1px solid rgba(0,212,255,0.2);border-radius:10px;overflow:hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(0,212,255,0.05);cursor:pointer"
+              onclick="toggleBrandPanel('${key}','blog-panel-${idx}')">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:12px;font-weight:700;color:var(--cyan)">✍️ 블로그 리뷰 스펙</span>
+                <span style="font-size:11px;color:var(--text3)">글자: ${bs.minChars}~${bs.maxChars}자 · 사진: ${bs.minPhotos}~${bs.maxPhotos}장${bs.photoCrawl ? ' · 포토크롤 ON' : ''}</span>
+              </div>
+              <span id="blog-arrow-${idx}" style="color:var(--cyan);font-size:11px;transition:transform .2s;display:inline-block;transform:rotate(${isOpen?'180deg':'0deg'})">▼</span>
+            </div>
+            <div id="blog-panel-${idx}" style="display:${isOpen?'block':'none'}">
+              <div style="padding:14px 16px">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">
+                  <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px">
+                    <div style="font-size:10px;color:var(--text3);margin-bottom:3px">글자수 범위</div>
+                    <div style="font-size:13px;font-weight:700;color:#fff">${bs.minChars.toLocaleString()} ~ ${bs.maxChars.toLocaleString()}</div>
+                  </div>
+                  <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px">
+                    <div style="font-size:10px;color:var(--text3);margin-bottom:3px">사진수 범위</div>
+                    <div style="font-size:13px;font-weight:700;color:#fff">${bs.minPhotos} ~ ${bs.maxPhotos}</div>
+                  </div>
+                  <div style="text-align:center;padding:8px;background:rgba(255,255,255,0.03);border-radius:8px">
+                    <div style="font-size:10px;color:var(--text3);margin-bottom:3px">포토 크롤링</div>
+                    <div style="font-size:13px;font-weight:700;color:${bs.photoCrawl?'#4ade80':'var(--text3)'}">${bs.photoCrawl?'ON':'OFF'}</div>
+                  </div>
+                </div>
+                ${bs.refs?.length > 0 ? `
+                <div>
+                  <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px">📎 레퍼런스</div>
+                  ${bs.refs.map((r, ri) => {
+                    const refKey = `ref-body-order-${idx}-${ri}`;
+                    const refOpen = brandSettingExpanded[refKey] || false;
+                    return `
+                    <div style="margin-bottom:6px;border:1px solid rgba(255,255,255,0.07);border-radius:7px;overflow:hidden">
+                      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;cursor:pointer;background:rgba(255,255,255,0.02)"
+                        onclick="toggleBrandPanel('${refKey}','ref-body-order-${idx}-${ri}')">
+                        <a href="${r.url}" target="_blank" style="font-size:12px;color:var(--cyan);text-decoration:underline"
+                          onclick="event.stopPropagation()">${r.title}</a>
+                        <span id="ref-arr-${idx}-${ri}" style="color:var(--text3);font-size:10px;transition:transform .2s;display:inline-block;transform:rotate(${refOpen?'180deg':'0deg'})">▼</span>
+                      </div>
+                    </div>`;
+                  }).join('')}
+                </div>` : ''}
+              </div>
+            </div>
+          </div>`;
+          })() : ''}
+
+          <!-- 플레이스 선택 체크박스 -->
+          <div class="input-group" style="margin-bottom:12px">
+            <label class="input-label">플레이스 선택 (복수 선택 후 각각 설정)</label>
+            <div class="place-check-grid">
+              ${MY_PLACES.map(p => `
+                <label class="place-check-item${(item.placeItems||[]).some(pi=>pi.placeId===p.id) ? ' selected' : ''}"
+                  id="place-label-${idx}-${p.id}"
+                  onclick="togglePlace(${idx},'${p.id}','${p.name}',this)">
+                  <input type="checkbox" ${(item.placeItems||[]).some(pi=>pi.placeId===p.id) ? 'checked' : ''} onchange="">
+                  <span class="place-name">${p.name}</span>
+                </label>
+              `).join('')}
+            </div>
+          </div>
+
+          <!-- 키워드 분할 단위 (traffic/save) -->
+          ${brand?.splitOpts ? `
+          <div class="input-group" style="margin-bottom:12px">
+            <label class="input-label">키워드 분할 단위 <span style="font-size:10px;color:var(--text3)">(1회 노출당 키워드 수)</span></label>
+            <div class="kw-split-group">
+              ${brand.splitOpts.map(opt => `
+                <button class="kw-split-btn${item.splitUnit === opt ? ' active' : ''}"
+                  onclick="setSplitUnit(${idx},${opt})">
+                  ${opt}개
+                </button>
+              `).join('')}
+              <button class="kw-split-btn${!item.splitUnit ? ' active' : ''}"
+                onclick="setSplitUnit(${idx},null)">분할 없음</button>
+            </div>
+          </div>` : ''}
+
+          <!-- 일키 전용 / 최소수량 뱃지 -->
+          ${(() => {
+            const dailyOnly = BRAND_SETTINGS.dailyOnly?.[item.category]?.[item.brandId];
+            const minQty    = BRAND_SETTINGS.rewardMinQty?.[item.category]?.[item.brandId];
+            if (!dailyOnly && !minQty) return '';
+            return `
+          <div style="margin-bottom:12px;display:flex;flex-wrap:wrap;gap:6px">
+            ${dailyOnly ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;
+              background:rgba(251,191,36,0.1);border:1px solid rgba(251,191,36,0.2);border-radius:20px;font-size:11px;color:#fbbf24">
+              ⚠️ 일키 전용 — 일 수량 입력 필수
+            </span>` : ''}
+            ${minQty ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;
+              background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);border-radius:20px;font-size:11px;color:var(--cyan)">
+              📦 최소 주문 ${minQty.toLocaleString()}${item.category==='blog'||item.category==='receipt'?'개':item.category==='sns'?'패키지':'회'}
+            </span>` : ''}
+          </div>`;
+          })()}
+
+          <!-- 플레이스별 설정 패널 -->
+          ${placeItems.length > 0 ? `
+          <div style="margin-top:4px">
+            <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px">
+              📋 플레이스별 수량 · 키워드 설정
+            </div>
+            ${placeItemPanels}
+          </div>` : `
+          <div style="text-align:center;padding:14px;background:rgba(255,255,255,0.02);border:1px dashed rgba(255,255,255,0.1);border-radius:8px;font-size:12px;color:var(--text3)">
+            위에서 플레이스를 선택하면 설정 패널이 나타납니다
+          </div>`}
+
+          <!-- 영수증 리뷰 설정 패널 (접힘/펼침) -->
+          ${item.category === 'receipt' && BRAND_SETTINGS.receipt?.[item.brandId] ? (() => {
+            const rs = BRAND_SETTINGS.receipt[item.brandId];
+            const key = `receipt-${idx}-${item.brandId}`;
+            const isOpen = brandSettingExpanded[key] || false;
+            return `
+          <div style="margin-top:12px;border:1px solid rgba(99,102,241,0.25);border-radius:10px;overflow:hidden">
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;
+              background:rgba(99,102,241,0.06);cursor:pointer"
+              onclick="toggleBrandPanel('${key}','receipt-panel-${idx}')">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span style="font-size:12px;font-weight:700;color:#a5b4fc">🧾 영수증 리뷰 작성 가이드</span>
+                <span style="font-size:10px;color:var(--text3)">(${isOpen ? '접기' : '펼쳐서 확인'})</span>
+              </div>
+              <span style="color:#a5b4fc;font-size:11px;transition:transform .2s;display:inline-block;transform:rotate(${isOpen?'180deg':'0deg'})">▼</span>
+            </div>
+            <div id="receipt-panel-${idx}" style="display:${isOpen?'block':'none'}">
+              <div style="padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <span style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;
+                    background:${rs.hasPhoto?'rgba(0,212,255,0.1)':'rgba(107,114,128,0.1)'};
+                    border:1px solid ${rs.hasPhoto?'rgba(0,212,255,0.25)':'rgba(107,114,128,0.2)'};
+                    color:${rs.hasPhoto?'var(--cyan)':'var(--text3)'}">
+                    📷 포토 첨부 ${rs.hasPhoto ? '필수' : '선택'}
+                  </span>
+                  <span style="padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;
+                    background:${rs.allowWeekend?'rgba(34,197,94,0.1)':'rgba(239,68,68,0.08)'};
+                    border:1px solid ${rs.allowWeekend?'rgba(34,197,94,0.2)':'rgba(239,68,68,0.15)'};
+                    color:${rs.allowWeekend?'#4ade80':'#f87171'}">
+                    📅 주말 발행 ${rs.allowWeekend ? '허용' : '금지'}
+                  </span>
+                </div>
+                ${rs.blockedDates?.length > 0 ? `
+                <div>
+                  <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px">🚫 발행 금지 날짜</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    ${rs.blockedDates.map(d => `<span style="padding:3px 10px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:20px;font-size:11px;color:#f87171">🚫 ${d}</span>`).join('')}
+                  </div>
+                </div>` : ''}
+                ${rs.draft ? `
+                <div>
+                  <div style="font-size:11px;font-weight:600;color:var(--text3);margin-bottom:6px">📄 발행 원고</div>
+                  <div style="background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:var(--text2);line-height:1.8;white-space:pre-wrap">${rs.draft}</div>
+                </div>` : ''}
+              </div>
+            </div>
+          </div>`;
+          })() : ''}
+        </div>`;
+      }).join('')}
+    </div>` : `
+    <div style="text-align:center;padding:20px;color:var(--text3);font-size:12px">장바구니가 비어 있습니다. 상품을 추가해 주세요.</div>`}
+    `;
+
+    footer = `
+      <button class="btn btn-secondary" onclick="closeModal('modal-new-order')">취소</button>
+      <button class="btn btn-primary" onclick="goStep2()" ${cartCount === 0 ? 'disabled' : ''}>
+        결제 확인 → (${cartCount}건)
+      </button>`;
+  }
+
+  /* ══════════════════════════════════════════════════════
+     Step 2: 주문 요약 + 결제
+  ══════════════════════════════════════════════════════ */
+  else if (wizard.step === 2) {
+    const total = calcCartTotal();
+    body += `
+    <div style="background:rgba(255,255,255,0.03);border-radius:12px;padding:16px;margin-bottom:16px">
+      <h4 style="font-size:13px;font-weight:600;color:var(--text2);margin-bottom:12px">📋 주문 요약</h4>
+      ${wizard.cartItems.map(item => {
+        const brand = Object.values(BRANDS).flat().find(b => b.id === item.brandId);
+        const placeItems = item.placeItems || [];
+        const totalQty = placeItems.reduce((s, pi) => s + (pi.qty||0), 0);
+        const totalAmt = (brand?.price||0) * totalQty;
+        return `
+        <div style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px">
+            <span style="font-weight:600">${item.brand}</span>
+            <span style="color:var(--cyan)">${formatKRW(totalAmt)}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:8px">
+            ${placeItems.length}개 플레이스 · 총 ${totalQty.toLocaleString()}${brand?.unit||''} · 기간: ${item.startDate}~${item.endDate}
+          </div>
+          <!-- 플레이스별 요약 -->
+          ${placeItems.map(pi => {
+            const pl = MY_PLACES.find(p => p.id === pi.placeId);
+            const kwNames = (pi.selectedKwIds||[]).map(kwId => pl?.rankKeywords?.find(k=>k.id===kwId)?.kw).filter(Boolean);
+            return `
+            <div style="margin-bottom:6px;padding:8px 10px;background:rgba(255,255,255,0.03);border-left:2px solid rgba(0,212,255,0.3);border-radius:0 6px 6px 0">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px">
+                <span style="font-size:12px;font-weight:600;color:var(--text)">📍 ${pi.placeName}</span>
+                <span style="font-size:12px;color:var(--cyan)">${(pi.qty||0).toLocaleString()}${brand?.unit||''}</span>
+              </div>
+              ${kwNames.length > 0 ? `
+              <div style="display:flex;flex-wrap:wrap;gap:3px">
+                ${kwNames.map(kw => `<span style="padding:2px 7px;background:rgba(0,212,255,0.08);border:1px solid rgba(0,212,255,0.2);border-radius:10px;font-size:10px;color:var(--cyan)">${kw}</span>`).join('')}
+              </div>` : ''}
+            </div>`;
+          }).join('')}
+        </div>`;
+      }).join('')}
+      <div style="display:flex;justify-content:space-between;padding-top:14px;font-size:16px;font-weight:800">
+        <span>총 결제 금액</span>
+        <span style="color:var(--cyan)">${formatKRW(total)}</span>
+      </div>
+    </div>
+
+    <!-- 결제 폼 -->
+    <div class="input-group">
+      <label class="input-label">카드 번호</label>
+      <input class="input" placeholder="1234 5678 9012 3456" value="1234 5678 9012 3456">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="input-group">
+        <label class="input-label">유효기간</label>
+        <input class="input" placeholder="MM/YY" value="12/27">
+      </div>
+      <div class="input-group">
+        <label class="input-label">CVC</label>
+        <input class="input" placeholder="123" value="123">
+      </div>
+    </div>
+    <div style="background:rgba(34,197,94,0.06);border:1px solid rgba(34,197,94,0.15);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--green);display:flex;align-items:center;gap:8px">
+      ${iconShield()} 결제 정보는 안전하게 처리됩니다 (Mock PG)
+    </div>`;
+
+    footer = `
+      <button class="btn btn-secondary" onclick="wizard.step=1;renderWizard()">← 이전</button>
+      <button class="btn btn-primary btn-lg" onclick="placeOrder()">${iconCreditCard()} ${formatKRW(total)} 결제하기</button>`;
+  }
+
+  document.getElementById('wizard-body').innerHTML = body;
+  document.getElementById('wizard-footer').innerHTML = footer;
+}
+
+// ── 위저드 헬퍼 함수 ─────────────────────────
+function selectCategory(catId) { wizard.category = catId; wizard.brand = null; renderWizard(); }
+function selectBrand(brandId) {
+  wizard.brand = Object.values(BRANDS).flat().find(b => b.id === brandId);
+  renderWizard();
+}
+function addToCart() {
+  if (!wizard.brand) return;
+  const today = new Date().toISOString().split('T')[0];
+  wizard.cartItems.push({
+    brandId: wizard.brand.id,
+    brand: wizard.brand.name,
+    category: wizard.category,
+    splitUnit: null,
+    startDate: today,
+    endDate: today,
+    placeItems: [],  // C안: 플레이스별 작업 단위 [{placeId, placeName, qty, dailyQty, selectedKwIds}]
+  });
+  wizard.brand = null;
+  renderWizard();
+}
+function removeFromCart(idx) { wizard.cartItems.splice(idx, 1); renderWizard(); }
+// Step1 → Step2 (결제 확인): 검증 후 이동
+// Step1 → Step2 (결제 확인): 검증 후 이동
+function goStep2() {
+  if (wizard.cartItems.length === 0) return;
+  for (const item of wizard.cartItems) {
+    if (!item.placeItems || item.placeItems.length === 0) { toast('플레이스를 최소 1개 선택해 주세요', 'error'); return; }
+    if (!item.startDate || !item.endDate) { toast('기간을 입력해 주세요', 'error'); return; }
+    // 플레이스별 수량 검증
+    for (const pi of item.placeItems) {
+      if (!pi.qty || pi.qty < 1) { toast(`[${pi.placeName}] 수량을 입력해 주세요`, 'error'); return; }
+    }
+    // 리워드 키워드 선택 검증
+    const isReward = item.category === 'traffic' || item.category === 'save';
+    if (isReward) {
+      for (const pi of item.placeItems) {
+        if (!pi.selectedKwIds || pi.selectedKwIds.length === 0) {
+          toast(`[${pi.placeName}] 작업 키워드를 최소 1개 선택해 주세요`, 'error');
+          return;
+        }
+      }
+    }
+    // 최소 수량 검증
+    const minQty = BRAND_SETTINGS.rewardMinQty?.[item.category]?.[item.brandId];
+    if (minQty) {
+      const totalQty = item.placeItems.reduce((s, pi) => s + (pi.qty||0), 0);
+      const unit = item.category==='blog'||item.category==='receipt' ? '개' : item.category==='sns' ? '패키지' : '회';
+      if (totalQty < minQty) { toast(`[${item.brand}] 전체 최소 주문 수량은 ${minQty.toLocaleString()}${unit}입니다.`, 'error'); return; }
+    }
+  }
+  wizard.step = 2; renderWizard();
+}
+function togglePlace(idx, placeId, placeName, el) {
+  const item = wizard.cartItems[idx];
+  if (!item.placeItems) item.placeItems = [];
+  const existing = item.placeItems.findIndex(pi => pi.placeId === placeId);
+  if (existing === -1) {
+    // 플레이스 추가: 새 placeItem 생성
+    const brand = Object.values(BRANDS).flat().find(b => b.id === item.brandId);
+    item.placeItems.push({
+      placeId,
+      placeName,
+      qty: brand?.min || 100,
+      dailyQty: null,
+      selectedKwIds: []
+    });
+    if (el) { el.classList.add('selected'); el.querySelector('input').checked = true; }
+  } else {
+    // 플레이스 제거
+    item.placeItems.splice(existing, 1);
+    if (el) { el.classList.remove('selected'); el.querySelector('input').checked = false; }
+  }
+  // 위저드 재렌더 (플레이스별 패널 표시/숨김)
+  renderWizard();
+}
+function setItemField(idx, field, val) { wizard.cartItems[idx][field] = val; }
+function setPlaceItemField(idx, placeId, field, val) {
+  const item = wizard.cartItems[idx];
+  const pi = item.placeItems.find(p => p.placeId === placeId);
+  if (pi) pi[field] = val;
+}
+
+// ── 작업 키워드 선택 헬퍼 (C안: placeId 기반) ────────────────────────
+function toggleKwFilter(idx, filterKey) {
+  if (!kwTableFilter[idx]) kwTableFilter[idx] = {};
+  kwTableFilter[idx][filterKey] = !kwTableFilter[idx][filterKey];
+  renderWizard();
+}
+function toggleKwSelection(idx, placeId, kwId, checked) {
+  const item = wizard.cartItems[idx];
+  const pi = item.placeItems?.find(p => p.placeId === placeId);
+  if (!pi) return;
+  if (!pi.selectedKwIds) pi.selectedKwIds = [];
+  if (checked) {
+    if (!pi.selectedKwIds.includes(kwId)) pi.selectedKwIds.push(kwId);
+  } else {
+    pi.selectedKwIds = pi.selectedKwIds.filter(id => id !== kwId);
+  }
+  // 행 스타일 직접 갱신 (재렌더 회피)
+  const row = document.querySelector(`[data-kw-row="${idx}-${placeId}-${kwId}"]`);
+  if (row) {
+    row.style.background = checked ? 'rgba(0,212,255,0.04)' : '';
+    const kwText = row.querySelector('.kw-cell-text');
+    if (kwText) kwText.style.color = checked ? 'var(--cyan)' : 'var(--text)';
+  }
+  // 카운터 업데이트
+  const counter = document.querySelector(`[data-kw-counter="${idx}-${placeId}"]`);
+  if (counter) counter.textContent = `${pi.selectedKwIds.length}개 선택됨`;
+}
+function toggleAllKws(idx, placeId, checked, kwIds) {
+  const item = wizard.cartItems[idx];
+  const pi = item.placeItems?.find(p => p.placeId === placeId);
+  if (!pi) return;
+  pi.selectedKwIds = checked ? [...kwIds] : [];
+  renderWizard();
+}
+function selectAllKws(idx, placeId, kwIds) {
+  const item = wizard.cartItems[idx];
+  const pi = item.placeItems?.find(p => p.placeId === placeId);
+  if (!pi) return;
+  if (!pi.selectedKwIds) pi.selectedKwIds = [];
+  kwIds.forEach(id => { if (!pi.selectedKwIds.includes(id)) pi.selectedKwIds.push(id); });
+  renderWizard();
+}
+function clearAllKws(idx, placeId) {
+  const item = wizard.cartItems[idx];
+  const pi = item.placeItems?.find(p => p.placeId === placeId);
+  if (pi) pi.selectedKwIds = [];
+  renderWizard();
+}
+function setSplitUnit(idx, val) { wizard.cartItems[idx].splitUnit = val; renderWizard(); }
+function calcDays(idx) {
+  const item = wizard.cartItems[idx];
+  const info = calcDaysInfo(item.startDate, item.endDate);
+  // 모든 플레이스 패널의 days-info 업데이트 (id: days-info-{idx}-{placeId})
+  (item.placeItems||[]).forEach(pi => {
+    const el = document.getElementById(`days-info-${idx}-${pi.placeId}`);
+    if (el) el.textContent = info;
+  });
+}
+function calcDaysInfo(start, end) {
+  if (!start || !end) return '';
+  const d = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+  return d > 0 ? `총 ${d}일 기간` : '종료일이 시작일보다 이릅니다';
+}
+
+// ── 브랜드 설정 패널 토글 ────────────────────────
+function toggleBrandPanel(key, panelId) {
+  brandSettingExpanded[key] = !brandSettingExpanded[key];
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  panel.style.display = brandSettingExpanded[key] ? 'block' : 'none';
+
+  // panelId 패턴별 화살표 아이디 계산
+  let arrowId = null;
+  const blogMatch    = panelId.match(/^blog-panel-(\d+)$/);
+  const receiptMatch = panelId.match(/^receipt-panel-(\d+)$/);
+  const refMatch     = panelId.match(/^ref-body-order-(\d+)-(\d+)$/);
+  if (blogMatch)    arrowId = `blog-arrow-${blogMatch[1]}`;
+  if (receiptMatch) arrowId = `receipt-arrow-${receiptMatch[1]}`;
+  if (refMatch)     arrowId = `ref-arr-${refMatch[1]}-${refMatch[2]}`;
+
+  if (arrowId) {
+    const arrow = document.getElementById(arrowId);
+    if (arrow) arrow.style.transform = `rotate(${brandSettingExpanded[key] ? '180deg' : '0deg'})`;
+  }
+}
+function recalcTotal(idx) {
+  // C안: 플레이스별 dailyQty × 기간일수 = qty 자동 계산
+  // (전체 아이템 단위의 recalc는 사용 안 함, 각 placeItem에서 직접 설정)
+  calcDays(idx);
+}
+function updateItemTotal(idx) {
+  // C안: 더 이상 item-total-idx 엘리먼트가 없음 (플레이스별 합산 표시)
+  // 필요 시 재렌더
+}
+function calcCartTotal() {
+  return wizard.cartItems.reduce((sum, item) => {
+    const brand = Object.values(BRANDS).flat().find(b => b.id === item.brandId);
+    const totalQty = (item.placeItems||[]).reduce((s, pi) => s + (pi.qty||0), 0);
+    return sum + (brand?.price || 0) * totalQty;
+  }, 0);
+}
+
+function placeOrder() {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+  const newOrders = [];
+
+  wizard.cartItems.forEach((item, i) => {
+    const brand = Object.values(BRANDS).flat().find(b => b.id === item.brandId);
+    const isReward = item.category === 'traffic' || item.category === 'save';
+    const placeItems = item.placeItems || [];
+    const totalQty = placeItems.reduce((s, pi) => s + (pi.qty||0), 0);
+    const newId = 'ORD-' + String(orders.length + newOrders.length + 42).padStart(4, '0');
+
+    // C안: 주문 헤더 + order_items 배열
+    newOrders.push({
+      id: newId,
+      brand: item.brand,
+      brandId: item.brandId,
+      category: item.category,
+      splitUnit: item.splitUnit || null,
+      startDate: item.startDate,
+      endDate: item.endDate,
+      totalQty: totalQty,
+      totalAmount: (brand?.price || 0) * totalQty,
+      unitPrice: brand?.price || 0,
+      status: 'pending',
+      date: dateStr,
+      items: placeItems.map((pi, pIdx) => {
+        const pl = MY_PLACES.find(p => p.id === pi.placeId);
+        const kwNames = isReward
+          ? (pi.selectedKwIds||[]).map(kwId => pl?.rankKeywords?.find(k=>k.id===kwId)?.kw).filter(Boolean)
+          : (pi.keyword ? [pi.keyword] : []);
+        return {
+          id: `${newId}-i${pIdx+1}`,
+          placeId: pi.placeId,
+          placeName: pi.placeName,
+          qty: pi.qty || 0,
+          dailyQty: pi.dailyQty || null,
+          keywords: kwNames,
+          selectedKwIds: pi.selectedKwIds || [],
+          status: 'pending',
+          mediaCompany: null,
+        };
+      }),
+    });
+  });
+
+  orders.unshift(...newOrders);
+  // 위저드 상태 초기화
+  wizard.step = 1; wizard.cartItems = []; wizard.brand = null;
+  wizardSettings = {}; kwTableFilter = {};
+  closeModal('modal-new-order');
+  toast(`${newOrders.length}건의 주문이 접수되었습니다!`, 'success');
+  currentStatus = 'all'; currentPage = 1;
+  renderPage();
+}
+
+// ═══════════════════════════════════════════════
+// 엑셀 대량 등록
+// ═══════════════════════════════════════════════
+function renderBulkModal() {
+  const TEMPLATE_HEADERS = ['브랜드', '분류', '플레이스명', '키워드', '시작일(YYYY-MM-DD)', '종료일(YYYY-MM-DD)', '일수량', '총수량', '분할단위'];
+
+  document.getElementById('bulk-body').innerHTML = `
+  <div style="margin-bottom:16px">
+    <div style="font-size:12px;color:var(--text2);margin-bottom:10px">
+      ① 엑셀/구글시트에서 데이터를 복사해 아래에 붙여넣거나, ② 엑셀 파일(.xlsx/.csv)을 업로드하세요.
+    </div>
+    <div style="font-size:11px;color:var(--text3);background:rgba(255,255,255,0.03);border-radius:8px;padding:10px;margin-bottom:12px">
+      <strong style="color:var(--cyan)">헤더 형식:</strong> ${TEMPLATE_HEADERS.join(' | ')}
+    </div>
+
+    <!-- 탭 -->
+    <div style="display:flex;gap:8px;margin-bottom:12px">
+      <button class="btn btn-secondary btn-sm" id="tab-paste-btn" onclick="switchBulkTab('paste')" style="background:var(--cyan);color:#000;border-color:var(--cyan)">📋 복붙 입력</button>
+      <button class="btn btn-secondary btn-sm" id="tab-file-btn" onclick="switchBulkTab('file')">📁 파일 업로드</button>
+      <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()" style="margin-left:auto">⬇ 템플릿 다운로드</button>
+    </div>
+
+    <!-- 복붙 탭 -->
+    <div id="bulk-tab-paste">
+      <textarea id="paste-input" class="paste-area"
+        placeholder="엑셀에서 셀을 선택 후 Ctrl+C → 여기에 Ctrl+V 하세요.
+(탭/쉼표 구분자 자동 인식)
+
+예시:
+블로그A	블로그 리뷰	맛있는 식당 본점	강남 맛집	2026-04-01	2026-04-05	2	10
+유입A	리워드 유입	행복한 카페	홍대 카페	2026-04-01	2026-04-07	100	700	10"
+        oninput="previewBulkPaste()"></textarea>
+    </div>
+
+    <!-- 파일 업로드 탭 -->
+    <div id="bulk-tab-file" style="display:none">
+      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()"
+        ondragover="event.preventDefault();this.classList.add('dragover')"
+        ondragleave="this.classList.remove('dragover')"
+        ondrop="handleFileDrop(event)">
+        <div style="font-size:32px;margin-bottom:8px">📂</div>
+        <div style="font-size:14px;font-weight:600;color:#fff;margin-bottom:4px">클릭하거나 파일을 드래그해 주세요</div>
+        <div style="font-size:12px;color:var(--text3)">.xlsx, .xls, .csv 파일 지원</div>
+      </div>
+      <input type="file" id="file-input" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileUpload(this)">
+    </div>
+
+    <!-- 미리보기 -->
+    <div id="bulk-preview" style="margin-top:14px"></div>
+  </div>
+  `;
+
+  document.getElementById('bulk-footer').innerHTML = `
+    <button class="btn btn-secondary" onclick="closeModal('modal-bulk')">취소</button>
+    <button class="btn btn-primary" id="bulk-submit-btn" onclick="submitBulkOrders()" disabled>등록하기</button>`;
+}
+
+let bulkParsedRows = [];
+
+function switchBulkTab(tab) {
+  document.getElementById('bulk-tab-paste').style.display = tab === 'paste' ? '' : 'none';
+  document.getElementById('bulk-tab-file').style.display = tab === 'file' ? '' : 'none';
+  document.getElementById('tab-paste-btn').style.cssText = tab === 'paste' ? 'background:var(--cyan);color:#000;border-color:var(--cyan)' : '';
+  document.getElementById('tab-file-btn').style.cssText = tab === 'file' ? 'background:var(--cyan);color:#000;border-color:var(--cyan)' : '';
+}
+
+function previewBulkPaste() {
+  const raw = document.getElementById('paste-input')?.value || '';
+  const rows = parsePasteData(raw);
+  bulkParsedRows = rows;
+  renderBulkPreview(rows);
+}
+
+function parsePasteData(raw) {
+  const lines = raw.trim().split('\n').filter(l => l.trim());
+  const rows = [];
+  for (const line of lines) {
+    // 탭 구분자 우선, 없으면 쉼표
+    const sep = line.includes('\t') ? '\t' : ',';
+    const cols = line.split(sep).map(c => c.trim().replace(/^"|"$/g, ''));
+    if (cols.length < 4) continue; // 최소 4열
+    rows.push({
+      brand:     cols[0] || '',
+      category:  mapCategory(cols[1] || ''),
+      place:     cols[2] || '',
+      keyword:   cols[3] || '',
+      startDate: cols[4] || new Date().toISOString().split('T')[0],
+      endDate:   cols[5] || new Date().toISOString().split('T')[0],
+      dailyQty:  parseInt(cols[6]) || null,
+      qty:       parseInt(cols[7]) || 1,
+      splitUnit: parseInt(cols[8]) || null,
+      _valid:    !!(cols[0] && cols[2]),
+    });
+  }
+  return rows;
+}
+
+function mapCategory(str) {
+  const m = {
+    '블로그':'blog','블로그리뷰':'blog','blog':'blog',
+    '영수증':'receipt','영수증리뷰':'receipt','receipt':'receipt',
+    '트래픽':'traffic','리워드유입':'traffic','유입':'traffic','traffic':'traffic',
+    '저장':'save','리워드저장':'save','save':'save',
+    'sns':'sns','SNS':'sns','인스타':'sns','소셜':'sns',
+  };
+  return m[str.replace(/\s/g,'')] || 'blog';
+}
+
+function renderBulkPreview(rows) {
+  const preview = document.getElementById('bulk-preview');
+  const submitBtn = document.getElementById('bulk-submit-btn');
+  if (!rows.length) { preview.innerHTML = ''; if (submitBtn) submitBtn.disabled = true; return; }
+
+  const validCount = rows.filter(r => r._valid).length;
+  if (submitBtn) submitBtn.disabled = validCount === 0;
+  submitBtn.textContent = `등록하기 (${validCount}건)`;
+
+  preview.innerHTML = `
+  <div style="font-size:12px;color:var(--text2);margin-bottom:8px">
+    미리보기 — 총 ${rows.length}행, <span style="color:var(--green)">${validCount}건 유효</span>
+    ${rows.length - validCount > 0 ? `<span style="color:#ef4444;margin-left:6px">${rows.length - validCount}건 오류</span>` : ''}
+  </div>
+  <div style="overflow-x:auto;max-height:200px;overflow-y:auto;border-radius:8px;border:1px solid var(--border)">
+    <table class="cart-table">
+      <thead><tr>
+        <th>#</th><th>브랜드</th><th>분류</th><th>플레이스</th><th>키워드</th>
+        <th>시작일</th><th>종료일</th><th>일수량</th><th>총수량</th><th>분할</th>
+      </tr></thead>
+      <tbody>
+        ${rows.map((r, i) => `
+          <tr style="${r._valid ? '' : 'background:rgba(239,68,68,0.08)'}">
+            <td style="color:var(--text3)">${i+1}</td>
+            <td>${r.brand || '<span style="color:#ef4444">-</span>'}</td>
+            <td style="color:var(--text3)">${CATEGORIES.find(c=>c.id===r.category)?.label || r.category}</td>
+            <td>${r.place || '<span style="color:#ef4444">-</span>'}</td>
+            <td style="color:var(--text3)">${r.keyword || '-'}</td>
+            <td>${r.startDate}</td><td>${r.endDate}</td>
+            <td>${r.dailyQty || '-'}</td><td>${r.qty}</td><td>${r.splitUnit || '-'}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function handleFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const json = XLSX.utils.sheet_to_json(ws, { header:1 });
+      // 첫 행이 헤더면 제외
+      const dataRows = json.filter((r,i) => i > 0 || !isNaN(parseInt(r[7])));
+      const raw = dataRows.map(r => r.join('\t')).join('\n');
+      bulkParsedRows = parsePasteData(raw);
+      renderBulkPreview(bulkParsedRows);
+      toast('파일을 불러왔습니다', 'success');
+    } catch(err) {
+      toast('파일 파싱 오류: ' + err.message, 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if (file) {
+    const fakeInput = { files: [file] };
+    handleFileUpload(fakeInput);
+  }
+}
+
+function downloadTemplate() {
+  const headers = ['브랜드', '분류', '플레이스명', '키워드', '시작일(YYYY-MM-DD)', '종료일(YYYY-MM-DD)', '일수량', '총수량', '분할단위'];
+  const sample = [
+    ['블로그A', '블로그 리뷰', '맛있는 식당 본점', '강남 맛집', '2026-04-01', '2026-04-05', '2', '10', ''],
+    ['유입A', '리워드 유입', '행복한 카페', '홍대 카페', '2026-04-01', '2026-04-07', '100', '700', '10'],
+  ];
+  const ws = XLSX.utils.aoa_to_sheet([headers, ...sample]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '주문템플릿');
+  XLSX.writeFile(wb, 'nplace_주문템플릿.xlsx');
+  toast('템플릿이 다운로드됩니다', 'success');
+}
+
+function submitBulkOrders() {
+  const valid = bulkParsedRows.filter(r => r._valid);
+  if (!valid.length) return;
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ko-KR') + ' ' + now.toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'});
+
+  valid.forEach(r => {
+    const newId = 'ORD-' + String(orders.length + 42).padStart(4, '0');
+    orders.unshift({
+      id: newId,
+      places: [r.place],
+      brand: r.brand,
+      category: r.category,
+      qty: r.qty,
+      dailyQty: r.dailyQty,
+      startDate: r.startDate,
+      endDate: r.endDate,
+      keyword: r.keyword || null,
+      splitUnit: r.splitUnit || null,
+      unitPrice: 0,
+      amount: 0,
+      status: 'pending',
+      date: dateStr,
+      mediaCompany: null,
+    });
+  });
+
+  closeModal('modal-bulk');
+  bulkParsedRows = [];
+  renderBulkModal();
+  toast(`${valid.length}건의 주문이 대량 등록되었습니다!`, 'success');
+  currentStatus = 'all'; currentPage = 1;
+  renderPage();
+}
+
+// ── 렌더 ─────────────────────────────────────
+renderPage();
+</script>
+</body>
+</html>

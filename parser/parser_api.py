@@ -18,13 +18,9 @@ import asyncio
 
 # naver_place_parser.py 절대경로로 추가 (uvicorn 실행 시 __file__ 기준이 달라질 수 있음)
 _BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-_PARSER_DIR = os.path.abspath(os.path.join(_BASE_DIR, ".."))
-if _PARSER_DIR not in sys.path:
-    sys.path.insert(0, _PARSER_DIR)
-# nplace-parser/parser 경로도 추가
-_ALT_DIR = os.path.join(_PARSER_DIR, "nplace-parser", "parser")
-if os.path.exists(_ALT_DIR) and _ALT_DIR not in sys.path:
-    sys.path.insert(0, _ALT_DIR)
+# parser/ 폴더 자체가 파서의 위치
+if _BASE_DIR not in sys.path:
+    sys.path.insert(0, _BASE_DIR)
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware

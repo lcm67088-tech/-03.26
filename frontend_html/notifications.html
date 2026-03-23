@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 알림 센터</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ── 탭 필터 ─────────────────────────────── */
+.notif-tabs {
+  display:flex; gap:4px;
+  background:var(--bg-tab);
+  border:1px solid var(--border);
+  border-radius:10px; padding:4px;
+}
+.notif-tab {
+  padding:7px 16px; border-radius:7px;
+  border:none; background:none;
+  color:var(--text3); font-size:13px; font-weight:500;
+  cursor:pointer; white-space:nowrap; transition:all .15s;
+  display:flex; align-items:center; gap:6px;
+}
+.notif-tab:hover { color:var(--text2); }
+.notif-tab.active {
+  background:var(--bg-hover);
+  color:var(--text-title); font-weight:600;
+}
+.tab-cnt {
+  background:rgba(0,212,255,0.15);
+  color:var(--cyan); border-radius:10px;
+  padding:1px 7px; font-size:11px; font-weight:700;
+}
+.tab-cnt.red { background:rgba(239,68,68,0.15); color:#f87171; }
+
+/* ── 알림 아이템 ────────────────────────── */
+.notif-item {
+  display:flex; align-items:flex-start; gap:14px;
+  padding:16px 18px; border-bottom:1px solid var(--border);
+  transition:background .15s; cursor:pointer; position:relative;
+}
+.notif-item:hover { background:var(--bg-row-hover); }
+.notif-item.unread { background:rgba(0,212,255,0.03); }
+.notif-item.unread::before {
+  content:''; position:absolute; left:0; top:0; bottom:0;
+  width:3px; background:var(--cyan); border-radius:0 2px 2px 0;
+}
+.notif-icon-wrap {
+  width:38px; height:38px; border-radius:10px;
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; font-size:17px;
+}
+
+/* 유형별 색상 */
+.nt-order    { background:rgba(0,212,255,0.12); }
+.nt-rank     { background:rgba(34,197,94,0.12); }
+.nt-system   { background:rgba(99,102,241,0.12); }
+.nt-payment  { background:rgba(245,158,11,0.12); }
+.nt-member   { background:rgba(168,85,247,0.12); }
+
+.notif-body { flex:1; min-width:0; }
+.notif-title {
+  font-size:13px; font-weight:600; color:var(--text1);
+  margin-bottom:3px; display:flex; align-items:center; gap:8px;
+}
+.notif-msg   { font-size:12px; color:var(--text3); line-height:1.5; }
+.notif-time  { font-size:11px; color:var(--text3); white-space:nowrap; flex-shrink:0; }
+.unread-dot  {
+  width:7px; height:7px; background:var(--cyan);
+  border-radius:50%; display:inline-block; flex-shrink:0;
+}
+
+.notif-actions {
+  display:flex; gap:6px;
+  opacity:0; transition:opacity .15s;
+}
+.notif-item:hover .notif-actions { opacity:1; }
+.notif-act-btn {
+  width:28px; height:28px; border-radius:6px;
+  background:var(--bg-hover2); border:1px solid var(--border);
+  color:var(--text3); cursor:pointer; font-size:11px;
+  display:flex; align-items:center; justify-content:center;
+  transition:all .15s;
+}
+.notif-act-btn:hover { background:var(--bg-hover); color:var(--text); }
+.notif-act-btn.del:hover { background:rgba(239,68,68,0.15); color:#f87171; border-color:rgba(239,68,68,0.3); }
+
+/* ── 설정 패널 ──────────────────────────── */
+.settings-panel {
+  display:none; position:fixed; right:24px; top:80px;
+  width:360px; background:var(--bg-dropdown);
+  border:1px solid var(--border);
+  border-radius:16px; z-index:200; overflow:hidden;
+  box-shadow:var(--shadow-lg);
+}
+.settings-panel.show { display:block; }
+.settings-header {
+  padding:18px 20px; border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.settings-header h3 { font-size:15px; font-weight:700; color:var(--text-title); margin:0; }
+.settings-body { padding:4px 0; max-height:480px; overflow-y:auto; }
+.settings-category {
+  padding:12px 20px 6px;
+  font-size:11px; font-weight:700; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.6px;
+}
+.settings-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 20px; transition:background .15s;
+}
+.settings-row:hover { background:var(--bg-row-hover); }
+.settings-row-left { flex:1; }
+.settings-row-label { font-size:13px; color:var(--text2); }
+.settings-row-sub   { font-size:11px; color:var(--text3); margin-top:2px; }
+.settings-channels { display:flex; gap:6px; }
+.channel-toggle {
+  padding:3px 8px; border-radius:6px;
+  border:1px solid var(--border);
+  background:none; color:var(--text3);
+  font-size:10px; font-weight:600; cursor:pointer;
+  transition:all .15s;
+}
+.channel-toggle.on {
+  background:rgba(0,212,255,0.12);
+  border-color:rgba(0,212,255,0.35); color:var(--cyan);
+}
+
+/* ── 빈 상태 ───────────────────────────── */
+.empty-notif {
+  text-align:center; padding:60px 20px;
+  color:var(--text3);
+}
+.empty-notif .icon { font-size:40px; margin-bottom:12px; }
+.empty-notif p { font-size:14px; }
+
+/* ── 페이지네이션 ────────────────────────── */
+.pagination { display:flex; align-items:center; gap:6px; justify-content:center; padding:16px 0; }
+.page-btn {
+  width:32px; height:32px;
+  background:rgba(255,255,255,0.05); border:1px solid var(--border);
+  border-radius:6px; color:var(--text2); font-size:13px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all .15s;
+}
+.page-btn:hover { border-color:rgba(255,255,255,0.2); color:#fff; }
+.page-btn.active { background:rgba(0,212,255,0.15); border-color:rgba(0,212,255,0.4); color:var(--cyan); font-weight:700; }
+.page-btn:disabled { opacity:.35; cursor:default; }
+
+/* ── 우측 툴바 ─────────────────────────── */
+.notif-toolbar {
+  display:flex; align-items:center;
+  justify-content:space-between;
+  padding:12px 18px; border-bottom:1px solid var(--border);
+  background:rgba(255,255,255,0.01);
+}
+.toolbar-count { font-size:12px; color:var(--text3); }
+.toolbar-actions { display:flex; gap:8px; }
+.toolbar-btn {
+  padding:5px 12px; border-radius:6px;
+  background:rgba(255,255,255,0.05); border:1px solid var(--border);
+  color:var(--text3); font-size:12px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:5px;
+  transition:all .15s;
+}
+.toolbar-btn:hover { color:var(--text2); border-color:rgba(255,255,255,0.2); }
+.toolbar-btn.cyan { color:var(--cyan); border-color:rgba(0,212,255,0.3); background:rgba(0,212,255,0.06); }
+.toolbar-btn.cyan:hover { background:rgba(0,212,255,0.12); }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+
+<!-- 설정 패널 -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-header">
+    <h3>알림 설정</h3>
+    <button onclick="toggleSettings()" style="background:none;border:none;color:var(--text3);cursor:pointer;"></button>
+  </div>
+  <div class="settings-body" id="settingsBody"></div>
+  <div style="padding:14px 20px;border-top:1px solid var(--border);">
+    <button onclick="saveSettings()" class="btn-primary" style="width:100%;padding:10px;justify-content:center;font-size:13px;">설정 저장</button>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+// ── Mock 알림 데이터 ─────────────────────────────────────────
+const ALL_NOTIFICATIONS = [
+  { id:1,  type:'order',   category:'주문', is_read:false, title:'주문 확정',         message:'ORD-0042 주문이 확정되었습니다. 맛있는 식당 본점 · 블로그 리뷰 10개', time:'방금 전',    emoji:'🛒' },
+  { id:2,  type:'rank',    category:'순위', is_read:false, title:'순위 급상승',       message:'"맛집 추천" 키워드가 8위 → 2위로 상승했습니다 🎉', time:'5분 전',    emoji:'📈' },
+  { id:3,  type:'payment', category:'결제', is_read:false, title:'결제 완료',         message:'Pro 플랜 ₩79,000 결제가 완료되었습니다.', time:'1시간 전',  emoji:'💳' },
+  { id:4,  type:'order',   category:'주문', is_read:false, title:'주문 처리 중',      message:'ORD-0041 주문이 처리 중입니다. 행복한 카페 · 인스타 홍보 패키지', time:'2시간 전',  emoji:'⏳' },
+  { id:5,  type:'rank',    category:'순위', is_read:false, title:'순위 하락',         message:'"강남 맛집" 키워드가 3위 → 7위로 하락했습니다.', time:'3시간 전',  emoji:'📉' },
+  { id:6,  type:'system',  category:'시스템', is_read:true, title:'크롤링 완료',      message:'오늘 8개 키워드의 순위 확인이 완료되었습니다.', time:'오전 9:00',  emoji:'🔄' },
+  { id:7,  type:'member',  category:'팀원', is_read:true, title:'멤버 초대 수락',     message:'이마케터(m@example.com)가 워크스페이스 초대를 수락했습니다.', time:'어제',       emoji:'👋' },
+  { id:8,  type:'order',   category:'주문', is_read:true, title:'환불 처리 완료',     message:'ORD-0038 환불이 처리되었습니다. ₩75,000이 5영업일 내 환불됩니다.', time:'어제',       emoji:'↩️' },
+  { id:9,  type:'rank',    category:'순위', is_read:true, title:'TOP 3 달성',         message:'"서울 맛집 추천" 키워드가 TOP 3에 진입했습니다! 🏆', time:'2일 전',    emoji:'🏆' },
+  { id:10, type:'system',  category:'시스템', is_read:true, title:'플랜 한도 경고',   message:'플레이스 등록 수가 Pro 플랜 한도(20개)의 80%에 도달했습니다.', time:'2일 전',    emoji:'⚠️' },
+  { id:11, type:'order',   category:'주문', is_read:true, title:'주문 완료',          message:'ORD-0040 인스타 홍보 패키지가 완료되었습니다.', time:'3일 전',    emoji:'✅' },
+  { id:12, type:'payment', category:'결제', is_read:true, title:'플랜 업그레이드',    message:'Starter → Pro 플랜으로 업그레이드되었습니다.', time:'3일 전',    emoji:'⬆️' },
+  { id:13, type:'rank',    category:'순위', is_read:true, title:'순위 변동 없음',     message:'지난 7일간 순위 변동이 없었습니다. "강남역 카페"', time:'4일 전',    emoji:'➡️' },
+  { id:14, type:'system',  category:'시스템', is_read:true, title:'서비스 공지',      message:'3월 31일 02:00~04:00 시스템 점검이 예정되어 있습니다.', time:'5일 전',    emoji:'📢' },
+  { id:15, type:'member',  category:'팀원', is_read:true, title:'역할 변경',          message:'이마케터의 역할이 멤버 → 관리자로 변경되었습니다.', time:'1주 전',    emoji:'🔑' },
+  { id:16, type:'order',   category:'주문', is_read:true, title:'주문 접수',          message:'ORD-0039 트래픽 유입 500 주문이 접수되었습니다.', time:'1주 전',    emoji:'📦' },
+  { id:17, type:'rank',    category:'순위', is_read:true, title:'크롤링 오류',        message:'"홍대 맛집" 키워드 크롤링에 실패했습니다. 자동 재시도됩니다.', time:'2주 전',   emoji:'❌' },
+  { id:18, type:'system',  category:'시스템', is_read:true, title:'계정 비밀번호 변경',message:'비밀번호가 성공적으로 변경되었습니다.', time:'2주 전',   emoji:'🔒' },
+];
+
+const SETTINGS = {
+  order:   { label:'주문·결제 알림',  types:['주문 접수','주문 확정','주문 완료','환불 처리'],  in_app:true, email:true, kakao:false },
+  rank:    { label:'순위 변동 알림',  types:['순위 상승','순위 하락','TOP 진입','크롤링 오류'], in_app:true, email:false, kakao:false },
+  system:  { label:'시스템 알림',     types:['서비스 공지','한도 경고','크롤링 완료'],          in_app:true, email:false, kakao:false },
+  member:  { label:'팀원·멤버 알림',  types:['멤버 초대','역할 변경','멤버 제거'],              in_app:true, email:true,  kakao:false },
+  payment: { label:'요금제·결제 알림',types:['결제 완료','플랜 변경','결제 실패'],              in_app:true, email:true,  kakao:false },
+};
+
+const PAGE_SIZE = 10;
+let currentTab   = 'all';
+let currentPage  = 1;
+let notifications = [...ALL_NOTIFICATIONS];
+
+// ── 유틸 ──────────────────────────────────────────────────────
+function timeAgo(str) { return str; } // Mock: 이미 한국어 상대시간
+
+const TYPE_CLASS = {
+  order:'nt-order', rank:'nt-rank', system:'nt-system', payment:'nt-payment', member:'nt-member',
+};
+
+// ── 탭별 필터 ─────────────────────────────────────────────────
+function filtered() {
+  if (currentTab === 'all')    return notifications;
+  if (currentTab === 'unread') return notifications.filter(n => !n.is_read);
+  return notifications.filter(n => n.type === currentTab);
+}
+
+// ── 탭 카운트 ─────────────────────────────────────────────────
+const TABS = [
+  { key:'all',     label:'전체' },
+  { key:'unread',  label:'읽지 않음' },
+  { key:'order',   label:'주문' },
+  { key:'rank',    label:'순위' },
+  { key:'payment', label:'결제' },
+  { key:'system',  label:'시스템' },
+  { key:'member',  label:'팀원' },
+];
+
+// ── 메인 렌더 ────────────────────────────────────────────────
+function renderPage() {
+  const unreadCnt = notifications.filter(n => !n.is_read).length;
+  const list = filtered();
+  const totalPages = Math.ceil(list.length / PAGE_SIZE);
+  const slice = list.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+
+  const tabHtml = TABS.map(t => {
+    const cnt = t.key === 'all' ? notifications.length
+              : t.key === 'unread' ? unreadCnt
+              : notifications.filter(n => n.type === t.key).length;
+    const isUnread = t.key === 'unread';
+    return `<button class="notif-tab ${currentTab===t.key?'active':''}" onclick="switchTab('${t.key}')">
+      ${t.label}
+      ${cnt > 0 ? `<span class="tab-cnt ${isUnread&&cnt>0?'red':''}">${cnt}</span>` : ''}
+    </button>`;
+  }).join('');
+
+  const itemsHtml = slice.length === 0
+    ? `<div class="empty-notif"><div class="icon">🔔</div><p>알림이 없습니다</p></div>`
+    : slice.map(n => renderItem(n)).join('');
+
+  let pages = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    if (totalPages <= 7 || Math.abs(i - currentPage) < 3 || i === 1 || i === totalPages) {
+      pages += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+    } else if (Math.abs(i - currentPage) === 3) {
+      pages += `<span style="color:var(--text3);padding:0 4px;">…</span>`;
+    }
+  }
+  pages += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages||totalPages===0?'disabled':''}>›</button>`;
+
+  const html = `
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">알림 센터</h1>
+      <p class="page-subtitle">서비스 알림, 순위 변동, 주문 현황을 한눈에 확인하세요</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" onclick="toggleSettings()">
+        ⚙️ 알림 설정
+      </button>
+    </div>
+  </div>
+
+  <!-- 탭 + 알림 카드 -->
+  <div class="card" style="padding:0;overflow:hidden;">
+    <!-- 탭 헤더 -->
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <div class="notif-tabs">${tabHtml}</div>
+    </div>
+
+    <!-- 툴바 -->
+    <div class="notif-toolbar">
+      <span class="toolbar-count">${list.length}개 알림 (읽지 않음 <strong style="color:var(--cyan)">${unreadCnt}</strong>개)</span>
+      <div class="toolbar-actions">
+        ${unreadCnt > 0 ? `<button class="toolbar-btn cyan" onclick="markAllRead()">✓ 모두 읽음</button>` : ''}
+        <button class="toolbar-btn" onclick="deleteAll()">🗑 모두 삭제</button>
+      </div>
+    </div>
+
+    <!-- 알림 목록 -->
+    <div id="notif-list">${itemsHtml}</div>
+
+    <!-- 페이지네이션 -->
+    ${totalPages > 1 ? `<div class="pagination" style="border-top:1px solid var(--border);">${pages}</div>` : ''}
+  </div>`;
+
+  document.getElementById('main-content').innerHTML = html;
+  renderSettings();
+}
+
+function renderItem(n) {
+  const cls = TYPE_CLASS[n.type] || 'nt-system';
+  return `
+  <div class="notif-item ${n.is_read?'':'unread'}" id="ni-${n.id}" onclick="markRead(${n.id})">
+    <div class="notif-icon-wrap ${cls}">${n.emoji}</div>
+    <div class="notif-body">
+      <div class="notif-title">
+        ${!n.is_read ? '<span class="unread-dot"></span>' : ''}
+        ${n.title}
+      </div>
+      <div class="notif-msg">${n.message}</div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0;">
+      <span class="notif-time">${n.time}</span>
+      <div class="notif-actions">
+        ${!n.is_read ? `<button class="notif-act-btn" title="읽음 처리" onclick="event.stopPropagation();markRead(${n.id})">✓</button>` : ''}
+        <button class="notif-act-btn del" title="삭제" onclick="event.stopPropagation();deleteItem(${n.id})">✕</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ── 설정 패널 렌더 ───────────────────────────────────────────
+function renderSettings() {
+  const rows = Object.entries(SETTINGS).map(([key, s]) => `
+    <div class="settings-category">${s.label}</div>
+    <div class="settings-row">
+      <div class="settings-row-left">
+        <div class="settings-row-label">${s.label}</div>
+        <div class="settings-row-sub">${s.types.join(' · ')}</div>
+      </div>
+      <div class="settings-channels">
+        <button class="channel-toggle ${s.in_app?'on':''}" onclick="toggleChannel('${key}','in_app',this)">앱</button>
+        <button class="channel-toggle ${s.email?'on':''}" onclick="toggleChannel('${key}','email',this)">이메일</button>
+        <button class="channel-toggle ${s.kakao?'on':''}" onclick="toggleChannel('${key}','kakao',this)">카카오</button>
+      </div>
+    </div>
+  `).join('');
+
+  document.getElementById('settingsBody').innerHTML = rows;
+
+  // X 버튼
+  document.querySelector('.settings-header button').innerHTML = `<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+}
+
+// ── 이벤트 핸들러 ────────────────────────────────────────────
+function switchTab(tab) {
+  currentTab  = tab;
+  currentPage = 1;
+  renderPage();
+}
+function goPage(n) {
+  const list = filtered();
+  const total = Math.ceil(list.length / PAGE_SIZE);
+  if (n < 1 || n > total) return;
+  currentPage = n;
+  renderPage();
+}
+function markRead(id) {
+  const n = notifications.find(x => x.id === id);
+  if (n && !n.is_read) { n.is_read = true; renderPage(); }
+}
+function markAllRead() {
+  notifications.forEach(n => n.is_read = true);
+  showToast('모든 알림을 읽음 처리했습니다.', 'success');
+  renderPage();
+}
+function deleteItem(id) {
+  notifications = notifications.filter(n => n.id !== id);
+  renderPage();
+}
+function deleteAll() {
+  const list = filtered();
+  const ids = new Set(list.map(n => n.id));
+  notifications = notifications.filter(n => !ids.has(n.id));
+  showToast(`${ids.size}개 알림을 삭제했습니다.`, 'success');
+  currentPage = 1;
+  renderPage();
+}
+
+function toggleSettings() {
+  document.getElementById('settingsPanel').classList.toggle('show');
+}
+function toggleChannel(key, ch, el) {
+  SETTINGS[key][ch] = !SETTINGS[key][ch];
+  el.classList.toggle('on', SETTINGS[key][ch]);
+}
+function saveSettings() {
+  showToast('알림 설정이 저장되었습니다.', 'success');
+  toggleSettings();
+}
+
+// 외부 클릭 시 설정 패널 닫기
+document.addEventListener('click', e => {
+  const panel = document.getElementById('settingsPanel');
+  if (panel && panel.classList.contains('show') &&
+      !panel.contains(e.target) &&
+      !e.target.closest('[onclick="toggleSettings()"]')) {
+    panel.classList.remove('show');
+  }
+});
+
+// ── 초기화 ───────────────────────────────────────────────────
+renderLayout({ title: '알림 센터', activePage: 'notifications.html' });
+renderPage();
+</script>
+</body>
+</html>

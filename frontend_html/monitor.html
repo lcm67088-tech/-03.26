@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 크롤링 모니터</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ── 모니터 전용 스타일 ── */
+.monitor-grid {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+/* 라이브 로그 패널 */
+.log-panel {
+  background: #0d0d14;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 520px;
+}
+.log-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,0.02);
+  flex-shrink: 0;
+}
+.log-panel-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text2);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse-green 1.4s infinite;
+  flex-shrink: 0;
+}
+.live-dot.stopped { background: var(--text3); animation: none; }
+@keyframes pulse-green {
+  0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+  50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+}
+.log-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px 14px;
+  font-family: 'Consolas', 'Monaco', 'D2Coding', monospace;
+  font-size: 11.5px;
+  line-height: 1.75;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.log-line {
+  display: flex;
+  gap: 8px;
+  word-break: break-all;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(3px); } to { opacity:1; transform:none; } }
+.log-time  { color: #4b5563; flex-shrink: 0; }
+.log-level { flex-shrink: 0; font-weight: 700; width: 36px; }
+.log-level.INFO  { color: #60a5fa; }
+.log-level.OK    { color: #34d399; }
+.log-level.WARN  { color: #fbbf24; }
+.log-level.ERROR { color: #f87171; }
+.log-level.DEBUG { color: #6b7280; }
+.log-level.BOT   { color: #c084fc; }
+.log-msg { color: #d1d5db; }
+.log-msg .hl     { color: #93c5fd; }
+.log-msg .hl-g   { color: #34d399; }
+.log-msg .hl-y   { color: #fbbf24; }
+.log-msg .hl-r   { color: #f87171; }
+.log-msg .hl-p   { color: #c084fc; }
+
+/* 진행 스텝 */
+.step-list { display: flex; flex-direction: column; gap: 6px; }
+.step-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg2);
+  transition: all 0.25s;
+}
+.step-item.active {
+  border-color: rgba(var(--cyan-rgb),0.4);
+  background: rgba(var(--cyan-rgb),0.05);
+}
+.step-item.done   { border-color: rgba(34,197,94,0.3); background: rgba(34,197,94,0.04); }
+.step-item.warn   { border-color: rgba(251,191,36,0.3); background: rgba(251,191,36,0.04); }
+.step-item.error  { border-color: rgba(239,68,68,0.3);  background: rgba(239,68,68,0.04); }
+.step-item.idle   { opacity: 0.45; }
+
+.step-icon {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+  background: var(--bg-hover2);
+  border: 1.5px solid var(--border);
+}
+.step-item.active .step-icon { background:rgba(var(--cyan-rgb),0.15); border-color:var(--cyan); animation: spin-icon 1.2s linear infinite; }
+.step-item.done  .step-icon  { background:rgba(34,197,94,0.15);  border-color:var(--green); }
+.step-item.warn  .step-icon  { background:rgba(251,191,36,0.15); border-color:var(--yellow); }
+.step-item.error .step-icon  { background:rgba(239,68,68,0.15);  border-color:var(--red); }
+@keyframes spin-icon {
+  0%  { box-shadow: 0 0 0 0 rgba(var(--cyan-rgb),0.4); }
+  70% { box-shadow: 0 0 0 7px rgba(var(--cyan-rgb),0); }
+  100%{ box-shadow: 0 0 0 0 rgba(var(--cyan-rgb),0); }
+}
+.step-label { font-size: 13px; font-weight: 600; color: var(--text-title); }
+.step-desc  { font-size: 11px; color: var(--text3); margin-top: 2px; line-height: 1.5; }
+.step-elapsed { font-size: 10px; color: var(--text3); margin-left: auto; flex-shrink: 0; }
+
+/* 큐 테이블 */
+.queue-table { width:100%; border-collapse:collapse; }
+.queue-table th { font-size:11px; color:var(--text3); font-weight:600; text-align:left; padding:6px 10px; border-bottom:1px solid var(--border); }
+.queue-table td { font-size:12px; color:var(--text); padding:7px 10px; border-bottom:1px solid rgba(255,255,255,0.04); vertical-align:middle; }
+.queue-table tr:hover td { background:var(--bg-hover); }
+.queue-table tr:last-child td { border-bottom:none; }
+
+/* 상태 뱃지 */
+.q-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:2px 8px; border-radius:5px; font-size:10px; font-weight:700;
+}
+.q-badge.running { background:rgba(var(--cyan-rgb),0.12); color:var(--cyan); border:1px solid rgba(var(--cyan-rgb),0.3); }
+.q-badge.queued  { background:rgba(251,191,36,0.1);  color:var(--yellow); border:1px solid rgba(251,191,36,0.25); }
+.q-badge.done    { background:rgba(34,197,94,0.1);   color:var(--green);  border:1px solid rgba(34,197,94,0.25); }
+.q-badge.failed  { background:rgba(239,68,68,0.1);   color:var(--red);    border:1px solid rgba(239,68,68,0.25); }
+.q-badge.skipped { background:var(--bg-hover2); color:var(--text3); border:1px solid var(--border); }
+
+/* 워커 카드 */
+.worker-card {
+  padding:12px 14px;
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  display:flex; align-items:center; gap:12px;
+}
+.worker-dot {
+  width:10px; height:10px; border-radius:50%; flex-shrink:0;
+}
+.worker-dot.active { background:var(--green); box-shadow:0 0 6px rgba(34,197,94,0.6); }
+.worker-dot.idle   { background:var(--yellow); }
+.worker-dot.offline{ background:var(--text3); }
+
+/* progress bar */
+.prog-bar { height:5px; background:var(--bg-hover2); border-radius:3px; overflow:hidden; }
+.prog-fill { height:100%; border-radius:3px; background:var(--cyan); transition:width 0.4s; }
+
+/* 응답형 */
+@media (max-width:920px) {
+  .monitor-grid { grid-template-columns:1fr; }
+  .log-panel { height:380px; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+
+<script src="js/app.js"></script>
+<script>
+renderLayout({ title: '크롤링 모니터', activePage: 'monitor.html' });
+
+/* ═══════════════════════════════════════════════════════════
+   상수 / 상태
+═══════════════════════════════════════════════════════════ */
+let monitorRunning = false;
+let monitorTimer   = null;
+let logScrollLock  = false;  // 유저가 위로 스크롤하면 자동스크롤 중단
+
+// 크롤링 스텝 정의
+const STEPS = [
+  { id:'boot',     icon:'🚀', label:'브라우저 시작',       desc:'Playwright Chromium 스텔스 모드 초기화' },
+  { id:'navigate', icon:'🌐', label:'페이지 이동',          desc:'m.search.naver.com 접속' },
+  { id:'botcheck', icon:'🕵️', label:'봇 탐지 검사',        desc:'navigator.webdriver / 페이지 길이 확인' },
+  { id:'scroll',   icon:'📜', label:'인간형 스크롤',        desc:'자연스러운 마우스·스크롤 시뮬레이션' },
+  { id:'section',  icon:'🔍', label:'플레이스 섹션 탐색',   desc:'data-laim-exp-id 또는 class 기반 탐색' },
+  { id:'rank',     icon:'🏅', label:'순위 추출',             desc:'MID 매칭으로 업체 순위 확정' },
+  { id:'save',     icon:'💾', label:'DB 저장',               desc:'KeywordRanking 레코드 INSERT' },
+];
+
+// Mock 큐 데이터 — 실제 네이버 플레이스 MID 기반
+// MID 1005166855: 서울 강남 업체 A  |  MID 19797085: 서울 마포 업체 B
+let crawlQueue = [
+  { id:'job-001', place:'업체 A (MID:1005166855)', keyword:'강남 맛집',        status:'done',    rank:3,  elapsed:'4.1s',  ts:'06:00:05', cpc:3, top:true,  mid:'1005166855' },
+  { id:'job-002', place:'업체 A (MID:1005166855)', keyword:'강남 한식 맛집',   status:'done',    rank:7,  elapsed:'5.3s',  ts:'06:00:11', cpc:1, top:true,  mid:'1005166855' },
+  { id:'job-003', place:'업체 A (MID:1005166855)', keyword:'테헤란로 점심',    status:'done',    rank:null,elapsed:'4.9s', ts:'06:00:18', cpc:0, top:false, mid:'1005166855' },
+  { id:'job-004', place:'업체 A (MID:1005166855)', keyword:'강남역 맛집',      status:'done',    rank:12, elapsed:'6.2s',  ts:'06:00:25', cpc:5, top:true,  mid:'1005166855' },
+  { id:'job-005', place:'업체 B (MID:19797085)',   keyword:'홍대 맛집',        status:'done',    rank:2,  elapsed:'3.8s',  ts:'06:00:31', cpc:2, top:true,  mid:'19797085' },
+  { id:'job-006', place:'업체 B (MID:19797085)',   keyword:'홍대 카페',        status:'done',    rank:5,  elapsed:'4.7s',  ts:'06:00:38', cpc:0, top:true,  mid:'19797085' },
+  { id:'job-007', place:'업체 B (MID:19797085)',   keyword:'마포구 맛집',      status:'failed',  rank:null,elapsed:'30.0s',ts:'06:00:44', cpc:1, top:false, mid:'19797085' },
+  { id:'job-008', place:'업체 B (MID:19797085)',   keyword:'홍대입구역 맛집',  status:'queued',  rank:null,elapsed:'–',    ts:'–',        cpc:null, top:null, mid:'19797085' },
+];
+
+// 현재 진행 중인 세션 상태
+let currentSession = {
+  jobId: 'job-008',
+  place: '업체 B (MID:19797085)',
+  keyword: '홍대입구역 맛집',
+  mid: '19797085',
+  stepIdx: -1,
+  stepStates: {},  // { stepId: 'active'|'done'|'warn'|'error'|'idle' }
+  checkCount: 8,
+  sessionRestarts: 0,
+  botBlocked: false,
+};
+
+// 실시간 로그 버퍼
+let logs = [];
+const MAX_LOG = 500;
+
+// 누적 통계
+let stats = {
+  totalJobs: 8,
+  doneJobs: 6,
+  failedJobs: 1,
+  queuedJobs: 1,
+  avgElapsed: 4.67,
+  botBlocks: 0,
+  sessionRestarts: 0,
+};
+
+/* ═══════════════════════════════════════════════════════════
+   로그 유틸
+═══════════════════════════════════════════════════════════ */
+function addLog(level, msg, raw = false) {
+  const now = new Date();
+  const ts  = now.toTimeString().slice(0,8);
+  logs.push({ level, msg, ts, raw });
+  if (logs.length > MAX_LOG) logs.shift();
+  renderLogLine({ level, msg, ts, raw });
+}
+
+function renderLogLine(entry) {
+  const body = document.getElementById('log-body');
+  if (!body) return;
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `
+    <span class="log-time">${entry.ts}</span>
+    <span class="log-level ${entry.level}">${entry.level.padEnd(5)}</span>
+    <span class="log-msg">${entry.raw ? entry.msg : escLog(entry.msg)}</span>`;
+  body.appendChild(div);
+  if (!logScrollLock) body.scrollTop = body.scrollHeight;
+}
+
+function escLog(s) {
+  return s.replace(/</g,'&lt;').replace(/>/g,'&gt;')
+           .replace(/`([^`]+)`/g,'<span class="hl">$1</span>');
+}
+
+function clearLogs() {
+  logs = [];
+  const body = document.getElementById('log-body');
+  if (body) body.innerHTML = '';
+}
+
+/* ═══════════════════════════════════════════════════════════
+   메인 렌더
+═══════════════════════════════════════════════════════════ */
+function renderPage() {
+  document.getElementById('page-content').innerHTML = `
+
+  <!-- 상단 상태 바 -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <!-- 워커 상태 -->
+      <div class="worker-card" style="min-width:180px">
+        <div class="worker-dot ${monitorRunning?'active':'idle'}"></div>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text-title)">Celery Worker</div>
+          <div style="font-size:11px;color:var(--text3)">${monitorRunning?'크롤링 실행 중':'대기 중'} · 동시 2개</div>
+        </div>
+      </div>
+      <!-- 세션 카운터 -->
+      <div style="font-size:12px;color:var(--text3)">
+        세션 체크: <strong style="color:var(--text)">${currentSession.checkCount}</strong>개
+        &nbsp;|&nbsp; 봇 차단: <strong style="color:${stats.botBlocks>0?'var(--red)':'var(--text)'}">${stats.botBlocks}</strong>회
+        &nbsp;|&nbsp; 재시작: <strong style="color:var(--text)">${stats.sessionRestarts}</strong>회
+        &nbsp;|&nbsp; 평균: <strong style="color:var(--cyan)">${stats.avgElapsed.toFixed(1)}s</strong>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary btn-sm" onclick="exportLogs()">📥 로그 내보내기</button>
+      <button class="btn btn-secondary btn-sm" onclick="clearLogs();addLog('INFO','로그가 초기화되었습니다.')">🗑️ 로그 지우기</button>
+      <button id="btn-run" class="btn ${monitorRunning?'btn-danger':'btn-primary'} btn-sm" onclick="toggleCrawl()">
+        ${monitorRunning?'⏹ 중지':'▶ 크롤링 시뮬레이션 시작'}
+      </button>
+    </div>
+  </div>
+
+  <!-- 통계 카드 -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px">
+    <div class="card" style="padding:14px;text-align:center">
+      <div style="font-size:26px;font-weight:800;color:var(--text-title)">${stats.totalJobs}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">전체 잡</div>
+      <div class="prog-bar" style="margin-top:8px">
+        <div class="prog-fill" style="width:${Math.round(stats.doneJobs/stats.totalJobs*100)}%"></div>
+      </div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center">
+      <div style="font-size:26px;font-weight:800;color:var(--green)">${stats.doneJobs}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">완료</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center">
+      <div style="font-size:26px;font-weight:800;color:var(--red)">${stats.failedJobs}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">실패</div>
+    </div>
+    <div class="card" style="padding:14px;text-align:center">
+      <div style="font-size:26px;font-weight:800;color:var(--yellow)">${stats.queuedJobs}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:3px">대기 중</div>
+    </div>
+  </div>
+
+  <!-- 2열 그리드 -->
+  <div class="monitor-grid">
+
+    <!-- 왼쪽: 진행 스텝 + 현재 잡 정보 -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <!-- 현재 실행 중인 잡 -->
+      <div class="card" style="padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px;display:flex;align-items:center;gap:6px">
+          <div class="live-dot ${monitorRunning?'':'stopped'}"></div>
+          현재 실행 잡
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--text-title)">${currentSession.place.replace(/ \(MID:.*\)/,'')}</div>
+        <div style="margin-top:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--cyan)">"${currentSession.keyword}"</span>
+          <span style="font-size:10px;padding:2px 7px;background:rgba(var(--cyan-rgb),0.08);border:1px solid rgba(var(--cyan-rgb),0.2);border-radius:5px;color:var(--cyan)">MID: ${currentSession.mid}</span>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text3);display:flex;gap:10px;flex-wrap:wrap">
+          <span>Job ID: <code style="color:var(--text2);font-size:10px">${currentSession.jobId}</code></span>
+          <span>체크수: <strong style="color:var(--text)">${currentSession.checkCount}/20</strong></span>
+          <span>봇차단: <strong style="color:${stats.botBlocks>0?'var(--red)':'var(--text)'}">${stats.botBlocks}회</strong></span>
+        </div>
+      </div>
+
+      <!-- 진행 스텝 -->
+      <div class="card" style="padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:12px">⚙️ 실행 절차</div>
+        <div class="step-list" id="step-list">
+          ${renderSteps()}
+        </div>
+      </div>
+
+      <!-- Beat 스케줄 -->
+      <div class="card" style="padding:14px">
+        <div style="font-size:12px;font-weight:700;color:var(--text2);margin-bottom:10px">🗓️ 오늘 Beat 스케줄 (KST)</div>
+        ${renderSchedule()}
+      </div>
+    </div>
+
+    <!-- 오른쪽: 라이브 로그 + 큐 -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+
+      <!-- 라이브 로그 터미널 -->
+      <div class="log-panel">
+        <div class="log-panel-header">
+          <div class="log-panel-title">
+            <div class="live-dot ${monitorRunning?'':'stopped'}" id="live-dot-log"></div>
+            LIVE LOG
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text3);cursor:pointer">
+              <input type="checkbox" id="chk-autoscroll" checked style="accent-color:var(--cyan)"> 자동스크롤
+            </label>
+            <select id="log-filter" onchange="filterLogs(this.value)"
+              style="font-size:10px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);border-radius:4px;padding:2px 5px">
+              <option value="ALL">ALL</option>
+              <option value="INFO">INFO</option>
+              <option value="OK">OK</option>
+              <option value="WARN">WARN</option>
+              <option value="ERROR">ERROR</option>
+            </select>
+          </div>
+        </div>
+        <div class="log-body" id="log-body"></div>
+      </div>
+
+      <!-- 잡 큐 테이블 -->
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+          <div style="font-size:13px;font-weight:700;color:var(--text-title)">📋 잡 큐 현황</div>
+          <button class="btn btn-secondary btn-sm" onclick="renderQueueTable()">🔄 새로고침</button>
+        </div>
+        <div id="queue-wrap" style="overflow-x:auto;max-height:280px;overflow-y:auto">
+          ${renderQueueTable()}
+        </div>
+      </div>
+
+    </div>
+  </div>`;
+
+  // 자동스크롤 체크박스 이벤트
+  setTimeout(() => {
+    const chk = document.getElementById('chk-autoscroll');
+    if (chk) chk.addEventListener('change', e => { logScrollLock = !e.target.checked; });
+    const body = document.getElementById('log-body');
+    if (body) {
+      body.addEventListener('scroll', () => {
+        const atBottom = body.scrollHeight - body.clientHeight - body.scrollTop < 30;
+        logScrollLock = !atBottom;
+        const c = document.getElementById('chk-autoscroll');
+        if (c) c.checked = atBottom;
+      });
+    }
+    // 기존 로그 복원
+    logs.forEach(e => renderLogLine(e));
+    if (body) body.scrollTop = body.scrollHeight;
+  }, 50);
+}
+
+/* ─── 스텝 렌더 ─────────────────────────────────────────── */
+function renderSteps() {
+  return STEPS.map((s, i) => {
+    const state = currentSession.stepStates[s.id] || 'idle';
+    let iconContent = s.icon;
+    if (state === 'done')  iconContent = '✓';
+    if (state === 'warn')  iconContent = '⚠';
+    if (state === 'error') iconContent = '✗';
+    const elapsed = currentSession[`step_${s.id}_ms`]
+      ? `${(currentSession[`step_${s.id}_ms`]/1000).toFixed(1)}s`
+      : '';
+    return `
+      <div class="step-item ${state}" id="step-${s.id}">
+        <div class="step-icon">${iconContent}</div>
+        <div style="flex:1;min-width:0">
+          <div class="step-label">${i+1}. ${s.label}</div>
+          <div class="step-desc">${
+            state === 'active' ? `<span style="color:var(--cyan)">${s.desc}</span>` : s.desc
+          }</div>
+        </div>
+        ${elapsed ? `<div class="step-elapsed">${elapsed}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+/* ─── 스케줄 렌더 ────────────────────────────────────────── */
+function renderSchedule() {
+  const schedule = [
+    { time:'03:00', task:'플레이스 정보 갱신 (m.place.naver.com 2개)',  done:true,  next:false },
+    { time:'06:00', task:'순위 체크 1차 (잡 8개 · MID 2개)',           done:true,  next:false },
+    { time:'10:00', task:'순위 체크 2차',                               done:false, next:true  },
+    { time:'14:00', task:'순위 체크 3차',                               done:false, next:false },
+    { time:'20:00', task:'순위 체크 4차',                               done:false, next:false },
+  ];
+  return schedule.map(s => `
+    <div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,0.04)">
+      <span style="font-size:12px;font-weight:700;color:var(--text2);width:42px;flex-shrink:0">${s.time}</span>
+      <span style="flex:1;font-size:12px;color:${s.done?'var(--text3)':s.next?'var(--cyan)':'var(--text2)'}">${s.task}</span>
+      <span style="font-size:11px;flex-shrink:0">
+        ${s.done ? '✅ 완료' : s.next ? '<span style="color:var(--cyan)">⏳ 다음</span>' : '<span style="color:var(--text3)">예정</span>'}
+      </span>
+    </div>
+  `).join('');
+}
+
+/* ─── 큐 테이블 렌더 ─────────────────────────────────────── */
+function renderQueueTable() {
+  const html = `
+    <table class="queue-table">
+      <thead>
+        <tr>
+          <th>플레이스 (MID)</th>
+          <th>키워드</th>
+          <th>상태</th>
+          <th style="text-align:center">순위</th>
+          <th style="text-align:center">섹션↑</th>
+          <th style="text-align:center">CPC</th>
+          <th style="text-align:right">소요</th>
+          <th style="text-align:right">시각</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${crawlQueue.map(j => {
+          const rankTxt = j.rank ? `<strong style="color:var(--cyan)">${j.rank}위</strong>` : '<span style="color:var(--text3)">–</span>';
+          const topTxt  = j.top === true ? '<span style="color:var(--green)">✅최상단</span>' : j.top === false ? '<span style="color:var(--text3)">중간</span>' : '–';
+          const cpcTxt  = j.cpc !== null ? (j.cpc > 0 ? `<span style="color:var(--red);font-weight:700">${j.cpc}개</span>` : '<span style="color:var(--text3)">없음</span>') : '–';
+          const midBadge = j.mid ? `<br><span style="font-size:10px;color:var(--text3)">MID:${j.mid}</span>` : '';
+          return `<tr>
+            <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis">${j.place.replace(' (MID:'+j.mid+')','')}${midBadge}</td>
+            <td style="max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--cyan)">"${j.keyword}"</td>
+            <td><span class="q-badge ${j.status}">${statusLabel(j.status)}</span></td>
+            <td style="text-align:center">${rankTxt}</td>
+            <td style="text-align:center;font-size:12px">${topTxt}</td>
+            <td style="text-align:center">${cpcTxt}</td>
+            <td style="text-align:right;color:var(--text3)">${j.elapsed}</td>
+            <td style="text-align:right;color:var(--text3)">${j.ts}</td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  const wrap = document.getElementById('queue-wrap');
+  if (wrap) wrap.innerHTML = html;
+  return html;
+}
+
+function statusLabel(s) {
+  return { running:'⏳ 실행중', queued:'📌 대기', done:'✅ 완료', failed:'❌ 실패', skipped:'⏭ 건너뜀' }[s] || s;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   크롤링 시뮬레이션
+═══════════════════════════════════════════════════════════ */
+function toggleCrawl() {
+  if (monitorRunning) {
+    stopCrawl();
+  } else {
+    startCrawl();
+  }
+}
+
+function startCrawl() {
+  monitorRunning = true;
+  currentSession.stepIdx = -1;
+  currentSession.stepStates = {};
+  STEPS.forEach(s => currentSession.stepStates[s.id] = 'idle');
+
+  // 큐에서 대기 잡 찾기
+  const nextJob = crawlQueue.find(j => j.status === 'queued');
+  if (nextJob) {
+    nextJob.status = 'running';
+    currentSession.jobId  = nextJob.id;
+    currentSession.place  = nextJob.place;
+    currentSession.keyword = nextJob.keyword;
+  }
+
+  addLog('INFO', `=== 크롤링 세션 시작 ===`);
+  addLog('INFO', `잡 ID: \`${currentSession.jobId}\`  플레이스: \`${currentSession.place}\``);
+  addLog('INFO', `키워드: \`${currentSession.keyword}\`  MID: \`${currentSession.mid}\``);
+  addLog('INFO', `세션 카운터: ${currentSession.checkCount}  (RESET_EVERY=20)`);
+
+  renderPage();
+  runNextStep();
+}
+
+function stopCrawl() {
+  monitorRunning = false;
+  clearTimeout(monitorTimer);
+  addLog('WARN', '크롤링이 수동으로 중지되었습니다.');
+  const btnRun = document.getElementById('btn-run');
+  if (btnRun) {
+    btnRun.textContent = '▶ 크롤링 시뮬레이션 시작';
+    btnRun.className = 'btn btn-primary btn-sm';
+  }
+  const dots = document.querySelectorAll('.live-dot');
+  dots.forEach(d => d.classList.add('stopped'));
+}
+
+// 스텝별 시뮬레이션 딜레이 (ms)
+const STEP_DELAYS = {
+  boot: 900, navigate: 1200, botcheck: 600,
+  scroll: 800, section: 1100, rank: 1400, save: 500
+};
+
+// 스텝별 로그 메시지
+const STEP_LOGS = {
+  boot: [
+    ['INFO',  'Playwright Chromium 런치 중... `headless=True`'],
+    ['INFO',  'launch args: `--disable-blink-features=AutomationControlled --no-sandbox`'],
+    ['INFO',  'User-Agent: `Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36`'],
+    ['INFO',  '뷰포트 랜덤 선택: `1366×768` (pool에서 선택)'],
+    ['INFO',  'Accept-Language: `ko-KR,ko;q=0.9,en-US;q=0.8`'],
+    ['INFO',  'Stealth JS 주입 완료 — navigator.webdriver 제거, plugins 스푸핑'],
+    ['OK',    '브라우저 시작 완료  check_count=`9`  (RESET_EVERY=20)'],
+  ],
+  navigate: [
+    ['INFO',  '검색 URL 생성: `https://m.search.naver.com/search.naver?query=홍대입구역+맛집&where=m`'],
+    ['INFO',  'safe_goto() 호출  wait_until=`domcontentloaded`  timeout=30000ms'],
+    ['INFO',  '연결 중... `m.search.naver.com`'],
+    ['OK',    'HTTP `200`  응답시간: `1.38s`  콘텐츠 길이: `21,847`바이트'],
+    ['INFO',  'human_delay(0.8s ~ 1.5s) 대기 중...'],
+  ],
+  botcheck: [
+    ['INFO',  '봇 탐지 체크 시작...'],
+    ['INFO',  '`navigator.webdriver` = `undefined`  ✓'],
+    ['INFO',  '페이지 텍스트 길이 체크: `21,847`자  (기준: 최소 100자)  ✓'],
+    ['INFO',  '"로봇" 키워드 검색... 없음  ✓'],
+    ['INFO',  '"자동화된" 키워드 검색... 없음  ✓'],
+    ['OK',    '봇 탐지 검사 통과 — consecutive_blocks=`0`  정상 진행'],
+  ],
+  scroll: [
+    ['INFO',  'human_mouse_move() 시작  현재 위치: `(320, 180)`'],
+    ['INFO',  '마우스 이동: `(541, 320)`  steps=`8`  duration=`0.6s`'],
+    ['INFO',  '스크롤 시뮬레이션 step 1/3  delta=`+320px`  delay=`0.3s`'],
+    ['INFO',  '스크롤 시뮬레이션 step 2/3  delta=`+480px`  delay=`0.4s`'],
+    ['INFO',  '스크롤 시뮬레이션 step 3/3  delta=`+200px`  delay=`0.2s`'],
+    ['OK',    '인간형 스크롤 완료  총 이동: `+1000px`  소요: `1.3s`'],
+  ],
+  section: [
+    ['INFO',  '플레이스 섹션 탐색 시작...'],
+    ['INFO',  '셀렉터 1: `div[data-laim-exp-id="loc_plc"]` — 시도 중'],
+    ['OK',    '플레이스 섹션 발견! (`data-laim-exp-id` 방식)'],
+    ['INFO',  '섹션 위치 분석: 섹션 상단 Y=`298px`  검색창 Y=`148px`  거리=`150px`'],
+    ['INFO',  '최상단 판정 기준: 거리 < 250px  → `True` ✅'],
+    ['INFO',  'CPC 광고 배지 탐색: `a.gU6bV`, `li[class*="cZnHG"]`, `.ad-badge`'],
+    ['INFO',  'CPC 배지 발견: `2개`  (업체명: 빠른배달집, 홍대맛집왕)'],
+    ['OK',    '섹션 분석 완료  is_top=`True`  cpc_count=`2`'],
+  ],
+  rank: [
+    ['INFO',  'MID 순위 탐색 시작  target_mid=`19797085`  max_rank=`5`'],
+    ['INFO',  '아이템 셀렉터: `li[data-loc_plc-doc-id]`  발견: `5`개'],
+    ['DEBUG', '1위: MID=`8821334` 업체명=`홍대파스타공방`  data-loc_plc-doc-id 확인'],
+    ['DEBUG', '2위: MID=`4431209` 업체명=`연남동분식왕`  data-loc_plc-doc-id 확인'],
+    ['DEBUG', '3위: MID=`7732561` 업체명=`홍대24시국밥`  data-loc_plc-doc-id 확인'],
+    ['DEBUG', '4위: MID=`9912847` 업체명=`마포고기집`  data-loc_plc-doc-id 확인'],
+    ['DEBUG', '5위: MID=`3345621` 업체명=`홍대포차`  data-loc_plc-doc-id 확인'],
+    ['INFO',  '5위까지 target_mid 미발견  더보기 버튼 탐색 중...'],
+    ['INFO',  '더보기 버튼 클릭: `"펼쳐서 더보기"` → click()'],
+    ['INFO',  'human_delay(0.6s) 대기 후 추가 아이템 로드...'],
+    ['DEBUG', '6위: MID=`5567234` 업체명=`연남 고기구이`'],
+    ['DEBUG', '7위: MID=`1183920` 업체명=`홍대 라멘집`'],
+    ['DEBUG', '8위: MID=`19797085` 업체명=`업체 B` ← `TARGET FOUND`'],
+    ['OK',    '✅ 순위 확정: `8위`  업체명: `업체 B (MID:19797085)`'],
+    ['INFO',  'case_type: `NORMAL`  is_top_section=`True`  cpc_count=`2`  total=`8`'],
+  ],
+  save: [
+    ['INFO',  'KeywordRanking INSERT  place_id=`2`  keyword=`홍대입구역 맛집`'],
+    ['INFO',  'rank=`8`  case_type=`NORMAL`  crawled_at=`now()`'],
+    ['INFO',  'extra_data: { section_exists: true, is_top: true, cpc_count: 2, total_places: 8 }'],
+    ['INFO',  'CrawlJob status → `DONE`  job_id=`job-008`'],
+    ['OK',    'DB 저장 완료 ✅  소요: `0.42s`'],
+  ],
+};
+
+let stepLogIdx = {};
+
+function runNextStep() {
+  if (!monitorRunning) return;
+  currentSession.stepIdx++;
+
+  if (currentSession.stepIdx >= STEPS.length) {
+    // 모든 스텝 완료
+    onCrawlComplete();
+    return;
+  }
+
+  const step = STEPS[currentSession.stepIdx];
+  const prevStep = STEPS[currentSession.stepIdx - 1];
+
+  // 이전 스텝 done 처리
+  if (prevStep) {
+    currentSession.stepStates[prevStep.id] = 'done';
+    updateStepUI(prevStep.id, 'done');
+  }
+
+  // 현재 스텝 active 처리
+  currentSession.stepStates[step.id] = 'active';
+  updateStepUI(step.id, 'active');
+
+  addLog('INFO', `─── 단계 ${currentSession.stepIdx+1}/${STEPS.length}: ${step.label} ───`);
+
+  // 단계별 로그 순차 출력
+  const stepLogs = STEP_LOGS[step.id] || [];
+  stepLogIdx[step.id] = 0;
+
+  function emitNextLog() {
+    if (!monitorRunning) return;
+    const idx = stepLogIdx[step.id];
+    if (idx < stepLogs.length) {
+      const [lvl, msg] = stepLogs[idx];
+      addLog(lvl, msg);
+      stepLogIdx[step.id]++;
+      monitorTimer = setTimeout(emitNextLog, 180 + Math.random()*200);
+    } else {
+      // 스텝 완료 → 다음 스텝
+      const delay = STEP_DELAYS[step.id] || 800;
+      monitorTimer = setTimeout(runNextStep, delay - stepLogs.length * 200);
+    }
+  }
+  emitNextLog();
+  renderQueueTable();
+}
+
+function updateStepUI(stepId, state) {
+  const el = document.getElementById(`step-${stepId}`);
+  if (!el) return;
+  el.className = `step-item ${state}`;
+  const iconEl = el.querySelector('.step-icon');
+  const stepData = STEPS.find(s => s.id === stepId);
+  if (iconEl && stepData) {
+    if (state === 'done')   iconEl.textContent = '✓';
+    else if (state === 'warn') iconEl.textContent = '⚠';
+    else if (state === 'error') iconEl.textContent = '✗';
+    else iconEl.textContent = stepData.icon;
+  }
+}
+
+function onCrawlComplete() {
+  // 마지막 스텝 done
+  const lastStep = STEPS[STEPS.length - 1];
+  currentSession.stepStates[lastStep.id] = 'done';
+  updateStepUI(lastStep.id, 'done');
+
+  // 큐 업데이트
+  const job = crawlQueue.find(j => j.id === currentSession.jobId);
+  if (job) {
+    job.status = 'done';
+    job.rank = 8;
+    job.elapsed = '13.7s';
+    job.ts = new Date().toTimeString().slice(0,8);
+    job.cpc = 2;
+    job.top = true;
+  }
+
+  stats.doneJobs++;
+  stats.queuedJobs = Math.max(0, stats.queuedJobs - 1);
+  currentSession.checkCount++;
+
+  addLog('OK',   `=== 크롤링 완료! ===`);
+  addLog('INFO', `소요: \`13.7s\`  check_count: \`${currentSession.checkCount}\``);
+  addLog('INFO', `결과: 순위=\`8위\`  섹션=\`최상단\`  CPC=\`2개\`  total_places=\`8\``);
+  addLog('INFO', `MID \`19797085\` → rank=\`8\`  case_type=\`NORMAL\``);
+  if (currentSession.checkCount % 20 === 0) {
+    addLog('WARN', `⚠ ${currentSession.checkCount}회 달성 — 다음 세션에서 브라우저 재시작 예정`);
+    stats.sessionRestarts++;
+  }
+
+  monitorRunning = false;
+  renderPage();
+  toast('크롤링 완료! 순위: 8위  CPC: 2개  섹션 최상단 ✅', 'success');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   로그 필터
+═══════════════════════════════════════════════════════════ */
+function filterLogs(level) {
+  const body = document.getElementById('log-body');
+  if (!body) return;
+  body.innerHTML = '';
+  const filtered = level === 'ALL' ? logs : logs.filter(l => l.level === level);
+  filtered.forEach(e => renderLogLine(e));
+  body.scrollTop = body.scrollHeight;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   로그 내보내기
+═══════════════════════════════════════════════════════════ */
+function exportLogs() {
+  const lines = logs.map(l => `[${l.ts}] [${l.level}] ${l.msg.replace(/<[^>]+>/g,'')}`).join('\n');
+  const blob = new Blob([lines], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `crawl_log_${new Date().toISOString().slice(0,19).replace(/[T:]/g,'-')}.txt`;
+  a.click();
+  toast('로그 파일이 다운로드됩니다.', 'success');
+}
+
+/* ═══════════════════════════════════════════════════════════
+   초기화
+═══════════════════════════════════════════════════════════ */
+renderPage();
+
+// 초기 로그 — 실제 두 MID 기반 (MID:1005166855, MID:19797085)
+setTimeout(() => {
+  addLog('INFO', `=== nplace.io Crawler Worker 시작 (${new Date().toLocaleDateString('ko-KR')}) ===`);
+  addLog('INFO', `Beat 스케줄 로드 완료  큐: \`crawling\`  동시실행: \`2\`  RESET_EVERY=\`20\``);
+  addLog('INFO', `Redis 브로커 연결: \`redis://localhost:6379/0\`  PING: \`PONG\`  ✓`);
+  addLog('INFO', `등록 플레이스: \`2\`개  (MID 1005166855, MID 19797085)`);
+  addLog('INFO', `등록 키워드: \`8\`개  총 잡: \`8\`개 큐 등록`);
+  addLog('OK',   `03:00 refresh_all_place_info — m.place.naver.com 정보 갱신 완료 (2개)`);
+  addLog('INFO', `06:00 daily_rank_check 시작 → 잡 8개 큐 등록 (\`crawling\` 큐)`);
+  addLog('INFO', `=== MID 1005166855 순위 체크 시작 ===`);
+  addLog('INFO', `job-001 [강남 맛집]  MID=\`1005166855\`  검색 URL 생성`);
+  addLog('INFO', `  → is_top_section=\`True\`  CPC 배지 \`3\`개 감지`);
+  addLog('OK',   `job-001 [강남 맛집]      → \`3위\`  섹션↑  CPC=3  4.1s`);
+  addLog('INFO', `job-002 [강남 한식 맛집]  MID=\`1005166855\``);
+  addLog('INFO', `  → is_top_section=\`True\`  CPC 배지 \`1\`개 감지`);
+  addLog('OK',   `job-002 [강남 한식 맛집] → \`7위\`  섹션↑  CPC=1  5.3s`);
+  addLog('INFO', `job-003 [테헤란로 점심]  MID=\`1005166855\``);
+  addLog('INFO', `  → is_top_section=\`False\`  플레이스 섹션 중간 위치`);
+  addLog('INFO', `  → 5위까지 탐색 + 더보기 클릭 → max_rank(5) 내 미발견`);
+  addLog('INFO', `job-003 [테헤란로 점심]  → \`미발견\` (5위 밖)  섹션↓  CPC=0  4.9s`);
+  addLog('OK',   `job-004 [강남역 맛집]    → \`12위\`  섹션↑  CPC=5  6.2s`);
+  addLog('INFO', `  ⚠ CPC \`5\`개 — 경쟁 강도 높음`);
+  addLog('INFO', `=== MID 19797085 순위 체크 시작 ===`);
+  addLog('INFO', `job-005 [홍대 맛집]  MID=\`19797085\`  검색 URL 생성`);
+  addLog('INFO', `  → is_top_section=\`True\`  CPC 배지 \`2\`개 감지`);
+  addLog('OK',   `job-005 [홍대 맛집]      → \`2위\`  섹션↑  CPC=2  3.8s`);
+  addLog('OK',   `job-006 [홍대 카페]      → \`5위\`  섹션↑  CPC=0  4.7s`);
+  addLog('INFO', `job-007 [마포구 맛집]  MID=\`19797085\`  검색 시작`);
+  addLog('ERROR',`  봇 탐지 응답 감지! 페이지 텍스트 길이=\`42\`자 (기준 100자 미만)`);
+  addLog('BOT',  `  consecutive_blocks=\`1\`  (MAX=3)  → 30분 쿨다운 큐 등록`);
+  addLog('ERROR',`job-007 [마포구 맛집]    → 봇 탐지 차단  재시도 예약: +30분`);
+  addLog('WARN', `consecutive_blocks=\`1\`  BotDetectedError — 재시도 큐에 추가됨`);
+  addLog('INFO', `job-008 [홍대입구역 맛집] → 대기 중  (▶ 버튼으로 시뮬레이션 실행)`);
+}, 100);
+</script>
+</body>
+</html>

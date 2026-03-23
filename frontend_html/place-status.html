@@ -597,11 +597,19 @@ function buildMenu(p) {
 function buildCrawlLog(p) {
   const ITEMS = { basic:'기본정보', hours:'영업시간', menu:'메뉴', review:'리뷰', photos:'사진', keywords:'키워드' };
   return `
-  <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+  <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
     ${crawlBadge(p.crawlStatus)}
     <span style="font-size:12px;color:var(--text3)">최근 수집: ${p.crawledAt}</span>
     <span style="font-size:11px;color:var(--text3)">· 자동 수집 월 1회</span>
+    <button id="btn-run-crawl" onclick="runParseCrawl(${p.id})"
+      style="margin-left:auto;padding:5px 14px;font-size:11px;font-weight:700;border:none;border-radius:6px;
+             cursor:pointer;background:rgba(0,212,255,.15);color:var(--cyan);border:1px solid rgba(0,212,255,.25);
+             display:flex;align-items:center;gap:5px;white-space:nowrap">
+      🔄 지금 수집
+    </button>
   </div>
+  <div id="crawl-run-status" style="display:none;padding:8px 12px;border-radius:8px;font-size:12px;margin-bottom:10px;
+       background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.2);color:var(--text2);line-height:1.7"></div>
   ${p.crawlLogs.map(log => `
     <div class="crawl-log-row">
       <div class="crawl-log-dot dot-${log.status}"></div>
@@ -732,6 +740,106 @@ function drawCharts() {
       }
     });
   }, 80);
+}
+
+/* ══════ 파서 API 동적 연결 ══════ */
+function resolveParserApi() {
+  const h = location.hostname;
+  if (h.match(/^\d+-/)) return location.protocol + '//' + h.replace(/^(\d+)-/, '8000-');
+  if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8000';
+  return 'http://localhost:8000';
+}
+const PARSER_API = resolveParserApi();
+
+/* 파서 연결 상태 표시 배지 */
+async function checkParserStatus() {
+  try {
+    const res = await fetch(`${PARSER_API}/`, { signal: AbortSignal.timeout(3000) });
+    const data = await res.json();
+    return data.parser_available === true;
+  } catch { return false; }
+}
+
+/* 지금 수집 버튼 → 파서 API 호출 */
+async function runParseCrawl(placeId) {
+  const p = PLACES.find(pl => pl.id === placeId);
+  if (!p) return;
+
+  const statusEl = document.getElementById('crawl-run-status');
+  const btn      = document.getElementById('btn-run-crawl');
+  if (!statusEl || !btn) return;
+
+  // 버튼 비활성화
+  btn.disabled = true;
+  btn.textContent = '⏳ 수집 중...';
+  btn.style.opacity = '0.6';
+  statusEl.style.display = 'block';
+  statusEl.innerHTML = '🔄 파서 API 연결 중...';
+
+  try {
+    const naverUrl = p.naverUrl || `https://m.place.naver.com/restaurant/${p.naverPlaceId || p.id}`;
+    statusEl.innerHTML = `🔄 파서 API 호출 중...<br><span style="color:var(--text3);font-size:11px">${naverUrl}</span>`;
+
+    const res = await fetch(`${PARSER_API}/api/parse`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: naverUrl, include_reviews: true, include_menu: true, include_photos: false }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    // 파서 응답으로 데이터 갱신
+    const now = new Date().toISOString().slice(0,16).replace('T',' ');
+    const parsed_id = data.place_id || data.id;
+
+    if (data.name)             p.name             = data.name;
+    if (data.category)         p.category         = data.category;
+    if (data.address)          p.address          = data.address;
+    if (data.road_address)     p.roadAddress      = data.road_address;
+    if (data.phone)            p.phone            = data.phone;
+    if (data.keyword_list)     p.repKeywords      = data.keyword_list;
+    if (data.visitor_review_count !== undefined) p.reviewCount = data.visitor_review_count;
+    if (data.blog_review_total !== undefined)    p.blogReviewCount = data.blog_review_total;
+    if (data.avg_rating !== undefined)           p.avgRating = data.avg_rating;
+    if (parsed_id) p.naverUrl = `https://map.naver.com/v5/entry/place/${parsed_id}`;
+
+    // 크롤링 로그 추가
+    p.crawlStatus = 'ok';
+    p.crawledAt   = now;
+    p.crawlLogs.unshift({
+      ts: now, status: 'ok',
+      items: { basic: true, hours: !!data.hours, menu: !!(data.menus?.length), review: !!(data.visitor_review_count), photos: false, keywords: !!(data.keyword_list?.length) },
+      note: '수동 수집 완료'
+    });
+
+    statusEl.innerHTML = `✅ 수집 완료 — ${data.name || '업체명 미확인'} / 리뷰 ${data.visitor_review_count ?? '–'}건`;
+    statusEl.style.background = 'rgba(34,197,94,.08)';
+    statusEl.style.borderColor = 'rgba(34,197,94,.25)';
+    statusEl.style.color = 'var(--green)';
+
+    // 화면 갱신
+    setTimeout(() => renderPage(), 1200);
+
+  } catch (e) {
+    console.error('[runParseCrawl]', e);
+    statusEl.innerHTML = `❌ 파서 연결 실패: ${e.message}<br><span style="font-size:11px;color:var(--text3)">파서 서버가 실행 중인지 확인해 주세요 (포트 8000)</span>`;
+    statusEl.style.background = 'rgba(239,68,68,.08)';
+    statusEl.style.borderColor = 'rgba(239,68,68,.25)';
+    statusEl.style.color = '#f87171';
+
+    p.crawlStatus = 'error';
+    p.crawlLogs.unshift({
+      ts: new Date().toISOString().slice(0,16).replace('T',' '),
+      status: 'error',
+      items: { basic:false, hours:false, menu:false, review:false, photos:false, keywords:false },
+      note: `파서 오류: ${e.message}`
+    });
+  } finally {
+    btn.disabled  = false;
+    btn.textContent = '🔄 지금 수집';
+    btn.style.opacity = '1';
+  }
 }
 
 /* ══════ 시작 ══════ */

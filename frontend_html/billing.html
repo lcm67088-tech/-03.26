@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 구독·결제</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ── 요금제 뱃지 ─────────────────────────── */
+.plan-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; }
+.plan-free       { background:rgba(255,255,255,0.07); color:#aaa; }
+.plan-starter    { background:rgba(0,212,255,0.15);   color:#00d4ff; border:1px solid rgba(0,212,255,0.3); }
+.plan-pro        { background:rgba(124,58,237,0.2);   color:#a78bfa; border:1px solid rgba(124,58,237,0.35); }
+.plan-enterprise { background:rgba(245,158,11,0.15);  color:#fbbf24; border:1px solid rgba(245,158,11,0.3); }
+
+/* ── 플랜 요약 카드 ──────────────────────── */
+.plan-hero {
+  background: linear-gradient(135deg, rgba(124,58,237,0.18) 0%, rgba(0,212,255,0.1) 100%);
+  border: 1px solid rgba(124,58,237,0.3);
+  border-radius: 16px;
+  padding: 28px 32px;
+  position: relative;
+  overflow: hidden;
+}
+.plan-hero::before {
+  content:''; position:absolute; top:-40px; right:-40px;
+  width:200px; height:200px;
+  background: radial-gradient(ellipse, rgba(124,58,237,0.2) 0%, transparent 70%);
+  pointer-events:none;
+}
+.plan-hero-title { font-size:13px; color:var(--text3); margin-bottom:6px; }
+.plan-hero-name  { font-size:28px; font-weight:800; color:var(--text-title); margin-bottom:4px; }
+.plan-hero-price { font-size:15px; color:var(--text2); margin-bottom:16px; }
+.plan-hero-price strong { font-size:22px; font-weight:700; color:var(--cyan); }
+
+/* ── 사용량 바 ───────────────────────────── */
+.usage-item { margin-bottom:14px; }
+.usage-header { display:flex; justify-content:space-between; font-size:12px; color:var(--text3); margin-bottom:6px; }
+.usage-header span:last-child { color:var(--text2); font-weight:600; }
+.usage-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+.usage-fill { height:100%; border-radius:3px; transition:width .5s ease; }
+.usage-fill.green  { background:linear-gradient(90deg,#22c55e,#16a34a); }
+.usage-fill.yellow { background:linear-gradient(90deg,#f59e0b,#d97706); }
+.usage-fill.red    { background:linear-gradient(90deg,#ef4444,#dc2626); }
+.usage-fill.cyan   { background:linear-gradient(90deg,#00d4ff,#0ea5e9); }
+
+/* ── 결제 정보 카드 ──────────────────────── */
+.payment-card {
+  background:rgba(255,255,255,0.03);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:18px 20px;
+  display:flex; align-items:center; gap:16px;
+}
+.card-icon {
+  width:44px; height:30px;
+  background:linear-gradient(135deg,#1a1a2e,#16213e);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:6px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:700; color:#00d4ff;
+  letter-spacing:.5px;
+}
+.card-info { flex:1; }
+.card-number { font-size:14px; font-weight:600; color:var(--text1); }
+.card-expiry { font-size:12px; color:var(--text3); margin-top:2px; }
+
+/* ── 결제 내역 테이블 ────────────────────── */
+.billing-table { width:100%; border-collapse:collapse; }
+.billing-table th {
+  font-size:11px; font-weight:600; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.6px;
+  padding:10px 14px; border-bottom:1px solid var(--border);
+  text-align:left;
+}
+.billing-table td {
+  padding:13px 14px; border-bottom:1px solid var(--border);
+  font-size:13px; color:var(--text2); vertical-align:middle;
+}
+.billing-table tr:last-child td { border-bottom:none; }
+.billing-table tr:hover td { background:var(--bg-row-hover); }
+.amount-col { font-weight:600; color:var(--text1); font-variant-numeric:tabular-nums; }
+
+/* ── 결제 상태 뱃지 ──────────────────────── */
+.pay-badge { display:inline-flex; align-items:center; gap:4px; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; }
+.pay-paid      { background:rgba(34,197,94,0.12);  color:#4ade80; }
+.pay-pending   { background:rgba(251,191,36,0.12); color:#fbbf24; }
+.pay-failed    { background:rgba(239,68,68,0.12);  color:#f87171; }
+.pay-refunded  { background:rgba(99,102,241,0.12); color:#a5b4fc; }
+
+/* ── 플랜 전환 버튼 ──────────────────────── */
+.btn-upgrade {
+  background:linear-gradient(135deg,#7c3aed,#6d28d9);
+  color:#fff; border:none; border-radius:8px;
+  padding:10px 20px; font-size:13px; font-weight:600;
+  cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+  transition:opacity .2s;
+}
+.btn-upgrade:hover { opacity:.85; }
+.btn-cancel {
+  background:rgba(239,68,68,0.1);
+  color:#f87171; border:1px solid rgba(239,68,68,0.25);
+  border-radius:8px; padding:10px 20px;
+  font-size:13px; font-weight:600; cursor:pointer;
+  transition:background .2s;
+}
+.btn-cancel:hover { background:rgba(239,68,68,0.18); }
+
+/* ── 결제 수단 모달 ──────────────────────── */
+.billing-modal {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.75); z-index:2000;
+  align-items:center; justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.billing-modal.open { display:flex; }
+.modal-box {
+  background:var(--bg-modal);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:28px 32px;
+  width:440px;
+  max-width:calc(100vw - 40px);
+}
+.modal-title { font-size:17px; font-weight:700; color:var(--text-title); margin-bottom:4px; }
+.modal-sub   { font-size:13px; color:var(--text3); margin-bottom:24px; }
+.form-label  { font-size:12px; font-weight:600; color:var(--text3); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:.4px; }
+.form-input  {
+  width:100%; background:var(--bg-input);
+  border:1px solid var(--border-input); border-radius:8px;
+  padding:10px 12px; color:var(--text); font-size:14px;
+  outline:none; transition:border-color .2s;
+  box-sizing:border-box; font-family:inherit;
+}
+.form-input:focus { border-color:var(--cyan); }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.brand-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:4px; }
+.brand-btn {
+  padding:8px; background:rgba(255,255,255,0.04);
+  border:1px solid var(--border); border-radius:8px;
+  color:var(--text3); font-size:12px; font-weight:600;
+  cursor:pointer; text-align:center; transition:all .15s;
+}
+.brand-btn.active { border-color:var(--cyan); color:var(--cyan); background:rgba(0,212,255,0.08); }
+.brand-btn:hover:not(.active) { border-color:rgba(255,255,255,0.2); color:var(--text2); }
+
+/* ── 취소 확인 모달 ──────────────────────── */
+.cancel-modal .modal-box { border-color:rgba(239,68,68,0.25) !important; }
+.cancel-warn {
+  background:rgba(239,68,68,0.08);
+  border:1px solid rgba(239,68,68,0.2);
+  border-radius:10px; padding:14px 16px;
+  font-size:13px; color:#fca5a5; margin-bottom:20px; line-height:1.6;
+}
+
+/* ── 페이지네이션 ────────────────────────── */
+.pagination { display:flex; align-items:center; gap:6px; justify-content:center; padding:16px 0 4px; }
+.page-btn {
+  width:32px; height:32px;
+  background:var(--bg-hover2); border:1px solid var(--border);
+  border-radius:6px; color:var(--text2); font-size:13px;
+  cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:all .15s;
+}
+.page-btn:hover { border-color:var(--border2); color:var(--text); }
+.page-btn.active { background:rgba(0,212,255,0.15); border-color:rgba(0,212,255,0.4); color:var(--cyan); font-weight:700; }
+.page-btn:disabled { opacity:.35; cursor:default; }
+
+/* ── 섹션 구분선 ────────────────────────── */
+.section-divider { height:1px; background:var(--border); margin:28px 0; }
+
+/* ── 청구 날짜 pill ─────────────────────── */
+.next-billing {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(0,212,255,0.08); border:1px solid rgba(0,212,255,0.2);
+  border-radius:20px; padding:4px 12px; font-size:12px; color:var(--cyan);
+}
+
+/* ── 잔액 헤더바 ───────────────────────────────────── */
+.balance-bar {
+  background: linear-gradient(135deg, #1a1040 0%, #0d1a3a 100%);
+  border-bottom: 1px solid rgba(124,58,237,0.25);
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  min-height: 60px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.balance-bar::before {
+  content:''; position:absolute; inset:0;
+  background: linear-gradient(135deg, rgba(124,58,237,0.15) 0%, rgba(0,212,255,0.08) 100%);
+  pointer-events:none;
+}
+.balance-wallet-icon {
+  width:36px; height:36px; border-radius:10px;
+  background:rgba(124,58,237,0.25); border:1px solid rgba(124,58,237,0.4);
+  display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; position:relative; z-index:1;
+}
+.balance-info { position:relative; z-index:1; }
+.balance-label { font-size:11px; color:rgba(255,255,255,0.5); margin-bottom:2px; }
+.balance-amount { font-size:20px; font-weight:800; color:rgba(255,255,255,0.95); letter-spacing:-0.5px; }
+.balance-bar-actions { display:flex; gap:8px; margin-left:auto; position:relative; z-index:1; flex-wrap:wrap; align-items:center; }
+.btn-charge {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600;
+  background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.15);
+  color:#fff; cursor:pointer; transition:all 0.2s;
+}
+.btn-charge:hover { background:rgba(255,255,255,0.18); }
+.btn-charge.primary {
+  background:rgba(124,58,237,0.35); border-color:rgba(124,58,237,0.6); color:#c4b5fd;
+}
+.btn-charge.primary:hover { background:rgba(124,58,237,0.5); }
+.btn-tax {
+  display:inline-flex; align-items:center; gap:6px;
+  padding:8px 16px; border-radius:8px; font-size:13px; font-weight:600;
+  background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.28);
+  color:#fbbf24; cursor:pointer; transition:all 0.2s;
+}
+.btn-tax:hover { background:rgba(245,158,11,0.22); }
+
+/* ── 충전 모달 전용 ─────────────────────────────────── */
+.charge-account-box {
+  background:var(--bg-hover2); border:1px solid var(--border);
+  border-radius:10px; padding:14px 16px; margin-bottom:16px;
+}
+.charge-account-label { font-size:11px; color:var(--text3); margin-bottom:6px; }
+.charge-account-number { font-size:17px; font-weight:800; color:var(--text-title); display:flex; align-items:center; gap:10px; }
+.copy-btn {
+  padding:3px 10px; border-radius:5px; font-size:11px; font-weight:700;
+  background:rgba(0,212,255,0.15); border:1px solid rgba(0,212,255,0.3);
+  color:var(--cyan); cursor:pointer; transition:all 0.15s;
+}
+.copy-btn:hover { background:rgba(0,212,255,0.25); }
+.charge-account-sub { font-size:12px; color:var(--text3); margin-top:4px; }
+.charge-notice {
+  background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,0.2);
+  border-radius:8px; padding:12px 14px; font-size:12px; color:#fbbf24;
+  line-height:1.7; margin-bottom:16px;
+}
+
+/* ── 세금계산서 체크 ─────────────────────────────────── */
+.tax-check-row {
+  display:flex; align-items:flex-start; gap:12px;
+  background:var(--bg-hover2); border:1px solid var(--border);
+  border-radius:10px; padding:14px 16px; margin-bottom:18px; cursor:pointer;
+}
+.tax-check-row input[type=checkbox] { accent-color:#7c3aed; width:16px; height:16px; margin-top:2px; flex-shrink:0; }
+.tax-check-label { font-size:13px; font-weight:600; color:var(--text); margin-bottom:3px; }
+.tax-check-sub   { font-size:11px; color:var(--text3); }
+
+/* ── 거래내역 테이블 ─────────────────────────────────── */
+.tx-table { width:100%; border-collapse:collapse; }
+.tx-table th { font-size:11px; color:var(--text3); font-weight:600; padding:9px 14px;
+  border-bottom:1px solid var(--border); text-align:left; background:var(--bg-table-head); }
+.tx-table td { padding:11px 14px; border-bottom:1px solid var(--border); font-size:13px; color:var(--text2); }
+.tx-table tr:last-child td { border-bottom:none; }
+.tx-in  { color:#4ade80; font-weight:700; }
+.tx-out { color:#f87171; font-weight:700; }
+.tx-badge { display:inline-flex; padding:2px 8px; border-radius:20px; font-size:11px; font-weight:600; }
+.tx-badge.in  { background:rgba(34,197,94,0.12); color:#4ade80; }
+.tx-badge.out { background:rgba(239,68,68,0.1); color:#f87171; }
+.tx-badge.pending { background:rgba(251,191,36,0.12); color:#fbbf24; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+<script src="js/app.js"></script>
+
+<!-- ── 충전하기 모달 ──────────────────────────────────────────── -->
+<div class="billing-modal" id="chargeModal">
+  <div class="modal-box" style="width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div class="modal-title">충전하기</div>
+      <button onclick="closeModal('chargeModal')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:22px;line-height:1">×</button>
+    </div>
+    <div class="charge-account-box">
+      <div class="charge-account-label">입금 계좌 정보</div>
+      <div class="charge-account-number">
+        신한은행 110559727521
+        <button class="copy-btn" onclick="copyAccount()">복사</button>
+      </div>
+      <div class="charge-account-sub">예금주: 이페성</div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="form-label">충전 금액 <span style="color:#ef4444">*</span></label>
+      <input type="number" class="form-input" id="charge-amount" placeholder="충전할 금액을 입력하세요" min="10000" step="1000">
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap" id="charge-quick-btns"></div>
+    </div>
+    <div style="margin-bottom:14px">
+      <label class="form-label">입금자명 <span style="color:#ef4444">*</span></label>
+      <input type="text" class="form-input" id="charge-depositor" placeholder="입금자명을 입력해주세요">
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="form-label">휴대폰 번호 <span style="color:var(--text3);font-size:10px;font-weight:400">(알림톡 수신용, 선택)</span></label>
+      <input type="tel" class="form-input" id="charge-phone" placeholder="01012345678 (하이픈 없이)">
+    </div>
+    <div class="charge-notice">
+      ⚠ 위 계좌로 입금하시면 자동으로 확인됩니다.<br>
+      입금 확인은 보통 1분 이내에 완료됩니다.<br>
+      휴대폰 번호 입력 시 입금 완료 알림톡이 발송됩니다.
+    </div>
+    <button onclick="requestCharge()" class="btn-upgrade" style="width:100%;padding:13px;justify-content:center;font-size:15px">충전 요청하기</button>
+  </div>
+</div>
+
+<!-- ── 세금계산서 설정 모달 ─────────────────────────────────────── -->
+<div class="billing-modal" id="taxModal">
+  <div class="modal-box" style="width:460px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+      <div class="modal-title">🧾 세금계산서 설정</div>
+      <button onclick="closeModal('taxModal')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:22px;line-height:1">×</button>
+    </div>
+    <label class="tax-check-row">
+      <input type="checkbox" id="tax-issue-check" onchange="toggleTaxFields()">
+      <div>
+        <div class="tax-check-label">세금계산서 발행 요청</div>
+        <div class="tax-check-sub">체크 시 충전 금액에 대해 세금계산서가 발행됩니다</div>
+      </div>
+    </label>
+    <div id="tax-fields" style="opacity:0.5">
+      <div style="margin-bottom:14px">
+        <label class="form-label">사업자등록번호 <span style="color:#ef4444">*</span></label>
+        <input type="text" class="form-input" id="tax-biz-no" placeholder="000-00-00000" maxlength="12">
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">상호명 <span style="color:#ef4444">*</span></label>
+        <input type="text" class="form-input" id="tax-company" placeholder="상호명을 입력해주세요">
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="form-label">대표자명 <span style="color:#ef4444">*</span></label>
+        <input type="text" class="form-input" id="tax-ceo" placeholder="대표자명을 입력해주세요">
+      </div>
+      <div style="margin-bottom:20px">
+        <label class="form-label">이메일 <span style="color:#ef4444">*</span></label>
+        <input type="email" class="form-input" id="tax-email" placeholder="세금계산서 수신 이메일">
+      </div>
+    </div>
+    <button onclick="saveTaxSettings()" class="btn-upgrade" style="width:100%;padding:12px;justify-content:center;font-size:14px">✓ 저장하기</button>
+  </div>
+</div>
+
+<!-- ── 거래 내역 모달 ────────────────────────────────────────────── -->
+<div class="billing-modal" id="txModal">
+  <div class="modal-box" style="width:600px;max-height:80vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-shrink:0">
+      <div class="modal-title">↩ 거래 내역</div>
+      <button onclick="closeModal('txModal')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:22px;line-height:1">×</button>
+    </div>
+    <div style="display:flex;gap:6px;margin-bottom:14px;flex-shrink:0">
+      <button id="tx-tab-all" class="btn-charge primary" onclick="switchTxTab('all')" style="font-size:12px;padding:6px 14px">전체</button>
+      <button id="tx-tab-in"  class="btn-charge" onclick="switchTxTab('in')" style="font-size:12px;padding:6px 14px">충전</button>
+      <button id="tx-tab-out" class="btn-charge" onclick="switchTxTab('out')" style="font-size:12px;padding:6px 14px">사용</button>
+    </div>
+    <div id="tx-table-wrap" style="overflow-y:auto;flex:1"></div>
+  </div>
+</div>
+
+<!-- ── 결제 수단 등록 모달 ────────────────────────────────────────────── -->
+<div class="billing-modal" id="paymentModal">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+      <div>
+        <div class="modal-title">결제 수단 등록</div>
+        <div class="modal-sub">카드 정보를 입력하세요 (실결제 없음)</div>
+      </div>
+      <button onclick="closeModal('paymentModal')" style="background:none;border:none;color:var(--text3);cursor:pointer;padding:2px;"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+
+    <div style="margin-bottom:14px;">
+      <label class="form-label">카드사</label>
+      <div class="brand-grid">
+        <button class="brand-btn active" data-brand="VISA" onclick="selectBrand(this)">VISA</button>
+        <button class="brand-btn" data-brand="MASTER" onclick="selectBrand(this)">MASTER</button>
+        <button class="brand-btn" data-brand="KB" onclick="selectBrand(this)">KB카드</button>
+        <button class="brand-btn" data-brand="SHINHAN" onclick="selectBrand(this)">신한</button>
+      </div>
+    </div>
+    <div style="margin-bottom:14px;">
+      <label class="form-label">카드 번호 끝 4자리</label>
+      <input type="text" class="form-input" id="cardLast4" placeholder="1234" maxlength="4" pattern="[0-9]*" inputmode="numeric">
+    </div>
+    <div class="form-row" style="margin-bottom:20px;">
+      <div>
+        <label class="form-label">유효기간</label>
+        <input type="text" class="form-input" id="cardExpiry" placeholder="MM/YY" maxlength="5">
+      </div>
+      <div>
+        <label class="form-label">카드 별칭 (선택)</label>
+        <input type="text" class="form-input" id="cardAlias" placeholder="ex) 법인카드">
+      </div>
+    </div>
+    <button class="btn-primary w-full" onclick="savePaymentMethod()" style="width:100%;padding:12px;justify-content:center;font-size:14px;">
+      카드 등록하기
+    </button>
+  </div>
+</div>
+
+<!-- ── 구독 취소 확인 모달 ─────────────────────────────────────── -->
+<div class="billing-modal cancel-modal" id="cancelModal">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;">
+      <div class="modal-title" style="color:#f87171;">구독 취소</div>
+      <button onclick="closeModal('cancelModal')" style="background:none;border:none;color:var(--text3);cursor:pointer;"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="cancel-warn">
+      ⚠️ 구독을 취소하면 <strong>현재 결제 주기 종료 시</strong> 무료 플랜으로 전환됩니다.<br><br>
+      • 등록된 플레이스 5개 초과 시 비활성화<br>
+      • 등록된 키워드 30개 초과 시 비활성화<br>
+      • 결제 내역은 계속 열람 가능
+    </div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:20px;">
+      현재 플랜: <strong style="color:#a78bfa;">Pro</strong> — 다음 결제일(<strong>2026년 4월 19일</strong>)까지 Pro 기능을 계속 사용할 수 있습니다.
+    </p>
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeModal('cancelModal')" class="btn-secondary" style="flex:1;padding:11px;justify-content:center;">유지하기</button>
+      <button onclick="confirmCancel()" class="btn-cancel" style="flex:1;padding:11px;">취소 확인</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 잔액 & 거래내역 Mock ──────────────────────────────────
+let BALANCE = 52000;
+const TX_HISTORY = [
+  { id:'TX-0012', date:'2026-03-19 14:30', type:'in',  desc:'충전 (신한은행)', amount: 100000, status:'completed' },
+  { id:'TX-0011', date:'2026-03-18 10:12', type:'out', desc:'블로그A 주문 (ORD-0041)', amount:-15000, status:'completed' },
+  { id:'TX-0010', date:'2026-03-17 09:20', type:'out', desc:'SNSA 주문 (ORD-0040)', amount:-89000, status:'completed' },
+  { id:'TX-0009', date:'2026-03-15 16:00', type:'in',  desc:'충전 (신한은행)', amount: 200000, status:'completed' },
+  { id:'TX-0008', date:'2026-03-12 11:30', type:'out', desc:'유입A 주문 (ORD-0039)', amount:-45000, status:'completed' },
+  { id:'TX-0007', date:'2026-03-10 08:00', type:'out', desc:'영수증A 주문 (ORD-0037)', amount:-100000, status:'completed' },
+  { id:'TX-0006', date:'2026-03-05 13:00', type:'in',  desc:'충전 (신한은행)', amount: 300000, status:'completed' },
+  { id:'TX-0005', date:'2026-02-28 09:00', type:'out', desc:'Pro 플랜 구독 결제', amount:-79000, status:'completed' },
+  { id:'TX-0004', date:'2026-02-20 15:00', type:'in',  desc:'충전 (신한은행)', amount: 100000, status:'completed' },
+  { id:'TX-0003', date:'2026-02-10 10:00', type:'out', desc:'블로그B 주문', amount:-90000, status:'completed' },
+];
+let currentTxTab = 'all';
+let taxSettings = { enabled:false, bizNo:'', company:'', ceo:'', email:'' };
+
+// ── Mock 데이터 ──────────────────────────────────────────────
+const SUBSCRIPTION = {
+  plan: 'pro',
+  label: 'Pro',
+  billing_cycle: 'monthly',
+  status: 'active',
+  amount: 79000,
+  next_billing_date: '2026-04-19',
+  started_at: '2026-03-19',
+};
+
+const PLAN_LIMITS = {
+  pro: { places: 20, keywords: 100, crawl_per_day: 4 },
+};
+const USAGE = {
+  places: 7, keywords: 43, crawl_today: 2,
+  orders_this_month: 5, order_limit: 99,
+};
+
+const PAYMENT_METHOD = {
+  brand: 'VISA', last4: '4242', expiry: '08/27', alias: '법인카드',
+};
+
+// 월별 결제 내역 Mock
+const BILLING_HISTORY = [
+  { id:'BH-0011', date:'2026-03-19', type:'upgrade',   plan:'pro',     cycle:'monthly', amount:79000, status:'paid',    pg_id:'mock_upgrade_1742340000', desc:'Pro 플랜 업그레이드' },
+  { id:'BH-0010', date:'2026-02-19', type:'payment',   plan:'pro',     cycle:'monthly', amount:79000, status:'paid',    pg_id:'mock_payment_1739661600', desc:'월간 구독 결제' },
+  { id:'BH-0009', date:'2026-01-19', type:'payment',   plan:'pro',     cycle:'monthly', amount:79000, status:'paid',    pg_id:'mock_payment_1737069600', desc:'월간 구독 결제' },
+  { id:'BH-0008', date:'2025-12-19', type:'payment',   plan:'starter', cycle:'monthly', amount:29000, status:'paid',    pg_id:'mock_payment_1734523200', desc:'월간 구독 결제' },
+  { id:'BH-0007', date:'2025-11-19', type:'payment',   plan:'starter', cycle:'monthly', amount:29000, status:'paid',    pg_id:'mock_payment_1731931200', desc:'월간 구독 결제' },
+  { id:'BH-0006', date:'2025-10-19', type:'payment',   plan:'starter', cycle:'monthly', amount:29000, status:'paid',    pg_id:'mock_payment_1729339200', desc:'월간 구독 결제' },
+  { id:'BH-0005', date:'2025-09-19', type:'upgrade',   plan:'starter', cycle:'monthly', amount:29000, status:'paid',    pg_id:'mock_upgrade_1726747200', desc:'Starter 플랜 시작' },
+  { id:'BH-0004', date:'2025-09-01', type:'refund',    plan:'starter', cycle:'monthly', amount:-29000,status:'refunded',pg_id:'mock_refund_1725148800', desc:'환불 처리' },
+  { id:'BH-0003', date:'2025-08-19', type:'payment',   plan:'starter', cycle:'monthly', amount:29000, status:'failed',  pg_id:'mock_payment_1724076800', desc:'카드 한도 초과' },
+  { id:'BH-0002', date:'2025-07-19', type:'upgrade',   plan:'starter', cycle:'monthly', amount:29000, status:'paid',    pg_id:'mock_upgrade_1752928000', desc:'Starter 플랜 업그레이드' },
+  { id:'BH-0001', date:'2025-06-01', type:'signup',    plan:'free',    cycle:'-',       amount:0,     status:'paid',    pg_id:'-',                       desc:'무료 플랜 시작' },
+];
+
+const PAGE_SIZE = 6;
+let currentPage = 1;
+let selectedBrand = 'VISA';
+
+// ── 유틸 ──────────────────────────────────────────────────────
+function formatKRW(n) {
+  if (n === 0) return '무료';
+  const abs = Math.abs(n);
+  const str = abs >= 10000
+    ? (abs / 10000 % 1 === 0 ? `${abs/10000}만원` : `₩${abs.toLocaleString()}`)
+    : `₩${abs.toLocaleString()}`;
+  return n < 0 ? `- ${str}` : str;
+}
+function formatDate(str) {
+  const d = new Date(str);
+  return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')}`;
+}
+
+// ── 페이지 렌더 ───────────────────────────────────────────────
+function renderPage() {
+  const limits = PLAN_LIMITS.pro;
+
+  const html = `
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">구독 · 결제</h1>
+      <p class="page-subtitle">플랜 현황, 결제 수단, 결제 내역을 관리합니다</p>
+    </div>
+    <div style="display:flex;gap:10px;">
+      <button class="btn-secondary" onclick="openModal('paymentModal')">
+        ${iconCreditCard()} 결제 수단 변경
+      </button>
+      <a href="upgrade.html" style="text-decoration:none;">
+        <button class="btn-upgrade">
+          ${iconZap()} 플랜 변경
+        </button>
+      </a>
+    </div>
+  </div>
+
+  <!-- ── 상단 2열 레이아웃 ─────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;margin-bottom:20px;">
+
+    <!-- 현재 플랜 카드 -->
+    <div class="plan-hero">
+      <div class="plan-hero-title">현재 플랜</div>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;">
+        <div class="plan-hero-name">Pro 플랜</div>
+        <span class="plan-badge plan-pro">● Active</span>
+      </div>
+      <div class="plan-hero-price">
+        월 <strong>${formatKRW(SUBSCRIPTION.amount)}</strong> (월간 결제)
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+        <span class="next-billing">
+          📅 다음 결제일: ${formatDate(SUBSCRIPTION.next_billing_date)}
+        </span>
+        <button class="btn-cancel" onclick="openModal('cancelModal')" style="padding:5px 14px;font-size:12px;">
+          구독 취소
+        </button>
+      </div>
+    </div>
+
+    <!-- 결제 수단 카드 -->
+    <div class="card">
+      <div class="card-header" style="margin-bottom:16px;">
+        <div class="card-title" style="font-size:14px;">등록된 결제 수단</div>
+      </div>
+      <div class="payment-card">
+        <div class="card-icon">${PAYMENT_METHOD.brand}</div>
+        <div class="card-info">
+          <div class="card-number">•••• •••• •••• ${PAYMENT_METHOD.last4}</div>
+          <div class="card-expiry">유효기간 ${PAYMENT_METHOD.expiry} · ${PAYMENT_METHOD.alias}</div>
+        </div>
+      </div>
+      <button onclick="openModal('paymentModal')" class="btn-secondary" style="width:100%;margin-top:12px;padding:9px;justify-content:center;font-size:12px;">
+        ${iconEdit()} 결제 수단 변경
+      </button>
+    </div>
+  </div>
+
+  <!-- ── 사용량 현황 ────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-header" style="margin-bottom:20px;">
+      <div class="card-title">사용량 현황</div>
+      <span class="plan-badge plan-pro">Pro 한도 기준</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:24px;">
+      ${renderUsageBar('등록 플레이스', USAGE.places, limits.places, 'cyan')}
+      ${renderUsageBar('등록 키워드', USAGE.keywords, limits.keywords, 'cyan')}
+      ${renderUsageBar('오늘 크롤링', USAGE.crawl_today, limits.crawl_per_day, 'green')}
+    </div>
+  </div>
+
+  <!-- ── 결제 내역 ──────────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header" style="margin-bottom:4px;">
+      <div class="card-title">결제 내역</div>
+      <span style="font-size:12px;color:var(--text3);">총 ${BILLING_HISTORY.length}건</span>
+    </div>
+    <div id="history-table-wrap"></div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+  `;
+
+  document.getElementById('main-content').innerHTML = html;
+  renderHistoryTable();
+  insertBalanceBar();
+}
+
+function renderUsageBar(label, used, max, colorClass) {
+  const isUnlimited = max >= 999;
+  const pct = isUnlimited ? 0 : Math.min(100, Math.round(used / max * 100));
+  const color = pct >= 90 ? 'red' : pct >= 75 ? 'yellow' : colorClass;
+  return `
+  <div class="usage-item">
+    <div class="usage-header">
+      <span>${label}</span>
+      <span>${isUnlimited ? `${used} / ∞` : `${used} / ${max}`}</span>
+    </div>
+    <div class="usage-bar">
+      <div class="usage-fill ${color}" style="width:${isUnlimited ? 30 : pct}%"></div>
+    </div>
+    ${pct >= 80 && !isUnlimited ? `<div style="font-size:11px;color:#fbbf24;margin-top:4px;">⚠ 한도의 ${pct}% 사용 중</div>` : ''}
+  </div>`;
+}
+
+function renderHistoryTable() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  const slice = BILLING_HISTORY.slice(start, start + PAGE_SIZE);
+  const totalPages = Math.ceil(BILLING_HISTORY.length / PAGE_SIZE);
+
+  const typeMap = {
+    upgrade: '플랜 업그레이드', downgrade: '플랜 다운그레이드',
+    payment: '정기 결제', refund: '환불', cancel: '구독 취소', signup: '가입',
+  };
+  const statusMap = {
+    paid: ['pay-paid','결제완료'],
+    pending: ['pay-pending','처리중'],
+    failed: ['pay-failed','실패'],
+    refunded: ['pay-refunded','환불'],
+  };
+  const planMap = { free:'Free', starter:'Starter', pro:'Pro', enterprise:'Enterprise' };
+
+  const rows = slice.map(h => {
+    const [cls, label] = statusMap[h.status] || ['','—'];
+    const amtColor = h.amount < 0 ? 'color:#f87171' : h.amount === 0 ? 'color:var(--text3)' : '';
+    return `
+    <tr>
+      <td style="color:var(--text3);font-size:12px;">${formatDate(h.date)}</td>
+      <td>${typeMap[h.type] || h.type}</td>
+      <td><span class="plan-badge plan-${h.plan}">${planMap[h.plan]||h.plan}</span></td>
+      <td><span class="pay-badge ${cls}">${label}</span></td>
+      <td class="amount-col" style="${amtColor}">${formatKRW(h.amount)}</td>
+      <td style="font-size:11px;color:var(--text3);font-family:monospace;">${h.pg_id}</td>
+      <td style="color:var(--text3)">${h.desc}</td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('history-table-wrap').innerHTML = `
+  <div style="overflow-x:auto;">
+    <table class="billing-table">
+      <thead>
+        <tr>
+          <th>날짜</th><th>유형</th><th>플랜</th><th>상태</th>
+          <th>금액</th><th>트랜잭션 ID</th><th>메모</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+
+  // 페이지네이션
+  let pages = `
+  <button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    pages += `<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  }
+  pages += `<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+  document.getElementById('pagination').innerHTML = pages;
+}
+
+function goPage(n) {
+  const total = Math.ceil(BILLING_HISTORY.length / PAGE_SIZE);
+  if (n < 1 || n > total) return;
+  currentPage = n;
+  renderHistoryTable();
+}
+
+// ── 모달 (billing 전용: .billing-modal + open 클래스) ──────────
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('open');
+  document.body.style.overflow = '';
+}
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('billing-modal')) closeModal(e.target.id);
+});
+
+function selectBrand(el) {
+  document.querySelectorAll('.brand-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedBrand = el.dataset.brand;
+}
+
+function savePaymentMethod() {
+  const last4  = document.getElementById('cardLast4').value.trim();
+  const expiry = document.getElementById('cardExpiry').value.trim();
+  if (!last4 || last4.length !== 4 || !/^\d+$/.test(last4)) {
+    showToast('카드 번호 끝 4자리를 정확히 입력해 주세요.', 'error'); return;
+  }
+  if (!expiry || !/^\d{2}\/\d{2}$/.test(expiry)) {
+    showToast('유효기간을 MM/YY 형식으로 입력해 주세요.', 'error'); return;
+  }
+  closeModal('paymentModal');
+  showToast('결제 수단이 등록되었습니다.', 'success');
+  PAYMENT_METHOD.brand  = selectedBrand;
+  PAYMENT_METHOD.last4  = last4;
+  PAYMENT_METHOD.expiry = expiry;
+  PAYMENT_METHOD.alias  = document.getElementById('cardAlias').value || '내 카드';
+  renderPage();
+}
+
+function confirmCancel() {
+  closeModal('cancelModal');
+  showToast('구독이 취소되었습니다. 다음 결제일까지 Pro 기능을 계속 사용할 수 있습니다.', 'success');
+}
+
+// ── 잔액 헤더바 삽입 ─────────────────────────────────────────
+function insertBalanceBar() {
+  const mc = document.getElementById('main-content');
+  if (!mc || document.getElementById('balance-bar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'balance-bar';
+  bar.className = 'balance-bar';
+  bar.innerHTML = `
+    <div class="balance-wallet-icon">
+      <svg width="18" height="18" fill="none" stroke="#a78bfa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+        <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 11h2"/>
+      </svg>
+    </div>
+    <div class="balance-info">
+      <div class="balance-label">보유잔액</div>
+      <div class="balance-amount" id="balance-display">₩${BALANCE.toLocaleString()}</div>
+    </div>
+    <div class="balance-bar-actions">
+      <button class="btn-charge primary" onclick="openModal('chargeModal');initChargeQuickBtns()">+ 충전하기</button>
+      <button class="btn-charge" onclick="openTxModal()">↩ 거래 내역</button>
+      <button class="btn-tax" onclick="openTaxModal()">🧾 세금계산서</button>
+    </div>
+  `;
+  mc.insertBefore(bar, mc.firstChild);
+}
+
+// ── 충전 관련 ────────────────────────────────────────────────
+function initChargeQuickBtns() {
+  const wrap = document.getElementById('charge-quick-btns');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  [10000, 30000, 50000, 100000, 300000, 500000].forEach(a => {
+    const btn = document.createElement('button');
+    btn.textContent = a.toLocaleString() + '원';
+    btn.style.cssText = 'padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text2);font-size:12px;cursor:pointer;transition:all 0.15s';
+    btn.onmouseover = () => { btn.style.borderColor = 'var(--cyan)'; btn.style.color = 'var(--cyan)'; };
+    btn.onmouseout  = () => { btn.style.borderColor = 'var(--border)'; btn.style.color = 'var(--text2)'; };
+    btn.onclick = () => { document.getElementById('charge-amount').value = a; };
+    wrap.appendChild(btn);
+  });
+}
+function copyAccount() {
+  navigator.clipboard.writeText('110559727521')
+    .then(() => toast('계좌번호가 복사되었습니다', 'success'))
+    .catch(() => toast('직접 입력해 주세요: 110559727521', 'error'));
+}
+function requestCharge() {
+  const amount = parseInt(document.getElementById('charge-amount')?.value);
+  const depositor = document.getElementById('charge-depositor')?.value.trim();
+  if (!amount || amount < 10000) { toast('최소 충전 금액은 ₩10,000입니다', 'error'); return; }
+  if (!depositor) { toast('입금자명을 입력해 주세요', 'error'); return; }
+  BALANCE += amount;
+  TX_HISTORY.unshift({
+    id: 'TX-' + String(TX_HISTORY.length + 1).padStart(4, '0'),
+    date: new Date().toLocaleDateString('ko-KR') + ' ' + new Date().toLocaleTimeString('ko-KR', { hour:'2-digit', minute:'2-digit' }),
+    type: 'in', desc: `충전 (${depositor})`, amount, status: 'pending',
+  });
+  closeModal('chargeModal');
+  const bdEl = document.getElementById('balance-display');
+  if (bdEl) bdEl.textContent = '₩' + BALANCE.toLocaleString();
+  toast(`₩${amount.toLocaleString()} 충전 요청이 접수되었습니다. 입금 확인 후 자동 처리됩니다.`, 'success');
+  document.getElementById('charge-amount').value = '';
+  document.getElementById('charge-depositor').value = '';
+  if (document.getElementById('charge-phone')) document.getElementById('charge-phone').value = '';
+}
+
+// ── 세금계산서 ───────────────────────────────────────────────
+function openTaxModal() {
+  document.getElementById('tax-issue-check').checked = taxSettings.enabled;
+  document.getElementById('tax-biz-no').value   = taxSettings.bizNo;
+  document.getElementById('tax-company').value  = taxSettings.company;
+  document.getElementById('tax-ceo').value      = taxSettings.ceo;
+  document.getElementById('tax-email').value    = taxSettings.email;
+  document.getElementById('tax-fields').style.opacity = taxSettings.enabled ? '1' : '0.5';
+  openModal('taxModal');
+}
+function toggleTaxFields() {
+  const checked = document.getElementById('tax-issue-check').checked;
+  document.getElementById('tax-fields').style.opacity = checked ? '1' : '0.5';
+}
+function saveTaxSettings() {
+  const enabled = document.getElementById('tax-issue-check').checked;
+  if (enabled) {
+    const bizNo   = document.getElementById('tax-biz-no').value.trim();
+    const company = document.getElementById('tax-company').value.trim();
+    const ceo     = document.getElementById('tax-ceo').value.trim();
+    const email   = document.getElementById('tax-email').value.trim();
+    if (!bizNo)                       { toast('사업자등록번호를 입력해 주세요', 'error'); return; }
+    if (!company)                     { toast('상호명을 입력해 주세요', 'error'); return; }
+    if (!ceo)                         { toast('대표자명을 입력해 주세요', 'error'); return; }
+    if (!email || !email.includes('@')){ toast('올바른 이메일을 입력해 주세요', 'error'); return; }
+    taxSettings = { enabled, bizNo, company, ceo, email };
+  } else {
+    taxSettings.enabled = false;
+  }
+  closeModal('taxModal');
+  toast(enabled ? '세금계산서 발행 설정이 저장되었습니다' : '세금계산서 발행이 해제되었습니다', 'success');
+}
+
+// ── 거래 내역 ────────────────────────────────────────────────
+function openTxModal() {
+  currentTxTab = 'all';
+  ['all','in','out'].forEach(t => {
+    const btn = document.getElementById('tx-tab-' + t);
+    if (btn) btn.className = t === 'all' ? 'btn-charge primary' : 'btn-charge';
+  });
+  renderTxTable();
+  openModal('txModal');
+}
+function switchTxTab(tab) {
+  currentTxTab = tab;
+  ['all','in','out'].forEach(t => {
+    const btn = document.getElementById('tx-tab-' + t);
+    if (btn) btn.className = t === tab ? 'btn-charge primary' : 'btn-charge';
+  });
+  renderTxTable();
+}
+function renderTxTable() {
+  const list = currentTxTab === 'all' ? TX_HISTORY : TX_HISTORY.filter(t => t.type === currentTxTab);
+  const wrap = document.getElementById('tx-table-wrap');
+  if (!wrap) return;
+  if (!list.length) {
+    wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--text3);font-size:13px">내역이 없습니다</div>';
+    return;
+  }
+  wrap.innerHTML = `
+  <table class="tx-table">
+    <thead><tr><th>일시</th><th>구분</th><th>내역</th><th>금액</th><th>상태</th></tr></thead>
+    <tbody>
+      ${list.map(t => `
+        <tr>
+          <td style="font-size:11px;color:var(--text3);white-space:nowrap">${t.date}</td>
+          <td><span class="tx-badge ${t.type}">${t.type === 'in' ? '충전' : '사용'}</span></td>
+          <td style="color:var(--text2);font-size:12px">${t.desc}</td>
+          <td class="${t.type === 'in' ? 'tx-in' : 'tx-out'}">${t.type === 'in' ? '+' : ''}${t.amount.toLocaleString()}원</td>
+          <td><span class="tx-badge ${t.status === 'pending' ? 'pending' : t.type}">${t.status === 'pending' ? '처리중' : '완료'}</span></td>
+        </tr>`).join('')}
+    </tbody>
+  </table>`;
+}
+
+// ── 초기화 ─────────────────────────────────────────────────────
+renderLayout({ title: '구독·결제', activePage: 'billing.html' });
+renderPage();
+</script>
+</body>
+</html>

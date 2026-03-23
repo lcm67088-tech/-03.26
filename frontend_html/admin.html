@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 어드민 대시보드</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ── KPI 카드 ─────────────────────────────── */
+.kpi-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+.kpi-card {
+  background:var(--bg2);
+  border:1px solid var(--border);
+  border-radius:12px; padding:18px 20px;
+  position:relative; overflow:hidden;
+  transition:border-color .2s;
+}
+.kpi-card:hover { border-color:var(--border2); }
+.kpi-card::after {
+  content:''; position:absolute;
+  top:-30px; right:-30px;
+  width:90px; height:90px; border-radius:50%;
+  opacity:.08;
+}
+.kpi-card.cyan::after  { background:var(--cyan); }
+.kpi-card.purple::after { background:#7c3aed; }
+.kpi-card.green::after  { background:#22c55e; }
+.kpi-card.amber::after  { background:#f59e0b; }
+.kpi-label { font-size:11px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:.5px; margin-bottom:8px; }
+.kpi-value { font-size:26px; font-weight:800; color:var(--text-title); margin-bottom:4px; font-variant-numeric:tabular-nums; }
+.kpi-change { font-size:11px; }
+.kpi-change.up   { color:#4ade80; }
+.kpi-change.down { color:#f87171; }
+.kpi-change.flat { color:var(--text3); }
+.kpi-icon {
+  position:absolute; top:18px; right:18px;
+  font-size:20px; opacity:.5;
+}
+
+/* ── 차트 섹션 ────────────────────────────── */
+.chart-grid { display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:20px; }
+.chart-wrap { position:relative; height:240px; }
+
+/* ── 주문 상태 테이블 ──────────────────────── */
+.admin-table { width:100%; border-collapse:collapse; }
+.admin-table th {
+  font-size:11px; font-weight:600; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.5px;
+  padding:10px 14px; border-bottom:1px solid var(--border); text-align:left;
+}
+.admin-table td {
+  padding:12px 14px; border-bottom:1px solid var(--border);
+  font-size:13px; color:var(--text2); vertical-align:middle;
+}
+.admin-table tr:last-child td { border-bottom:none; }
+.admin-table tr:hover td { background:var(--bg-row-hover); }
+.monospace { font-family:monospace; font-size:12px; }
+
+/* ── 상태 뱃지 ────────────────────────────── */
+.status-badge {
+  display:inline-flex; align-items:center; gap:4px;
+  padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600;
+}
+.s-pending    { background:rgba(251,191,36,0.12); color:#fbbf24; }
+.s-confirmed  { background:rgba(0,212,255,0.12);  color:#00d4ff; }
+.s-inprogress { background:rgba(99,102,241,0.12); color:#a5b4fc; }
+.s-completed  { background:rgba(34,197,94,0.12);  color:#4ade80; }
+.s-cancelled  { background:rgba(239,68,68,0.12);  color:#f87171; }
+.s-refund     { background:rgba(168,85,247,0.12); color:#c084fc; }
+
+/* ── 매체사 뱃지 ─────────────────────────── */
+.media-badge {
+  display:inline-block;
+  background:var(--bg-hover2);
+  border:1px solid var(--border);
+  border-radius:6px; padding:2px 8px;
+  font-size:11px; color:var(--text2);
+}
+
+/* ── 플랜 분포 바 ──────────────────────────── */
+.dist-bar-wrap { margin-bottom:10px; }
+.dist-header { display:flex; justify-content:space-between; font-size:12px; margin-bottom:5px; }
+.dist-bar { height:8px; background:var(--border); border-radius:4px; overflow:hidden; }
+.dist-fill { height:100%; border-radius:4px; }
+.dist-free       { background:#6b7280; }
+.dist-starter    { background:#00d4ff; }
+.dist-pro        { background:#7c3aed; }
+.dist-enterprise { background:#f59e0b; }
+
+/* ── 최근 활동 피드 ─────────────────────────── */
+.activity-item {
+  display:flex; gap:12px; padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.activity-item:last-child { border-bottom:none; }
+.activity-dot {
+  width:8px; height:8px; border-radius:50%;
+  flex-shrink:0; margin-top:5px;
+}
+.activity-text { font-size:12px; color:var(--text2); line-height:1.5; }
+.activity-time { font-size:11px; color:var(--text3); margin-top:2px; }
+
+/* ── 필터 버튼 ─────────────────────────────── */
+.filter-tabs {
+  display:flex; gap:4px;
+  background:var(--bg-tab);
+  border:1px solid var(--border);
+  border-radius:8px; padding:3px;
+}
+.filter-tab {
+  padding:5px 12px; border-radius:5px; border:none;
+  background:none; color:var(--text3); font-size:12px; font-weight:500;
+  cursor:pointer; transition:all .15s;
+}
+.filter-tab.active { background:var(--bg-hover); color:var(--text-title); font-weight:600; }
+.filter-tab:hover:not(.active) { color:var(--text2); }
+
+/* ── 모달 ─────────────────────────────────── */
+.modal-overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.7); z-index:1000;
+  align-items:center; justify-content:center;
+}
+.modal-overlay.show { display:flex; }
+.modal-box {
+  background:var(--bg-modal);
+  border:1px solid var(--border);
+  border-radius:16px; padding:28px 30px;
+  width:500px; max-width:calc(100vw-40px);
+  max-height:90vh; overflow-y:auto;
+}
+.modal-title { font-size:17px; font-weight:700; color:var(--text-title); margin-bottom:4px; }
+.modal-sub   { font-size:13px; color:var(--text3); margin-bottom:20px; }
+.form-label { font-size:12px; font-weight:600; color:var(--text3); margin-bottom:6px; display:block; text-transform:uppercase; letter-spacing:.4px; }
+.form-select {
+  width:100%; background:var(--bg-input);
+  border:1px solid var(--border-input); border-radius:8px;
+  padding:10px 12px; color:var(--text); font-size:14px;
+  outline:none; cursor:pointer; box-sizing:border-box; font-family:inherit;
+}
+.form-select option { background:var(--bg3); color:var(--text); }
+.form-textarea {
+  width:100%; background:var(--bg-input);
+  border:1px solid var(--border-input); border-radius:8px;
+  padding:10px 12px; color:var(--text); font-size:13px;
+  outline:none; resize:vertical; min-height:80px;
+  box-sizing:border-box; font-family:inherit;
+}
+.form-textarea:focus, .form-select:focus { border-color:var(--cyan); }
+
+/* ── 주문 상세 모달 내 타임라인 ────────────── */
+.timeline { padding-left:16px; border-left:2px solid var(--border); }
+.tl-item { position:relative; padding:0 0 14px 20px; }
+.tl-item::before {
+  content:''; position:absolute; left:-9px; top:5px;
+  width:10px; height:10px; border-radius:50%;
+  background:var(--border); border:2px solid #1a1a2e;
+}
+.tl-item.done::before { background:var(--cyan); }
+.tl-item.active::before { background:#7c3aed; box-shadow:0 0 6px rgba(124,58,237,0.5); }
+.tl-status { font-size:13px; font-weight:600; color:var(--text2); }
+.tl-time   { font-size:11px; color:var(--text3); margin-top:2px; }
+
+/* ── 통계 숫자 섹션 ───────────────────────── */
+.stat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.stat-item {
+  background:var(--bg-hover2);
+  border:1px solid var(--border); border-radius:10px;
+  padding:14px 16px; text-align:center;
+}
+.stat-num  { font-size:22px; font-weight:700; color:#fff; margin-bottom:3px; }
+.stat-label{ font-size:11px; color:var(--text3); }
+
+/* ── 반응형 ─────────────────────────────── */
+@media (max-width:1100px) {
+  .kpi-grid { grid-template-columns:repeat(2,1fr); }
+  .chart-grid { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+
+<!-- ── 주문 상세 모달 ──────────────────────────────────────── -->
+<div class="modal-overlay" id="orderModal">
+  <div class="modal-box">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px;">
+      <div>
+        <div class="modal-title" id="modal-order-id">ORD-0042</div>
+        <div class="modal-sub" id="modal-order-desc">블로그 리뷰 10개 · 맛있는 식당 본점</div>
+      </div>
+      <button onclick="closeModal('orderModal')" style="background:none;border:none;color:var(--text3);cursor:pointer;">✕</button>
+    </div>
+    <div id="modal-order-body"></div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script>
+// ── Mock 데이터 ──────────────────────────────────────────────
+
+// KPI
+const KPI = {
+  revenue:   { val: 4820000, prev: 3950000 },
+  orders:    { val: 47,      prev: 38 },
+  workspaces:{ val: 312,     prev: 298 },
+  avg_order: { val: 102553,  prev: 103947 },
+};
+
+// 월별 매출 (6개월)
+const REVENUE_MONTHS = ['10월','11월','12월','1월','2월','3월'];
+const REVENUE_DATA   = [2100000, 2850000, 3200000, 3700000, 3950000, 4820000];
+
+// 주문 상태 도넛
+const ORDER_STATUS_COUNTS = {
+  pending: 5, confirmed: 8, in_progress: 12,
+  completed: 18, cancelled: 3, refund_requested: 1,
+};
+
+// 플랜 분포
+const PLAN_DIST = { free:178, starter:89, pro:38, enterprise:7 };
+const PLAN_TOTAL = Object.values(PLAN_DIST).reduce((a,b)=>a+b,0);
+
+// 최근 주문 목록
+const RECENT_ORDERS = [
+  { id:'ORD-0047', workspace:'핵인싸 마케팅', place:'강남역 스시오마카세', product:'블로그 리뷰 10개',      amount:150000, status:'in_progress',      media:'미디어코리아', created:'2026-03-19', startDate:'2026-03-19', endDate:'2026-03-23' },
+  { id:'ORD-0046', workspace:'맛있는 식당',   place:'맛있는 식당 본점',    product:'인스타 홍보 패키지',   amount:89000,  status:'confirmed',          media:'—',            created:'2026-03-17', startDate:'2026-03-18', endDate:'2026-03-18' },
+  { id:'ORD-0045', workspace:'행복한 카페',   place:'행복한 카페 합정점',  product:'트래픽 유입 500',      amount:45000,  status:'pending',            media:'—',            created:'2026-03-16', startDate:'2026-03-17', endDate:'2026-03-21' },
+  { id:'ORD-0044', workspace:'서울 뷰티샵',   place:'청담 네일아트',       product:'블로그 리뷰 5개',      amount:75000,  status:'completed',          media:'광고닷컴',     created:'2026-03-12', startDate:'2026-03-13', endDate:'2026-03-17' },
+  { id:'ORD-0043', workspace:'IT 스타트업',   place:'판교 IT 카페',        product:'바이럴 마케팅 패키지', amount:299000, status:'refund_requested',   media:'미디어코리아', created:'2026-03-10', startDate:'2026-03-11', endDate:'2026-03-20' },
+  { id:'ORD-0042', workspace:'맛있는 식당',   place:'맛있는 식당 강남점',  product:'트래픽 유입 1000',     amount:88000,  status:'cancelled',          media:'—',            created:'2026-03-08', startDate:'2026-03-09', endDate:'2026-03-13' },
+];
+
+// 매체사 목록
+const MEDIA_COMPANIES = [
+  { id:1, name:'미디어코리아',  orders:24, pending:3, total:2100000, rating:4.8 },
+  { id:2, name:'광고닷컴',      orders:18, pending:1, total:1540000, rating:4.5 },
+  { id:3, name:'블로그팩토리',  orders:12, pending:2, total:980000,  rating:4.2 },
+  { id:4, name:'SNS마스터',     orders:9,  pending:0, total:720000,  rating:4.6 },
+];
+
+// 최근 활동
+const ACTIVITIES = [
+  { color:'#00d4ff', text:'ORD-0047 주문에 미디어코리아 배정',       time:'방금 전' },
+  { color:'#4ade80', text:'ORD-0044 블로그 리뷰 5개 완료 처리',      time:'5분 전' },
+  { color:'#f87171', text:'ORD-0043 환불 요청 접수',                  time:'22분 전' },
+  { color:'#a78bfa', text:'새 워크스페이스 "IT 스타트업" 등록',       time:'1시간 전' },
+  { color:'#fbbf24', text:'핵인싸 마케팅 → Pro 플랜 업그레이드',      time:'2시간 전' },
+  { color:'#00d4ff', text:'ORD-0040 인스타 홍보 패키지 완료',         time:'어제' },
+];
+
+let orderFilter = 'all';
+let charts = {};
+
+// ── 유틸 ──────────────────────────────────────────────────────
+function formatKRW(n) {
+  if (n >= 10000000) return `${(n/10000000).toFixed(1)}천만원`;
+  if (n >= 1000000)  return `${(n/10000000*10).toFixed(1).replace('.0','')}백만원`;
+  if (n >= 10000)    return `${Math.round(n/10000)}만원`;
+  return `₩${n.toLocaleString()}`;
+}
+function changePct(cur, prev) {
+  const pct = Math.round((cur - prev) / prev * 100);
+  const cls = pct > 0 ? 'up' : pct < 0 ? 'down' : 'flat';
+  const icon = pct > 0 ? '▲' : pct < 0 ? '▼' : '—';
+  return `<span class="kpi-change ${cls}">${icon} ${Math.abs(pct)}% 전월 대비</span>`;
+}
+
+const STATUS_MAP = {
+  pending:          ['s-pending',    '결제 대기'],
+  confirmed:        ['s-confirmed',  '주문 확정'],
+  in_progress:      ['s-inprogress', '진행 중'],
+  completed:        ['s-completed',  '완료'],
+  cancelled:        ['s-cancelled',  '취소'],
+  refund_requested: ['s-refund',     '환불 요청'],
+  refunded:         ['s-refund',     '환불 완료'],
+};
+
+function statusBadge(s) {
+  const [cls, lbl] = STATUS_MAP[s] || ['','—'];
+  return `<span class="status-badge ${cls}">${lbl}</span>`;
+}
+
+// ── 페이지 렌더 ───────────────────────────────────────────────
+function renderPage() {
+  const html = `
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">어드민 대시보드</h1>
+      <p class="page-subtitle">nplace.io 서비스 현황을 한눈에 관리합니다</p>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-secondary" onclick="showToast('데이터 새로고침 완료!','success')">
+        🔄 새로고침
+      </button>
+      <span style="background:rgba(0,212,255,0.1);border:1px solid rgba(0,212,255,0.25);border-radius:8px;padding:8px 14px;font-size:12px;color:var(--cyan);font-weight:600;">
+        🛡 어드민 모드
+      </span>
+    </div>
+  </div>
+
+  <!-- ── KPI 그리드 ──────────────────────────────────────── -->
+  <div class="kpi-grid">
+    <div class="kpi-card cyan">
+      <div class="kpi-icon">💰</div>
+      <div class="kpi-label">이번 달 매출</div>
+      <div class="kpi-value">${formatKRW(KPI.revenue.val)}</div>
+      ${changePct(KPI.revenue.val, KPI.revenue.prev)}
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-icon">📦</div>
+      <div class="kpi-label">이번 달 주문</div>
+      <div class="kpi-value">${KPI.orders.val}건</div>
+      ${changePct(KPI.orders.val, KPI.orders.prev)}
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-icon">🏢</div>
+      <div class="kpi-label">전체 워크스페이스</div>
+      <div class="kpi-value">${KPI.workspaces.val.toLocaleString()}</div>
+      ${changePct(KPI.workspaces.val, KPI.workspaces.prev)}
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-label">평균 주문 금액</div>
+      <div class="kpi-value">${formatKRW(KPI.avg_order.val)}</div>
+      ${changePct(KPI.avg_order.val, KPI.avg_order.prev)}
+    </div>
+  </div>
+
+  <!-- ── 차트 2열 ───────────────────────────────────────── -->
+  <div class="chart-grid">
+    <!-- 매출 트렌드 -->
+    <div class="card">
+      <div class="card-header" style="margin-bottom:16px;">
+        <div class="card-title">월별 매출 트렌드</div>
+        <span style="font-size:12px;color:var(--text3);">최근 6개월</span>
+      </div>
+      <div class="chart-wrap"><canvas id="revenueChart"></canvas></div>
+    </div>
+    <!-- 주문 상태 도넛 -->
+    <div class="card">
+      <div class="card-header" style="margin-bottom:16px;">
+        <div class="card-title">주문 상태 분포</div>
+        <span style="font-size:12px;color:var(--text3);">전체 ${KPI.orders.val}건</span>
+      </div>
+      <div class="chart-wrap"><canvas id="statusChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ── 하단 3열 ───────────────────────────────────────── -->
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px;margin-bottom:20px;">
+
+    <!-- 최근 주문 -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+        <div class="card-title">최근 주문</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <div class="filter-tabs">
+            ${['all','pending','in_progress','completed'].map(f=>
+              `<button class="filter-tab ${orderFilter===f?'active':''}" onclick="setOrderFilter('${f}')">${
+                f==='all'?'전체':f==='pending'?'대기':f==='in_progress'?'진행중':'완료'
+              }</button>`
+            ).join('')}
+          </div>
+        </div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>주문 ID</th><th>워크스페이스</th><th>플레이스</th><th>상품</th>
+              <th>금액</th><th>접수일</th><th>시작일</th><th>종료일</th>
+              <th>진행일/총일</th><th>남은일</th>
+              <th>상태</th><th>매체사</th><th>액션</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${filteredOrders().map(o => {
+              const today = new Date('2026-03-19');
+              const start = new Date(o.startDate);
+              const end   = new Date(o.endDate);
+              const totalDays = Math.round((end-start)/(1000*60*60*24)) + 1;
+              const elapsed   = Math.max(0, Math.min(totalDays, Math.round((today-start)/(1000*60*60*24))+1));
+              const remaining = Math.max(0, Math.round((end-today)/(1000*60*60*24)));
+              const isPast    = today > end;
+              return `
+            <tr>
+              <td class="monospace">${o.id}</td>
+              <td style="font-size:12px">${o.workspace}</td>
+              <td style="font-size:11px;color:var(--text3);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.place}">${o.place}</td>
+              <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px">${o.product}</td>
+              <td style="font-weight:600;color:var(--text1);font-size:12px">₩${o.amount.toLocaleString()}</td>
+              <td style="font-size:11px;color:var(--text3)">${o.created}</td>
+              <td style="font-size:11px;color:var(--text)">${o.startDate}</td>
+              <td style="font-size:11px;color:var(--text)">${o.endDate}</td>
+              <td style="font-size:12px">
+                <span style="color:${elapsed>=totalDays?'var(--green)':'var(--cyan)'};font-weight:600">${elapsed}</span>
+                <span style="color:var(--text3)">/${totalDays}일</span>
+                <div style="height:3px;background:var(--border);border-radius:2px;margin-top:3px;width:50px">
+                  <div style="height:100%;border-radius:2px;background:${elapsed>=totalDays?'var(--green)':'var(--cyan)'};width:${Math.round(elapsed/totalDays*100)}%"></div>
+                </div>
+              </td>
+              <td style="font-size:12px">
+                ${isPast
+                  ? '<span style="color:var(--text3)">종료</span>'
+                  : `<span style="color:${remaining<=1?'var(--red)':remaining<=3?'var(--yellow)':'var(--text)'};font-weight:${remaining<=3?700:400}">${remaining}일</span>`}
+              </td>
+              <td>${statusBadge(o.status)}</td>
+              <td>${o.media === '—' ? '<span style="color:var(--text3)">—</span>' : `<span class="media-badge">${o.media}</span>`}</td>
+              <td>
+                <button class="btn-icon" title="상세 보기" onclick="openOrderDetail('${o.id}')">
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                </button>
+              </td>
+            </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 우측 패널 -->
+    <div style="display:flex;flex-direction:column;gap:16px;">
+
+      <!-- 플랜 분포 -->
+      <div class="card">
+        <div class="card-header" style="margin-bottom:16px;">
+          <div class="card-title">플랜 분포</div>
+          <span style="font-size:12px;color:var(--text3);">${PLAN_TOTAL}개 워크스페이스</span>
+        </div>
+        ${Object.entries(PLAN_DIST).map(([plan, cnt]) => {
+          const pct = Math.round(cnt / PLAN_TOTAL * 100);
+          const labels = { free:'Free', starter:'Starter', pro:'Pro', enterprise:'Enterprise' };
+          return `
+          <div class="dist-bar-wrap">
+            <div class="dist-header">
+              <span style="color:var(--text2)">${labels[plan]}</span>
+              <span style="color:var(--text3)">${cnt}개 <span style="color:var(--text3);font-size:11px;">(${pct}%)</span></span>
+            </div>
+            <div class="dist-bar">
+              <div class="dist-fill dist-${plan}" style="width:${pct}%"></div>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+
+      <!-- 매체사 현황 -->
+      <div class="card">
+        <div class="card-header" style="margin-bottom:12px;">
+          <div class="card-title">매체사 현황</div>
+        </div>
+        ${MEDIA_COMPANIES.map(m => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(255,255,255,0.04);">
+          <div>
+            <div style="font-size:13px;font-weight:600;color:var(--text1);">${m.name}</div>
+            <div style="font-size:11px;color:var(--text3);">주문 ${m.orders}건 · 대기 ${m.pending}건</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:13px;font-weight:600;color:#fff;">₩${(m.total/10000).toFixed(0)}만</div>
+            <div style="font-size:11px;color:#fbbf24;">★ ${m.rating}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 최근 활동 피드 ──────────────────────────────────── -->
+  <div class="card">
+    <div class="card-header" style="margin-bottom:16px;">
+      <div class="card-title">최근 활동</div>
+      <span style="font-size:12px;color:var(--text3);">실시간</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0;">
+      ${ACTIVITIES.map((a,i) => `
+      <div class="activity-item" style="${i < 3 ? '' : 'border-top:1px solid rgba(255,255,255,0.04);'}border-right:${i%3===2?'none':'1px solid rgba(255,255,255,0.04)'};padding:12px 16px;">
+        <div class="activity-dot" style="background:${a.color}"></div>
+        <div>
+          <div class="activity-text">${a.text}</div>
+          <div class="activity-time">${a.time}</div>
+        </div>
+      </div>`).join('')}
+    </div>
+  </div>`;
+
+  document.getElementById('main-content').innerHTML = html;
+  initCharts();
+}
+
+// ── 차트 초기화 ───────────────────────────────────────────────
+function initCharts() {
+  // 매출 트렌드
+  const rCtx = document.getElementById('revenueChart').getContext('2d');
+  if (charts.revenue) charts.revenue.destroy();
+  charts.revenue = new Chart(rCtx, {
+    type: 'line',
+    data: {
+      labels: REVENUE_MONTHS,
+      datasets: [{
+        label: '매출',
+        data: REVENUE_DATA,
+        borderColor: '#00d4ff',
+        backgroundColor: 'rgba(0,212,255,0.06)',
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#00d4ff',
+        pointRadius: 4,
+        pointHoverRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: document.body.classList.contains('light')?'rgba(0,0,0,0.06)':'rgba(255,255,255,0.05)' }, ticks: { color: document.body.classList.contains('light')?'#555':'#888', font:{size:11} } },
+        y: {
+          grid: { color: document.body.classList.contains('light')?'rgba(0,0,0,0.06)':'rgba(255,255,255,0.05)' },
+          ticks: {
+            color: document.body.classList.contains('light')?'#555':'#888', font:{size:11},
+            callback: v => v >= 1000000 ? `${v/10000}만` : v,
+          },
+        },
+      },
+    },
+  });
+
+  // 주문 상태 도넛
+  const sCtx = document.getElementById('statusChart').getContext('2d');
+  if (charts.status) charts.status.destroy();
+  const labels  = ['대기','확정','진행중','완료','취소','환불요청'];
+  const data    = Object.values(ORDER_STATUS_COUNTS);
+  const colors  = ['#fbbf24','#00d4ff','#a5b4fc','#4ade80','#f87171','#c084fc'];
+  charts.status = new Chart(sCtx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0, hoverOffset: 4 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: { color:'#888', font:{size:11}, boxWidth:10, padding:12 },
+        },
+      },
+      cutout: '62%',
+    },
+  });
+}
+
+// ── 주문 필터 ─────────────────────────────────────────────────
+function filteredOrders() {
+  if (orderFilter === 'all') return RECENT_ORDERS;
+  return RECENT_ORDERS.filter(o => o.status === orderFilter);
+}
+function setOrderFilter(f) {
+  orderFilter = f;
+  renderPage();
+}
+
+// ── 주문 상세 모달 ────────────────────────────────────────────
+function openOrderDetail(orderId) {
+  const o = RECENT_ORDERS.find(x => x.id === orderId);
+  if (!o) return;
+
+  document.getElementById('modal-order-id').textContent = o.id;
+  document.getElementById('modal-order-desc').textContent = `${o.product} · ${o.place}`;
+
+  const statusSteps = [
+    { key:'pending',     label:'결제 대기',  done: true },
+    { key:'confirmed',   label:'주문 확정',  done: ['confirmed','in_progress','completed'].includes(o.status) },
+    { key:'in_progress', label:'진행 중',    done: ['in_progress','completed'].includes(o.status) },
+    { key:'completed',   label:'완료',       done: o.status === 'completed' },
+  ];
+  const isRefund = ['refund_requested','refunded','cancelled'].includes(o.status);
+
+  const body = `
+  <div class="stat-grid" style="margin-bottom:20px;">
+    <div class="stat-item">
+      <div class="stat-num">₩${o.amount.toLocaleString()}</div>
+      <div class="stat-label">결제 금액</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">${statusBadge(o.status)}</div>
+      <div class="stat-label">현재 상태</div>
+    </div>
+    <div class="stat-item">
+      <div class="stat-num">${o.media === '—' ? '<span style="color:var(--text3)">미배정</span>' : o.media}</div>
+      <div class="stat-label">담당 매체사</div>
+    </div>
+  </div>
+
+  ${!isRefund ? `
+  <div style="margin-bottom:20px;">
+    <div style="font-size:12px;font-weight:600;color:var(--text3);margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;">진행 타임라인</div>
+    <div class="timeline">
+      ${statusSteps.map(s => `
+        <div class="tl-item ${s.done ? (s.key===o.status?'active':'done') : ''}">
+          <div class="tl-status">${s.label}</div>
+          <div class="tl-time">${s.done ? o.created : '대기중'}</div>
+        </div>
+      `).join('')}
+    </div>
+  </div>` : `
+  <div style="background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.2);border-radius:10px;padding:14px;margin-bottom:20px;">
+    <div style="font-size:13px;color:#fca5a5;font-weight:600;margin-bottom:4px;">⚠️ ${o.status === 'cancelled' ? '주문 취소됨' : '환불 요청'}</div>
+    <div style="font-size:12px;color:#f87171;">이 주문은 ${o.status === 'cancelled' ? '취소' : '환불 요청'} 상태입니다.</div>
+  </div>`}
+
+  <div style="margin-bottom:14px;">
+    <label class="form-label">상태 변경</label>
+    <select class="form-select" id="modal-status-select">
+      ${Object.entries(STATUS_MAP).map(([k,[,l]]) =>
+        `<option value="${k}" ${k===o.status?'selected':''}>${l}</option>`
+      ).join('')}
+    </select>
+  </div>
+  <div style="margin-bottom:20px;">
+    <label class="form-label">매체사 배정</label>
+    <select class="form-select" id="modal-media-select">
+      <option value="">미배정</option>
+      ${MEDIA_COMPANIES.map(m => `<option value="${m.name}" ${m.name===o.media?'selected':''}>${m.name}</option>`).join('')}
+    </select>
+  </div>
+  <div style="margin-bottom:20px;">
+    <label class="form-label">어드민 메모</label>
+    <textarea class="form-textarea" id="modal-note" placeholder="내부 메모를 입력하세요..."></textarea>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <button onclick="closeModal('orderModal')" class="btn-secondary" style="flex:1;padding:10px;justify-content:center;">닫기</button>
+    <button onclick="applyOrderChange('${o.id}')" class="btn-primary" style="flex:1;padding:10px;justify-content:center;">변경 적용</button>
+  </div>`;
+
+  document.getElementById('modal-order-body').innerHTML = body;
+  document.getElementById('orderModal').classList.add('show');
+}
+
+function applyOrderChange(orderId) {
+  const newStatus = document.getElementById('modal-status-select').value;
+  const newMedia  = document.getElementById('modal-media-select').value;
+  const note      = document.getElementById('modal-note').value;
+  const order = RECENT_ORDERS.find(x => x.id === orderId);
+  if (order) {
+    order.status = newStatus;
+    order.media  = newMedia || '—';
+  }
+  closeModal('orderModal');
+  showToast(`${orderId} 주문 상태가 업데이트되었습니다.`, 'success');
+  renderPage();
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+// ── 초기화 ────────────────────────────────────────────────────
+renderLayout({ title: '어드민 대시보드', activePage: 'admin.html', isAdmin: true });
+renderPage();
+</script>
+</body>
+</html>

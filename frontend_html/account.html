@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 계정 설정</title>
+<link rel="stylesheet" href="css/style.css">
+<style>
+.setting-section {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:24px; margin-bottom:20px;
+}
+.setting-section-title {
+  font-size:15px; font-weight:700; color:var(--text-title);
+  margin-bottom:20px; padding-bottom:12px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; gap:8px;
+}
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+@media (max-width:640px) { .form-row { grid-template-columns:1fr; } }
+.form-group { display:flex; flex-direction:column; gap:6px; margin-bottom:16px; }
+.form-group:last-child { margin-bottom:0; }
+.avatar-upload {
+  display:flex; align-items:center; gap:20px; padding:20px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:var(--radius);
+}
+.avatar-lg {
+  width:72px; height:72px; border-radius:50%;
+  background:linear-gradient(135deg,var(--cyan),var(--purple));
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px; font-weight:800; color:#fff; flex-shrink:0;
+}
+.danger-zone { border-color:rgba(var(--red-rgb),0.3); }
+.danger-zone .setting-section-title { color:var(--red); border-color:rgba(var(--red-rgb),0.2); }
+.pw-strength { height:4px; border-radius:2px; margin-top:6px; transition:all 0.3s; }
+.strength-weak   { background:var(--red);    width:25%; }
+.strength-fair   { background:var(--orange); width:50%; }
+.strength-good   { background:var(--yellow); width:75%; }
+.strength-strong { background:var(--green);  width:100%; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+
+<script src="js/app.js"></script>
+<script>
+renderLayout({ title: '계정 설정', activePage: 'account.html' });
+
+const u = CURRENT_USER || {};
+
+document.getElementById('page-content').innerHTML = `
+<div class="page-header">
+  <div>
+    <h1 class="page-title">계정 설정</h1>
+    <p class="page-subtitle">개인 정보 및 보안 설정을 관리합니다</p>
+  </div>
+</div>
+
+<!-- 프로필 이미지 -->
+<div class="setting-section">
+  <div class="setting-section-title">🖼️ 프로필 이미지</div>
+  <div class="avatar-upload">
+    <div class="avatar-lg" id="avatar-preview">${u.name ? u.name[0] : 'U'}</div>
+    <div>
+      <div style="font-size:14px;font-weight:600;color:var(--text-title);margin-bottom:4px">${u.name || '사용자'}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px">${u.email || ''}</div>
+      <button class="btn btn-secondary btn-sm" onclick="toast('프로필 이미지 업로드는 준비 중입니다','info')">
+        ${iconUpload()} 이미지 변경
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- 기본 정보 -->
+<div class="setting-section">
+  <div class="setting-section-title">👤 기본 정보</div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">이름 *</label>
+      <input class="input" id="acc-name" type="text" value="${u.name || ''}" placeholder="홍길동">
+    </div>
+    <div class="form-group">
+      <label class="form-label">연락처</label>
+      <input class="input" id="acc-phone" type="tel" placeholder="010-0000-0000">
+    </div>
+  </div>
+  <div class="form-group">
+    <label class="form-label">이메일 *</label>
+    <input class="input" id="acc-email" type="email" value="${u.email || ''}" placeholder="example@nplace.io">
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">회사명</label>
+      <input class="input" id="acc-company" type="text" placeholder="(주)맛있는 식당">
+    </div>
+    <div class="form-group">
+      <label class="form-label">대표자명</label>
+      <input class="input" id="acc-ceo" type="text" placeholder="홍길동">
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">사업자등록번호</label>
+      <input class="input" id="acc-brn" type="text" placeholder="000-00-00000">
+    </div>
+    <div class="form-group">
+      <label class="form-label">세금계산서 수신 이메일</label>
+      <input class="input" id="acc-tax-email" type="email" placeholder="tax@example.com">
+    </div>
+  </div>
+  <div style="text-align:right">
+    <button class="btn btn-primary" onclick="saveProfile()">💾 저장</button>
+  </div>
+</div>
+
+<!-- 비밀번호 변경 -->
+<div class="setting-section">
+  <div class="setting-section-title">🔐 비밀번호 변경</div>
+  <div class="form-group">
+    <label class="form-label">현재 비밀번호</label>
+    <div class="input-wrap">
+      <input class="input" id="pw-current" type="password" placeholder="현재 비밀번호를 입력하세요">
+      <button class="pw-toggle" type="button" onclick="togglePwField(this)">${iconEye()}</button>
+    </div>
+  </div>
+  <div class="form-row">
+    <div class="form-group">
+      <label class="form-label">새 비밀번호</label>
+      <div class="input-wrap">
+        <input class="input" id="pw-new" type="password" placeholder="8자 이상 입력" oninput="checkPwStrength(this.value)">
+        <button class="pw-toggle" type="button" onclick="togglePwField(this)">${iconEye()}</button>
+      </div>
+      <div class="pw-strength" id="pw-strength-bar" style="display:none"></div>
+      <div id="pw-strength-label" style="font-size:11px;color:var(--text3);margin-top:2px"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">새 비밀번호 확인</label>
+      <div class="input-wrap">
+        <input class="input" id="pw-confirm" type="password" placeholder="새 비밀번호 재입력">
+        <button class="pw-toggle" type="button" onclick="togglePwField(this)">${iconEye()}</button>
+      </div>
+    </div>
+  </div>
+  <div style="text-align:right">
+    <button class="btn btn-primary" onclick="changePassword()">🔑 비밀번호 변경</button>
+  </div>
+</div>
+
+<!-- 알림 설정 -->
+<div class="setting-section">
+  <div class="setting-section-title">🔔 알림 설정</div>
+  ${[
+    { key:'notif_rank',    label:'순위 변동 알림',     desc:'키워드 순위가 변동될 때 알림', on: true },
+    { key:'notif_order',   label:'주문 상태 알림',     desc:'주문 진행 상황 업데이트 알림', on: true },
+    { key:'notif_payment', label:'결제 알림',          desc:'결제 완료 및 실패 알림',       on: true },
+    { key:'notif_system',  label:'시스템 알림',        desc:'크롤링 완료 및 오류 알림',     on: false },
+  ].map(n => `
+    <div class="flex-between" style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div>
+        <div style="font-size:13px;font-weight:500;color:var(--text-title)">${n.label}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">${n.desc}</div>
+      </div>
+      <label style="position:relative;display:inline-block;width:44px;height:24px">
+        <input type="checkbox" ${n.on ? 'checked' : ''} style="opacity:0;width:0;height:0" onchange="toast('알림 설정이 저장되었습니다','success')">
+        <span style="position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:${n.on ? 'var(--cyan)' : 'var(--border-input)'};border-radius:24px;transition:0.3s"></span>
+        <span style="position:absolute;width:18px;height:18px;top:3px;left:${n.on ? '23px' : '3px'};background:#fff;border-radius:50%;transition:0.3s"></span>
+      </label>
+    </div>
+  `).join('')}
+</div>
+
+<!-- 연결된 서비스 -->
+<div class="setting-section">
+  <div class="setting-section-title">🔗 연결된 서비스</div>
+  ${[
+    { name:'카카오', icon:'💛', status:'미연결' },
+    { name:'Google', icon:'🔵', status:'미연결' },
+    { name:'네이버', icon:'🟢', status:'미연결' },
+  ].map(s => `
+    <div class="flex-between" style="padding:12px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:20px">${s.icon}</span>
+        <div>
+          <div style="font-size:13px;font-weight:500;color:var(--text-title)">${s.name} 계정</div>
+          <div style="font-size:11px;color:var(--text3)">${s.status}</div>
+        </div>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="toast('소셜 연동은 데모에서 지원하지 않습니다','info')">연동하기</button>
+    </div>
+  `).join('')}
+</div>
+
+<!-- 위험 구역 -->
+<div class="setting-section danger-zone">
+  <div class="setting-section-title">⚠️ 위험 구역</div>
+  <div class="flex-between">
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--text-title)">계정 삭제</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px">모든 데이터가 영구 삭제됩니다. 이 작업은 취소할 수 없습니다.</div>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="confirmDelete()">계정 삭제</button>
+  </div>
+</div>
+`;
+
+function togglePwField(btn) {
+  const input = btn.previousElementSibling;
+  input.type = input.type === 'password' ? 'text' : 'password';
+  btn.innerHTML = input.type === 'password' ? iconEye() : iconEyeOff();
+}
+
+function checkPwStrength(val) {
+  const bar   = document.getElementById('pw-strength-bar');
+  const label = document.getElementById('pw-strength-label');
+  if (!val) { bar.style.display = 'none'; label.textContent = ''; return; }
+  bar.style.display = 'block';
+  let score = 0;
+  if (val.length >= 8)  score++;
+  if (/[A-Z]/.test(val)) score++;
+  if (/[0-9]/.test(val)) score++;
+  if (/[^A-Za-z0-9]/.test(val)) score++;
+  const levels = [
+    { cls:'strength-weak',   text:'약함',   color:'var(--red)' },
+    { cls:'strength-fair',   text:'보통',   color:'var(--orange)' },
+    { cls:'strength-good',   text:'양호',   color:'var(--yellow)' },
+    { cls:'strength-strong', text:'강력',   color:'var(--green)' },
+  ];
+  const lv = levels[Math.min(score - 1, 3)] || levels[0];
+  bar.className = 'pw-strength ' + lv.cls;
+  label.textContent = lv.text;
+  label.style.color = lv.color;
+}
+
+function saveProfile() {
+  const name  = document.getElementById('acc-name').value.trim();
+  const email = document.getElementById('acc-email').value.trim();
+  if (!name)  return toast('이름을 입력해 주세요', 'error');
+  if (!email) return toast('이메일을 입력해 주세요', 'error');
+  if (CURRENT_USER) { CURRENT_USER.name = name; CURRENT_USER.email = email; }
+  toast('프로필이 저장되었습니다 ✓', 'success');
+}
+
+function changePassword() {
+  const cur  = document.getElementById('pw-current').value;
+  const nw   = document.getElementById('pw-new').value;
+  const conf = document.getElementById('pw-confirm').value;
+  if (!cur)           return toast('현재 비밀번호를 입력해 주세요', 'error');
+  if (nw.length < 8)  return toast('새 비밀번호는 8자 이상이어야 합니다', 'error');
+  if (nw !== conf)    return toast('새 비밀번호가 일치하지 않습니다', 'error');
+  ['pw-current','pw-new','pw-confirm'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('pw-strength-bar').style.display = 'none';
+  document.getElementById('pw-strength-label').textContent = '';
+  toast('비밀번호가 변경되었습니다 (데모)', 'success');
+}
+
+function confirmDelete() {
+  if (confirm('정말로 계정을 삭제하시겠습니까?\n모든 데이터가 영구 삭제됩니다.')) {
+    toast('계정 삭제는 데모에서 지원하지 않습니다', 'info');
+  }
+}
+</script>
+</body>
+</html>
