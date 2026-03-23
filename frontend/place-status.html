@@ -963,30 +963,18 @@ function buildOrders(p) {
   const firstDay = new Date(year, month, 1);
   const lastDay  = new Date(year, month + 1, 0);
 
-  /* ─ 달력 그리드용 날짜 배열 (앞 빈칸 + 해당월 전체 + 뒷 빈칸) ─ */
-  const startPad = firstDay.getDay(); // 0=일
+  /* ─ 달력 그리드용 날짜 배열 ─ */
+  const startPad  = firstDay.getDay();
   const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7;
   const cells = [];
   for (let i = 0; i < totalCells; i++) {
-    const dayNum = i - startPad + 1;
-    if (dayNum < 1 || dayNum > lastDay.getDate()) {
-      cells.push(null);
-    } else {
-      cells.push(new Date(year, month, dayNum));
-    }
+    const d = i - startPad + 1;
+    cells.push((d >= 1 && d <= lastDay.getDate()) ? new Date(year, month, d) : null);
   }
+  const weeks = [];
+  for (let w = 0; w < cells.length; w += 7) weeks.push(cells.slice(w, w + 7));
 
-  /* ─ 셀에 해당하는 주문 바 구하기 ─ */
-  function getOrdersForDate(date) {
-    if (!date) return [];
-    return orders.filter(o => {
-      const s = new Date(o.startDate); s.setHours(0,0,0,0);
-      const e = new Date(o.endDate);   e.setHours(0,0,0,0);
-      return date >= s && date <= e;
-    });
-  }
-
-  /* ─ 월 이동 콜백 ─ */
+  /* ─ 월 이동 ─ */
   const prevFn = `(function(){window._orderCalState['${stateKey}']={year:${month===0?year-1:year},month:${month===0?11:month-1}};renderPage();})()`;
   const nextFn = `(function(){window._orderCalState['${stateKey}']={year:${month===11?year+1:year},month:${month===11?0:month+1}};renderPage();})()`;
 
@@ -994,65 +982,144 @@ function buildOrders(p) {
   const calHeader = `
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
     <div style="font-size:13px;font-weight:700;color:var(--text-title)">📅 주문 일정 — ${year}년 ${month+1}월</div>
-    <div style="display:flex;gap:6px;align-items:center">
+    <div style="display:flex;gap:6px">
       <button onclick="${prevFn}" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);cursor:pointer;font-size:13px">◀</button>
       <button onclick="${nextFn}" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);cursor:pointer;font-size:13px">▶</button>
     </div>
   </div>`;
 
-  /* ─ 요일 헤더 행 ─ */
+  /* ─ 요일 헤더 ─ */
   const dowHeader = `
   <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px">
     ${DAY_KO.map((d,i)=>`<div style="text-align:center;font-size:11px;font-weight:700;padding:5px 0;
       color:${i===0?'#f87171':i===6?'#60a5fa':'var(--text3)'}">${d}</div>`).join('')}
   </div>`;
 
-  /* ─ 달력 셀 그리드 ─ */
-  const weeks = [];
-  for (let w = 0; w < cells.length; w += 7) weeks.push(cells.slice(w, w+7));
+  /* ─────────────────────────────────────────────────────────
+     핵심: 주(week) 단위로 position:relative 컨테이너를 만들고
+     주문 바를 position:absolute 로 정확히 배치한다.
+     각 셀은 날짜 숫자만 표시하고, 바는 그 위에 오버레이.
+  ───────────────────────────────────────────────────────── */
+  const CELL_H  = 72;   // px — 셀 높이
+  const BAR_H   = 18;   // px — 바 높이
+  const BAR_GAP = 2;    // px — 바 간격
+  const DATE_H  = 26;   // px — 날짜 숫자 영역 높이
+  const GAP     = 2;    // px — 셀 gap
 
   const gridRows = weeks.map(week => {
+    /* 날짜 셀 배경 */
     const dateCells = week.map((date, di) => {
-      if (!date) return `<div style="min-height:64px;background:var(--bg-hover2);border-radius:6px;opacity:.3"></div>`;
-
-      const isToday = date.getTime() === today.getTime();
-      const isPast  = date < today;
-      const dayOrders = getOrdersForDate(date);
+      if (!date) return `<div style="height:${CELL_H}px;background:var(--bg-hover2);border-radius:6px;opacity:.3"></div>`;
+      const isToday  = date.getTime() === today.getTime();
+      const isPast   = date < today;
       const isWeekend = di === 0 || di === 6;
-
-      const dateNum = `<div style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
-        font-size:12px;font-weight:700;margin-bottom:3px;
+      const numStyle = `display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
+        font-size:12px;font-weight:700;
         background:${isToday?'var(--cyan)':'transparent'};
-        color:${isToday?'#000':isWeekend?(di===0?'#f87171':'#60a5fa'):'var(--text)'}">${date.getDate()}</div>`;
-
-      const bars = dayOrders.map(o => {
-        const sDate = new Date(o.startDate); sDate.setHours(0,0,0,0);
-        const eDate = new Date(o.endDate);   eDate.setHours(0,0,0,0);
-        const isFirst = date.getTime() === sDate.getTime();
-        const isLast  = date.getTime() === eDate.getTime();
-        const col = STATUS_COLOR[o.status] || '#94a3b8';
-        const icon = isFirst ? (TYPE_ICON[o.type]||'📦')+' ' : '';
-        return `<div style="
-          font-size:10px;font-weight:600;padding:2px 4px;margin-bottom:2px;
-          background:${col}22;border:1px solid ${col}55;color:${col};
-          border-radius:${isFirst?'4px 0 0 4px':isLast?'0 4px 4px 0':'0'};
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-          border-left:${isFirst?`2px solid ${col}`:'none'};
-          " title="${o.product||''} (${STATUS_LABEL[o.status]||o.status})">${icon}${isFirst?(o.product||'').slice(0,8):''}</div>`;
-      }).join('');
-
-      return `<div style="min-height:64px;padding:4px;background:${isToday?'rgba(0,212,255,.04)':isPast?'var(--bg-hover2)':'var(--bg2)'};
-        border:1px solid ${isToday?'rgba(0,212,255,.3)':'var(--border)'};border-radius:6px;overflow:hidden">
-        ${dateNum}${bars}
+        color:${isToday?'#000':isWeekend?(di===0?'#f87171':'#60a5fa'):'var(--text)'}`;
+      return `<div style="height:${CELL_H}px;padding:4px;
+        background:${isToday?'rgba(0,212,255,.05)':isPast?'var(--bg-hover2)':'var(--bg2)'};
+        border:1px solid ${isToday?'rgba(0,212,255,.35)':'var(--border)'};
+        border-radius:6px;box-sizing:border-box">
+        <div style="${numStyle}">${date.getDate()}</div>
       </div>`;
     }).join('');
 
-    return `<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px">${dateCells}</div>`;
+    /* 이 주(week)에서 보여야 할 주문 바 계산 */
+    // 이 주의 첫날~끝날 범위 구하기 (null 셀 제외)
+    const validDates = week.filter(Boolean);
+    if (!validDates.length) {
+      return `<div style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:${GAP}px;margin-bottom:${GAP}px">
+        ${dateCells}
+      </div>`;
+    }
+    const weekStart = validDates[0];
+    const weekEnd   = validDates[validDates.length - 1];
+
+    // 이 주에 걸치는 주문만 필터
+    const weekOrders = orders.filter(o => {
+      const s = new Date(o.startDate); s.setHours(0,0,0,0);
+      const e = new Date(o.endDate);   e.setHours(0,0,0,0);
+      return s <= weekEnd && e >= weekStart;
+    });
+
+    /* 주문 바를 절대 좌표로 배치 */
+    // 컨테이너 전체 너비는 CSS가 결정하므로 %로 계산
+    // 각 셀은 (100% - gap*6) / 7 너비, gap 포함
+    // left  = (열인덱스 * (100/7))%
+    // width = (걸치는 열 수 * (100/7))%
+    // gap 보정: gap은 작아서 근사치로 처리 (실제 px gap은 2px)
+    const bars = weekOrders.map((o, oi) => {
+      const s = new Date(o.startDate); s.setHours(0,0,0,0);
+      const e = new Date(o.endDate);   e.setHours(0,0,0,0);
+
+      // 이 주에서의 시작 열 (0~6)
+      let colStart = week.findIndex(d => d && d.getTime() === s.getTime());
+      if (colStart < 0) colStart = week.findIndex(Boolean); // 이전 주에서 시작 → 이 주 첫 셀부터
+
+      // 이 주에서의 끝 열 (0~6)
+      let colEnd = week.findIndex(d => d && d.getTime() === e.getTime());
+      if (colEnd < 0) colEnd = week.reduce((acc, d, i) => d ? i : acc, colStart); // 다음 주로 이어짐 → 이 주 마지막 셀까지
+
+      if (colStart > colEnd) colStart = colEnd; // 안전장치
+
+      const spanCols = colEnd - colStart + 1;
+      const isStart  = s.getTime() === (week[colStart] || s).getTime() && colStart === week.findIndex(d => d && d.getTime() === s.getTime());
+      const isEnd    = e.getTime() === (week[colEnd]   || e).getTime() && colEnd === week.findIndex(d => d && d.getTime() === e.getTime());
+
+      const col  = STATUS_COLOR[o.status] || '#94a3b8';
+      const icon = isStart ? (TYPE_ICON[o.type] || '📦') + ' ' : '';
+      const label = isStart ? (o.product || '').slice(0, 12) : '';
+
+      // left: colStart * (1/7 * 100)% + gap 보정
+      // 각 셀 너비 = (100% - 6*2px) / 7 ≈ 14.2857%
+      // 정확한 left/width를 calc()로 표현
+      const leftCalc  = `calc(${colStart} * (100% / 7) + ${colStart > 0 ? colStart + 'px' : '0px'})`;
+      const widthCalc = `calc(${spanCols} * (100% / 7) - ${colStart > 0 ? colStart + 'px' : '0px'} + ${colStart > 0 ? colStart + 'px' : '0px'} - ${GAP}px)`;
+
+      // 더 단순하게: left = colStart/7 * 100%, width = spanCols/7 * 100%
+      // gap(2px)는 작아서 근사치 허용, 실제로는 calc로 정밀 보정
+      const topPx = DATE_H + oi * (BAR_H + BAR_GAP);
+
+      const borderRadius = isStart && isEnd ? '4px'
+        : isStart ? '4px 0 0 4px'
+        : isEnd   ? '0 4px 4px 0'
+        : '0';
+
+      // gap 보정 포함한 정확한 calc
+      // colStart개의 gap이 left에, spanCols-1개의 gap이 width에 포함
+      return `<div style="
+        position:absolute;
+        top:${topPx}px;
+        left:calc(${colStart} * (100% / 7) + ${colStart} * ${GAP}px / 7);
+        width:calc(${spanCols} * (100% / 7) + (${spanCols - 1}) * ${GAP}px / 7 - ${GAP * 0.5}px);
+        height:${BAR_H}px;
+        background:${col}25;
+        border-top:1.5px solid ${col}88;
+        border-bottom:1.5px solid ${col}88;
+        border-left:${isStart ? `2px solid ${col}` : 'none'};
+        border-right:${isEnd ? `1.5px solid ${col}88` : 'none'};
+        border-radius:${borderRadius};
+        padding:0 5px;
+        display:flex;align-items:center;
+        overflow:hidden;
+        box-sizing:border-box;
+        pointer-events:auto;
+        cursor:default;
+        z-index:2;
+      " title="${o.product||''} (${STATUS_LABEL[o.status]||o.status}) ${o.startDate}~${o.endDate}">
+        <span style="font-size:10px;font-weight:600;color:${col};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${icon}${label}</span>
+      </div>`;
+    }).join('');
+
+    return `<div style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:${GAP}px;margin-bottom:${GAP}px;min-height:${CELL_H}px">
+      ${dateCells}
+      ${bars}
+    </div>`;
   }).join('');
 
   /* ─ 주문 카드 목록 ─ */
   const orderCards = orders.map(o => {
-    const s    = new Date(o.startDate);
     const e    = new Date(o.endDate);
     const diff = Math.round((e - today) / 86400000);
     const col  = STATUS_COLOR[o.status] || '#94a3b8';
