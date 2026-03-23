@@ -23,6 +23,18 @@ module.exports = {
       watch: false,
       instances: 1,
       exec_mode: 'fork'
+    },
+    {
+      name: 'nplace-backend',
+      script: 'python3',
+      args: '-m uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload',
+      cwd: '/home/user/nplace-project/backend',
+      env: {
+        NODE_ENV: 'production',
+      },
+      watch: false,
+      instances: 1,
+      exec_mode: 'fork'
     }
   ]
 }

@@ -33,10 +33,10 @@ def upgrade() -> None:
         "orders",
         sa.Column(
             "category",
-            sa.Enum(
+            postgresql.ENUM(
                 "blog", "reward_traffic", "reward_save", "receipt", "sns",
                 name="ordercategory",
-                create_constraint=False,
+                create_type=False,
             ),
             nullable=True,
             comment="주문 카테고리",
@@ -84,4 +84,4 @@ def downgrade() -> None:
     op.drop_column("orders", "category")
 
     # enum 타입 제거
-    sa.Enum(name="ordercategory").drop(op.get_bind(), checkfirst=True)
+    postgresql.ENUM(name="ordercategory").drop(op.get_bind(), checkfirst=True)

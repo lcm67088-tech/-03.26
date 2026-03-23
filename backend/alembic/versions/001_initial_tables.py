@@ -34,13 +34,23 @@ def upgrade() -> None:
     # =====================
     # ENUM 타입 생성
     # =====================
-    op.execute("CREATE TYPE userrole AS ENUM ('user', 'admin', 'superadmin')")
-    op.execute("CREATE TYPE workspaceplan AS ENUM ('free', 'starter', 'pro', 'enterprise')")
-    op.execute("CREATE TYPE memberrole AS ENUM ('owner', 'manager', 'viewer')")
-    op.execute("CREATE TYPE rankcasetype AS ENUM ('normal', 'popular', 'not_ranked')")
-    op.execute("CREATE TYPE orderstatus AS ENUM ('pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded', 'disputed')")
-    op.execute("CREATE TYPE paymentmethod AS ENUM ('kakaopay', 'naverpay', 'card')")
-    op.execute("CREATE TYPE paymentstatus AS ENUM ('pending', 'completed', 'failed', 'refunded')")
+    # ENUM 타입 생성 (존재하지 않을 때만)
+    enums = [
+        ("userrole",      "'user', 'admin', 'superadmin'"),
+        ("workspaceplan", "'free', 'starter', 'pro', 'enterprise'"),
+        ("memberrole",    "'owner', 'manager', 'viewer'"),
+        ("rankcasetype",  "'normal', 'popular', 'not_ranked'"),
+        ("orderstatus",   "'pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded', 'disputed'"),
+        ("paymentmethod", "'kakaopay', 'naverpay', 'card'"),
+        ("paymentstatus", "'pending', 'completed', 'failed', 'refunded'"),
+    ]
+    for name, values in enums:
+        op.execute(f"""
+            DO $$ BEGIN
+                CREATE TYPE {name} AS ENUM ({values});
+            EXCEPTION WHEN duplicate_object THEN NULL;
+            END $$;
+        """)
 
     # =====================
     # users 테이블
@@ -52,7 +62,7 @@ def upgrade() -> None:
         sa.Column('hashed_password', sa.String(255), nullable=False),
         sa.Column('name', sa.String(100), nullable=False),
         sa.Column('phone', sa.String(20), nullable=True),
-        sa.Column('role', postgresql.ENUM('user', 'admin', 'superadmin', name='userrole'), nullable=False, server_default='user'),
+        sa.Column('role', postgresql.ENUM('user', 'admin', 'superadmin', name='userrole', create_type=False), nullable=False, server_default='user'),
         sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('email_verified', sa.Boolean(), nullable=False, server_default='false'),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -71,7 +81,7 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, default=uuid.uuid4),
         sa.Column('owner_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('name', sa.String(100), nullable=False),
-        sa.Column('plan', postgresql.ENUM('free', 'starter', 'pro', 'enterprise', name='workspaceplan'), nullable=False, server_default='free'),
+        sa.Column('plan', postgresql.ENUM('free', 'starter', 'pro', 'enterprise', name='workspaceplan', create_type=False), nullable=False, server_default='free'),
         sa.Column('is_active', sa.Boolean(), nullable=False, server_default='true'),
         sa.Column('extra_data', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -90,7 +100,7 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, default=uuid.uuid4),
         sa.Column('workspace_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('user_id', postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column('role', postgresql.ENUM('owner', 'manager', 'viewer', name='memberrole'), nullable=False, server_default='viewer'),
+        sa.Column('role', postgresql.ENUM('owner', 'manager', 'viewer', name='memberrole', create_type=False), nullable=False, server_default='viewer'),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
         sa.ForeignKeyConstraint(['workspace_id'], ['workspaces.id'], ondelete='CASCADE'),
@@ -155,7 +165,7 @@ def upgrade() -> None:
         sa.Column('product_name', sa.String(200), nullable=False),
         sa.Column('description', sa.String(1000), nullable=True),
         sa.Column('total_amount', sa.Integer(), nullable=False),
-        sa.Column('status', postgresql.ENUM('pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded', 'disputed', name='orderstatus'), nullable=False, server_default='pending'),
+        sa.Column('status', postgresql.ENUM('pending', 'confirmed', 'in_progress', 'completed', 'cancelled', 'refunded', 'disputed', name='orderstatus', create_type=False), nullable=False, server_default='pending'),
         sa.Column('media_company_id', postgresql.UUID(as_uuid=True), nullable=True),
         sa.Column('proof_url', sa.String(500), nullable=True),
         sa.Column('ordered_at', sa.DateTime(timezone=True), nullable=True),
@@ -181,8 +191,8 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, default=uuid.uuid4),
         sa.Column('order_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('amount', sa.Integer(), nullable=False),
-        sa.Column('method', postgresql.ENUM('kakaopay', 'naverpay', 'card', name='paymentmethod'), nullable=False),
-        sa.Column('status', postgresql.ENUM('pending', 'completed', 'failed', 'refunded', name='paymentstatus'), nullable=False, server_default='pending'),
+        sa.Column('method', postgresql.ENUM('kakaopay', 'naverpay', 'card', name='paymentmethod', create_type=False), nullable=False),
+        sa.Column('status', postgresql.ENUM('pending', 'completed', 'failed', 'refunded', name='paymentstatus', create_type=False), nullable=False, server_default='pending'),
         sa.Column('pg_transaction_id', sa.String(200), nullable=True),
         sa.Column('paid_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),
@@ -220,7 +230,7 @@ def upgrade() -> None:
         sa.Column('id', postgresql.UUID(as_uuid=True), nullable=False, default=uuid.uuid4),
         sa.Column('keyword_id', postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column('rank', sa.Integer(), nullable=True),
-        sa.Column('case_type', postgresql.ENUM('normal', 'popular', 'not_ranked', name='rankcasetype'), nullable=False, server_default='normal'),
+        sa.Column('case_type', postgresql.ENUM('normal', 'popular', 'not_ranked', name='rankcasetype', create_type=False), nullable=False, server_default='normal'),
         sa.Column('crawled_at', sa.DateTime(timezone=True), nullable=False),
         sa.Column('extra_data', postgresql.JSONB(astext_type=sa.Text()), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=False),

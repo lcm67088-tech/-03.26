@@ -16,7 +16,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator, model_config
+from pydantic import BaseModel, field_validator, ConfigDict
 
 
 # ─────────────────────────────────────────────────────────────
@@ -26,7 +26,7 @@ from pydantic import BaseModel, field_validator, model_config
 class SubscriptionResponse(BaseModel):
     """현재 구독 정보 응답"""
 
-    model_config = model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     workspace_id: UUID
@@ -61,7 +61,7 @@ class SubscriptionWithLimitsResponse(SubscriptionResponse):
 class BillingHistoryResponse(BaseModel):
     """단건 결제 내역 응답"""
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
     id: UUID
     workspace_id: UUID

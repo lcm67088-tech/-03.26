@@ -213,3 +213,7 @@ def get_user_first_workspace(
             ).first()
 
     return workspace
+
+
+# 하위 호환 alias
+get_workspace = get_workspace_context

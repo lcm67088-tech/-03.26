@@ -23,10 +23,14 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """crawl_jobs 테이블 생성"""
 
-    # CrawlJobStatus ENUM 타입 생성
-    op.execute(
-        "CREATE TYPE crawljobstatus AS ENUM ('queued', 'running', 'done', 'failed')"
-    )
+    # CrawlJobStatus ENUM 타입 생성 (IF NOT EXISTS 패턴)
+    op.execute("""
+        DO $$ BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'crawljobstatus') THEN
+                CREATE TYPE crawljobstatus AS ENUM ('queued', 'running', 'done', 'failed');
+            END IF;
+        END $$;
+    """)
 
     # crawl_jobs 테이블 생성
     op.create_table(
@@ -63,10 +67,10 @@ def upgrade() -> None:
         ),
         sa.Column(
             "status",
-            sa.Enum(
+            postgresql.ENUM(
                 "queued", "running", "done", "failed",
                 name="crawljobstatus",
-                create_type=False,   # 위에서 이미 생성함
+                create_type=False,   # 위 DO $$ 블록에서 이미 생성함
             ),
             nullable=False,
             server_default="queued",

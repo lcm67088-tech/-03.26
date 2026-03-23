@@ -101,7 +101,7 @@ def upgrade() -> None:
         # 알림 타입 (enum)
         sa.Column(
             "type",
-            sa.Enum(*NOTIFICATION_TYPE_VALUES, name="notificationtype", create_type=False),
+            postgresql.ENUM(*NOTIFICATION_TYPE_VALUES, name="notificationtype", create_type=False),
             nullable=False,
             comment="알림 타입",
         ),
@@ -187,7 +187,7 @@ def upgrade() -> None:
         # 알림 타입 (enum)
         sa.Column(
             "notification_type",
-            sa.Enum(*NOTIFICATION_TYPE_VALUES, name="notificationtype", create_type=False),
+            postgresql.ENUM(*NOTIFICATION_TYPE_VALUES, name="notificationtype", create_type=False),
             nullable=False,
             comment="설정 대상 알림 타입",
         ),

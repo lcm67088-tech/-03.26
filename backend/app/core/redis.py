@@ -163,3 +163,6 @@ async def get_email_verify_user_id(token: str, redis: aioredis.Redis) -> Optiona
 async def delete_email_verify_token(token: str, redis: aioredis.Redis) -> None:
     """이메일 인증 토큰 삭제"""
     await redis.delete(RedisKeys.email_verify(token))
+
+# 하위 호환 동기 클라이언트 (미사용 시 None)
+redis_client = None
