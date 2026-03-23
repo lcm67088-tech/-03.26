@@ -170,13 +170,11 @@ const PLACES = [
     reviewCount:342, reviewCountPrev:315,
     avgRating:4.6,
     blogReviewCount:128, blogReviewPrev:115,
-    savedCount:1240, savedCountPrev:1180,
     visitorMonthly:4200, visitorPrev:3900,
     photoCount:87,
     /* 추이 (10포인트) */
     trendDates:['03/01','03/03','03/05','03/07','03/09','03/11','03/13','03/15','03/17','03/19'],
     trendReview:[290,298,305,310,315,320,325,330,338,342],
-    trendSaved: [1050,1080,1100,1130,1150,1175,1195,1210,1225,1240],
     trendVisitor:[3400,3500,3600,3700,3800,3900,3950,4050,4150,4200],
     trendBlog:   [100,105,108,112,115,118,120,123,126,128],
     /* 주문 */
@@ -224,6 +222,15 @@ const PLACES = [
       { ts:'2026-03-18 06:00', status:'ok',   items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true  }, note:'' },
     ],
     photos:[{ type:'음식', count:52 },{ type:'내부', count:21 },{ type:'외부', count:14 }],
+    /* 경쟁사 데이터 (같은 키워드 기준 상위 노출 업체) */
+    competitors:[
+      { name:'맛있는강남한식', rank:1, reviewCount:520, blogReviewCount:210,
+        rankHistory:[1,1,1,1,1,2,2,1,1,1,1,1,1,1,1] },
+      { name:'테헤란한정식', rank:2, reviewCount:410, blogReviewCount:175,
+        rankHistory:[3,2,2,2,2,2,2,2,2,2,2,2,2,2,2] },
+      { name:'강남참맛집',   rank:4, reviewCount:280, blogReviewCount:95,
+        rankHistory:[5,5,4,4,4,4,4,4,4,4,4,4,4,4,4] },
+    ],
   },
   {
     id:2,
@@ -240,12 +247,10 @@ const PLACES = [
     reviewCount:187, reviewCountPrev:172,
     avgRating:4.3,
     blogReviewCount:64, blogReviewPrev:58,
-    savedCount:720, savedCountPrev:680,
     visitorMonthly:2100, visitorPrev:1980,
     photoCount:45,
     trendDates:['03/01','03/03','03/05','03/07','03/09','03/11','03/13','03/15','03/17','03/19'],
     trendReview:[150,155,160,163,167,170,172,175,180,187],
-    trendSaved: [620,635,645,655,665,675,685,695,710,720],
     trendVisitor:[1800,1850,1880,1920,1950,1970,1980,1990,2050,2100],
     trendBlog:   [50,52,54,56,57,58,59,61,63,64],
     orders:[
@@ -281,12 +286,18 @@ const PLACES = [
       { ts:'2026-03-18 14:00', status:'ok',    items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true  }, note:'' },
     ],
     photos:[{ type:'음식', count:34 },{ type:'내부', count:15 },{ type:'외부', count:9 }],
+    competitors:[
+      { name:'홍대진국맛집', rank:1, reviewCount:390, blogReviewCount:180,
+        rankHistory:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
+      { name:'합정맛있는집', rank:3, reviewCount:210, blogReviewCount:88,
+        rankHistory:[4,4,3,3,3,3,3,3,3,3,3,3,3,3,3] },
+    ],
   },
 ];
 
 /* ══════ 전역 상태 ══════ */
 let _selId  = PLACES[0].id;
-let _subTab = 'stats'; // stats | keywords | reviews | menu | crawl | orders
+let _subTab = 'stats'; // stats | keywords | reviews | menu | crawl | orders | ranking
 
 /* ══════════════════════════════════════
    렌더링
@@ -330,7 +341,8 @@ function buildHTML() {
   <div class="detail-tabs">
     ${[
       ['stats',    '📊 통계 지표'],
-      ['keywords', '🔑 키워드 현황'],
+      ['ranking',  '📈 순위 현황'],
+      ['keywords', '🔑 키워드 관리'],
       ['reviews',  '💬 리뷰'],
       ['menu',     '🍽️ 메뉴'],
       ['crawl',    '🤖 크롤링 이력'],
@@ -352,11 +364,15 @@ function buildHTML() {
 function buildSummaryKPI() {
   const totalReview   = PLACES.reduce((a,p) => a+p.reviewCount, 0);
   const totalBlog     = PLACES.reduce((a,p) => a+p.blogReviewCount, 0);
-  const totalSaved    = PLACES.reduce((a,p) => a+p.savedCount, 0);
-
   const warnPlaces    = PLACES.filter(p => p.crawlStatus !== 'ok').length;
   const allRankKws    = PLACES.flatMap(p => p.keywords.filter(k => k.isRankKw));
   const top5RankKws   = allRankKws.filter(k => k.rank && k.rank <= 5);
+  const rank1Kws      = allRankKws.filter(k => k.rank === 1);
+
+  // 전체 순위 상승/하락 집계
+  const allTrackedKws = PLACES.flatMap(p => p.keywords.filter(k => k.rank !== null && k.prev !== null));
+  const risingKws     = allTrackedKws.filter(k => k.rank < k.prev);
+  const fallingKws    = allTrackedKws.filter(k => k.rank > k.prev);
 
   return `
   <div class="kpi-card">
@@ -367,7 +383,17 @@ function buildSummaryKPI() {
   <div class="kpi-card">
     <div class="kpi-label">🏆 순위키 TOP5 달성</div>
     <div class="kpi-value text-yellow">${top5RankKws.length}<span style="font-size:14px;font-weight:500;color:var(--text3)">/${allRankKws.length}</span></div>
-    <div class="kpi-change up">▲ 1위 ${allRankKws.filter(k=>k.rank===1).length}개</div>
+    <div class="kpi-change ${rank1Kws.length>0?'up':'flat'}">🥇 1위 ${rank1Kws.length}개</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">📈 키워드 상승</div>
+    <div class="kpi-value" style="color:var(--green)">${risingKws.length}</div>
+    <div class="kpi-change up">전체 추적 키워드 대비</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">📉 키워드 하락</div>
+    <div class="kpi-value" style="color:var(--red)">${fallingKws.length}</div>
+    <div class="kpi-change ${fallingKws.length>0?'down':'flat'}">${fallingKws.length>0?'⚠️ 조치 필요':'✅ 하락 없음'}</div>
   </div>
   <div class="kpi-card">
     <div class="kpi-label">💬 전체 영수증 리뷰</div>
@@ -375,9 +401,9 @@ function buildSummaryKPI() {
     <div class="kpi-change up">▲ ${(totalReview - PLACES.reduce((a,p)=>a+p.reviewCountPrev,0)).toLocaleString()} 지난달 대비</div>
   </div>
   <div class="kpi-card">
-    <div class="kpi-label">🔖 전체 저장 수</div>
-    <div class="kpi-value">${totalSaved.toLocaleString()}</div>
-    <div class="kpi-change up">▲ ${(totalSaved - PLACES.reduce((a,p)=>a+p.savedCountPrev,0)).toLocaleString()} 지난달 대비</div>
+    <div class="kpi-label">📝 전체 블로그 리뷰</div>
+    <div class="kpi-value">${totalBlog.toLocaleString()}</div>
+    <div class="kpi-change up">▲ ${(totalBlog - PLACES.reduce((a,p)=>a+p.blogReviewPrev,0)).toLocaleString()} 지난달 대비</div>
   </div>`;
 }
 
@@ -385,7 +411,7 @@ function buildSummaryKPI() {
 function buildPlaceCard(p) {
   const rankKw = p.keywords.find(k => k.isRankKw);
   const rvDiff = p.reviewCount - p.reviewCountPrev;
-  const svDiff = p.savedCount  - p.savedCountPrev;
+  const blDiff = p.blogReviewCount - (p.blogReviewPrev||0);
   const spark  = rankKw ? sparkline(rankKw.rankHistory.slice(-7).filter(v=>v!==null)) : '';
 
   return `
@@ -412,8 +438,8 @@ function buildPlaceCard(p) {
       <span class="ps-stat-val ${rvDiff>0?'up':'flat'}">${p.reviewCount} ${rvDiff>0?'▲'+rvDiff:''}</span>
     </div>
     <div class="ps-stat-row" style="margin-bottom:0">
-      <span class="ps-stat-label">저장 수</span>
-      <span class="ps-stat-val ${svDiff>0?'up':'flat'}">${p.savedCount.toLocaleString()} ${svDiff>0?'▲'+svDiff:''}</span>
+      <span class="ps-stat-label">블로그</span>
+      <span class="ps-stat-val ${blDiff>0?'up':'flat'}">${p.blogReviewCount} ${blDiff>0?'▲'+blDiff:''}</span>
     </div>
   </div>`;
 }
@@ -421,6 +447,7 @@ function buildPlaceCard(p) {
 /* ── 서브탭 콘텐츠 ── */
 function buildSubTab(p) {
   if (_subTab === 'stats')    return buildStats(p);
+  if (_subTab === 'ranking')   return buildRanking(p);
   if (_subTab === 'keywords') return buildKeywords(p);
   if (_subTab === 'reviews')  return buildReviews(p);
   if (_subTab === 'menu')     return buildMenu(p);
@@ -431,12 +458,11 @@ function buildSubTab(p) {
 
 /* ── 통계 지표 탭 ── */
 function buildStats(p) {
-  // 파서로 직접 확인 가능한 수치만 표시 (추정치 제거)
+  // 파서로 직접 확인 가능한 수치만 표시 (추정치·저장수 제거)
   const stats = [
     { label:'영수증 리뷰', val:p.reviewCount,     prev:p.reviewCountPrev,  icon:'💬', color:'var(--cyan)' },
     { label:'평균 별점',   val:p.avgRating,       prev:null,               icon:'⭐', color:'#fbbf24' },
     { label:'블로그 리뷰', val:p.blogReviewCount, prev:p.blogReviewPrev,   icon:'📝', color:'#a78bfa' },
-    { label:'저장 수',     val:p.savedCount,      prev:p.savedCountPrev,   icon:'🔖', color:'var(--green)' },
   ];
 
   const statBoxes = stats.map(s => {
@@ -456,7 +482,7 @@ function buildStats(p) {
   <!-- 추이 차트 -->
   <div class="card" style="padding:16px;border:1px solid var(--border);border-radius:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:13px;font-weight:700;color:var(--text)">📈 수집 추이 (영수증리뷰 / 블로그 / 저장)</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">📈 수집 추이 (영수증리뷰 / 블로그)</div>
       <div style="font-size:11px;color:var(--text3)">${p.trendDates.length ? `최근 ${p.trendDates.length}개 구간 · 크롤링 수집 기준` : '크롤링 수집 후 표시됩니다'}</div>
     </div>
     <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
@@ -639,7 +665,219 @@ function buildCrawlLog(p) {
   `).join('')}`;
 }
 
-/* ── 주문 현황 탭 ── */
+/* ══════════════════════════════════════════════
+   📈 순위 현황 탭 — 전체 플레이스 상승/하락 + 경쟁사 + 업셀링 피드백
+══════════════════════════════════════════════ */
+function buildRanking(p) {
+  const LEVEL_STYLE = {
+    high: 'background:rgba(239,68,68,.08);border-color:rgba(239,68,68,.25);',
+    mid:  'background:rgba(250,204,21,.07);border-color:rgba(250,204,21,.25);',
+    low:  'background:rgba(0,212,255,.06);border-color:rgba(0,212,255,.2);',
+    ok:   'background:rgba(34,197,94,.07);border-color:rgba(34,197,94,.2);',
+  };
+  const LEVEL_COLOR = { high:'#f87171', mid:'#facc15', low:'var(--cyan)', ok:'var(--green)' };
+
+  /* ── 업셀링 피드백 생성 ── */
+  function genFeedback(pl) {
+    const tips = [];
+    const rkKws   = pl.keywords.filter(k => k.isRankKw && k.rank !== null && k.prev !== null);
+    const anyDrop = rkKws.some(k => k.rank > k.prev);
+    const anyLow  = rkKws.some(k => k.rank > 10);
+    const reviewLow  = pl.reviewCount < 200;
+    const blogLow    = pl.blogReviewCount < 80;
+    const blogMid    = pl.blogReviewCount >= 80 && pl.blogReviewCount < 150;
+    const hasReward  = (pl.orders||[]).some(o => o.type==='reward' && o.status==='active');
+    const hasBlog    = (pl.orders||[]).some(o => o.type==='blog'   && o.status==='active');
+    const topComp    = (pl.competitors||[])[0];
+    const compRevGap = topComp ? topComp.reviewCount - pl.reviewCount : 0;
+    const compBlgGap = topComp ? topComp.blogReviewCount - pl.blogReviewCount : 0;
+
+    if (anyDrop || anyLow) {
+      if (reviewLow && !hasReward) {
+        tips.push({ level:'high', icon:'🎯', msg:'리워드 유입 추가 권장',
+          detail:`영수증 리뷰 ${pl.reviewCount}건으로 부족합니다.${compRevGap>0?' 경쟁 1위보다 '+compRevGap+'건 적습니다.':''} 리워드 유입 상품으로 실방문 리뷰를 빠르게 늘리세요.` });
+      }
+      if (blogLow && !hasBlog) {
+        tips.push({ level:'high', icon:'📝', msg:'블로그 리뷰 추가 필요',
+          detail:`블로그 리뷰 ${pl.blogReviewCount}건${compBlgGap>0?' (경쟁사 대비 -'+compBlgGap+'건)':''} — 네이버 검색 SEO에서 블로그 노출이 순위에 직접 영향을 미칩니다. 블로그 리뷰 상품 등록을 권장합니다.` });
+      }
+      if (blogMid && hasBlog && anyDrop) {
+        tips.push({ level:'mid', icon:'⬆️', msg:'블로그 고급 상품으로 업그레이드',
+          detail:`블로그 리뷰가 있지만 순위가 하락 중입니다. 더 파워풀한 블로거 상품(프리미엄·파워블로거)으로 교체하면 경쟁력을 높일 수 있습니다.` });
+      }
+      if (!hasReward && compRevGap > 100) {
+        tips.push({ level:'mid', icon:'🔥', msg:'리워드 유입 — 프리미엄 전환',
+          detail:`경쟁 1위 업체와 영수증 리뷰 ${compRevGap}건 격차. 프리미엄 리워드 유입으로 빠르게 따라잡을 수 있습니다.` });
+      }
+    } else if (!anyDrop && !anyLow) {
+      tips.push({ level:'ok', icon:'✅', msg:'현재 순위 안정적',
+        detail:`모든 순위 키워드가 유지 또는 상승 중입니다. 현재 캠페인을 유지하면서 리뷰를 꾸준히 쌓아가세요.` });
+    }
+    return tips;
+  }
+
+  /* ── 전체 플레이스 순위 상승/하락 요약 ── */
+  const allSummary = PLACES.map(pl => {
+    const rkKws   = pl.keywords.filter(k => k.isRankKw && k.rank !== null && k.prev !== null);
+    const rising  = rkKws.filter(k => k.rank < k.prev);
+    const falling = rkKws.filter(k => k.rank > k.prev);
+    const stable  = rkKws.filter(k => k.rank === k.prev);
+    const bestRk  = [...rkKws].sort((a,b) => (a.rank||999)-(b.rank||999))[0];
+    return { pl, rkKws, rising, falling, stable, bestRk };
+  });
+
+  const risingPlaces  = allSummary.filter(s => s.rising.length > 0 && s.rising.length >= s.falling.length);
+  const fallingPlaces = allSummary.filter(s => s.falling.length > 0 && s.falling.length > s.rising.length);
+
+  /* ── 현재 선택 플레이스 데이터 ── */
+  const cur     = allSummary.find(s => s.pl.id === p.id) || allSummary[0];
+  const rankKws = cur.rkKws;
+  const competitors = p.competitors || [];
+
+  /* ── 경쟁사 테이블 ── */
+  const compRowsArr = competitors.map(c => ({
+    rank: c.rank||999,
+    html: `<tr>
+      <td style="padding:7px 10px;font-size:12px;color:var(--text2)">${c.name}</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:center">${rankBadge(c.rank)}</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:center;color:var(--text)">${c.reviewCount.toLocaleString()}</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:center;color:var(--text)">${c.blogReviewCount.toLocaleString()}</td>
+      <td style="padding:7px 10px;text-align:center">${sparkline(c.rankHistory.slice(-10))}</td>
+    </tr>`
+  }));
+  const myRk  = p.keywords.find(k=>k.isRankKw);
+  const myRowObj = {
+    rank: myRk?.rank||999,
+    html: `<tr style="background:rgba(var(--cyan-rgb),.05)">
+      <td style="padding:7px 10px;font-size:12px;font-weight:700;color:var(--cyan)">▶ ${p.name} (나)</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:center">${myRk ? rankBadge(myRk.rank) : '–'}</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:center;color:var(--cyan)">${p.reviewCount.toLocaleString()}</td>
+      <td style="padding:7px 10px;font-size:12px;text-align:center;color:var(--cyan)">${p.blogReviewCount.toLocaleString()}</td>
+      <td style="padding:7px 10px;text-align:center">${myRk ? sparkline(myRk.rankHistory.slice(-10)) : ''}</td>
+    </tr>`
+  };
+  const allCompRows = [...compRowsArr, myRowObj].sort((a,b)=>a.rank-b.rank).map(r=>r.html).join('');
+
+  const feedback = genFeedback(p);
+
+  return `
+  <!-- ① 전체 플레이스 순위 현황 -->
+  <div style="margin-bottom:20px">
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">🏠 전체 플레이스 순위 현황</div>
+
+    ${risingPlaces.length ? `
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px">
+        <span style="padding:2px 8px;border-radius:20px;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25)">▲ 순위 상승 업체 ${risingPlaces.length}곳</span>
+      </div>
+      ${risingPlaces.map(s => {
+        const topKw = s.rising[0];
+        return `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:8px;margin-bottom:5px;
+          border:1px solid rgba(34,197,94,.2);background:rgba(34,197,94,.04)">
+          <span style="font-size:12px;font-weight:700;color:var(--text);flex:1">${s.pl.name}</span>
+          ${s.bestRk ? rankBadge(s.bestRk.rank) : ''}
+          <span style="font-size:11px;color:var(--green);font-weight:700">▲ ${s.rising.length}개 상승</span>
+          <span style="font-size:11px;color:var(--text3)">${topKw ? topKw.kw+' '+topKw.prev+'위→'+topKw.rank+'위' : ''}</span>
+          ${s.bestRk ? sparkline(s.bestRk.rankHistory.slice(-8)) : ''}
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+
+    ${fallingPlaces.length ? `
+    <div style="margin-bottom:10px">
+      <div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px">
+        <span style="padding:2px 8px;border-radius:20px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2)">▼ 순위 하락 업체 ${fallingPlaces.length}곳 — 조치 필요</span>
+      </div>
+      ${fallingPlaces.map(s => {
+        const worstKw = [...s.falling].sort((a,b)=>(b.rank-b.prev)-(a.rank-a.prev))[0];
+        const tips    = genFeedback(s.pl);
+        const topTip  = tips.find(t=>t.level==='high') || tips[0];
+        return `<div style="padding:10px 12px;border-radius:8px;margin-bottom:6px;
+          border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.04)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+            <span style="font-size:12px;font-weight:700;color:var(--text);flex:1">${s.pl.name}</span>
+            ${s.bestRk ? rankBadge(s.bestRk.rank) : ''}
+            <span style="font-size:11px;color:var(--red);font-weight:700">▼ ${s.falling.length}개 하락</span>
+            <span style="font-size:11px;color:var(--text3)">${worstKw ? worstKw.kw+' '+worstKw.prev+'위→'+worstKw.rank+'위' : ''}</span>
+            ${s.bestRk ? sparkline(s.bestRk.rankHistory.slice(-8)) : ''}
+          </div>
+          ${topTip ? `<div style="font-size:11px;padding:5px 9px;border-radius:6px;border:1px solid;${LEVEL_STYLE[topTip.level]}color:${LEVEL_COLOR[topTip.level]}">
+            ${topTip.icon} <strong>${topTip.msg}</strong> — ${topTip.detail}
+          </div>` : ''}
+        </div>`;
+      }).join('')}
+    </div>` : `<div style="padding:8px 12px;border-radius:8px;border:1px solid rgba(34,197,94,.2);background:rgba(34,197,94,.04);font-size:12px;color:var(--green);margin-bottom:10px">✅ 하락 업체 없음 — 모든 플레이스 순위 안정적</div>`}
+  </div>
+
+  <hr style="border:none;border-top:1px solid var(--border);margin-bottom:16px">
+
+  <!-- ② 선택 플레이스 순위 키워드 상세 -->
+  <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">
+    📌 ${p.name} — 순위 키워드 변동
+  </div>
+
+  <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+    <div style="flex:1;min-width:80px;padding:10px 12px;border-radius:10px;border:1px solid rgba(34,197,94,.25);background:rgba(34,197,94,.07);text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--green)">${cur.rising.length}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">▲ 상승</div>
+    </div>
+    <div style="flex:1;min-width:80px;padding:10px 12px;border-radius:10px;border:1px solid rgba(100,116,139,.2);background:rgba(100,116,139,.06);text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--text3)">${cur.stable.length}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">— 유지</div>
+    </div>
+    <div style="flex:1;min-width:80px;padding:10px 12px;border-radius:10px;border:1px solid rgba(239,68,68,.2);background:rgba(239,68,68,.07);text-align:center">
+      <div style="font-size:20px;font-weight:800;color:var(--red)">${cur.falling.length}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px">▼ 하락</div>
+    </div>
+  </div>
+
+  ${rankKws.length ? `
+  <div style="margin-bottom:16px">
+    ${rankKws.map(k => {
+      const delta = k.prev - k.rank;
+      const isUp  = delta > 0, isDn = delta < 0;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:8px;margin-bottom:6px;
+        border:1px solid ${isUp?'rgba(34,197,94,.2)':isDn?'rgba(239,68,68,.2)':'var(--border)'};
+        background:${isUp?'rgba(34,197,94,.05)':isDn?'rgba(239,68,68,.05)':'var(--bg-hover2)'}">
+        <span style="font-size:12px;font-weight:700;color:var(--text);flex:1">${k.kw}</span>
+        ${rankBadge(k.rank)}
+        <span style="font-size:11px;font-weight:700;min-width:44px;text-align:right;color:${isUp?'var(--green)':isDn?'var(--red)':'var(--text3)'}">
+          ${delta===0?'—':(isUp?'▲':'▼')+' '+Math.abs(delta)}
+        </span>
+        ${sparkline(k.rankHistory.slice(-10))}
+      </div>`;
+    }).join('')}
+  </div>` : `<div style="font-size:12px;color:var(--text3);margin-bottom:16px">순위 키워드 데이터 없음</div>`}
+
+  <!-- ③ 경쟁사 비교 -->
+  ${competitors.length ? `
+  <div style="margin-bottom:16px">
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">🏁 경쟁사 순위 비교</div>
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:10px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr style="background:var(--bg-hover2)">
+          <th style="padding:7px 10px;font-size:11px;text-align:left;color:var(--text3);font-weight:600">업체명</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:var(--text3);font-weight:600">순위</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:var(--text3);font-weight:600">영수증리뷰</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:var(--text3);font-weight:600">블로그리뷰</th>
+          <th style="padding:7px 10px;font-size:11px;text-align:center;color:var(--text3);font-weight:600">순위추이</th>
+        </tr></thead>
+        <tbody>${allCompRows}</tbody>
+      </table>
+    </div>
+  </div>` : ''}
+
+  <!-- ④ 업셀링 피드백 -->
+  <div>
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">💡 ${p.name} 개선 제안</div>
+    ${feedback.map(f => `
+    <div style="padding:11px 14px;border-radius:10px;border:1px solid;margin-bottom:8px;${LEVEL_STYLE[f.level]}">
+      <div style="font-size:12px;font-weight:700;color:${LEVEL_COLOR[f.level]};margin-bottom:3px">${f.icon} ${f.msg}</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.6">${f.detail}</div>
+    </div>`).join('')}
+  </div>`;
+}
+
 function buildOrders(p) {
   const orders = p.orders || [];
   if (!orders.length) return `<div style="padding:32px;text-align:center;color:var(--text3);font-size:13px">등록된 주문이 없습니다.</div>`;
@@ -653,122 +891,114 @@ function buildOrders(p) {
   const STATUS_COLOR = { active:'#22c55e', pending:'#facc15', done:'#64748b', cancel:'#ef4444' };
   const TYPE_ICON = { reward:'🎯', save:'🔖', blog:'📝', rank:'📌', etc:'📦' };
 
-  /* ── 간트차트 캘린더 ── */
-  // 전체 주문에서 날짜 범위 산출
-  const allDates = orders.flatMap(o => [new Date(o.startDate), new Date(o.endDate)]);
-  const minDate  = new Date(Math.min(...allDates));
-  const maxDate  = new Date(Math.max(...allDates));
-  // 월 단위 컬럼: minDate 달 첫날 ~ maxDate 달 마지막날
-  const startMonth = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
-  const endMonth   = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0);
-  const totalDays  = Math.ceil((endMonth - startMonth) / 86400000) + 1;
+  /* ══ 일별 간트차트 ══ */
+  const allDates  = orders.flatMap(o => [new Date(o.startDate), new Date(o.endDate)]);
+  const rangeStart = new Date(Math.min(...allDates)); rangeStart.setHours(0,0,0,0);
+  const rangeEnd   = new Date(Math.max(...allDates)); rangeEnd.setHours(0,0,0,0);
+  const totalDays  = Math.floor((rangeEnd - rangeStart) / 86400000) + 1;
 
-  // 월 헤더 생성
-  const months = [];
-  let cur = new Date(startMonth);
-  while (cur <= endMonth) {
-    const y = cur.getFullYear(), m = cur.getMonth();
-    const mStart  = new Date(y, m, 1);
-    const mEnd    = new Date(y, m + 1, 0);
-    const colFrom = Math.max(0, Math.ceil((mStart - startMonth) / 86400000));
-    const colDays = Math.min(mEnd, endMonth) - Math.max(mStart, startMonth);
-    const colSpan = Math.ceil(colDays / 86400000) + 1;
-    months.push({ label: `${y}.${String(m+1).padStart(2,'0')}`, colFrom, colSpan });
-    cur = new Date(y, m + 1, 1);
-  }
-
-  // 오늘 위치 (0~totalDays)
-  const today     = new Date(); today.setHours(0,0,0,0);
-  const todayOff  = Math.floor((today - startMonth) / 86400000);
-  const todayPct  = Math.max(0, Math.min(100, (todayOff / totalDays) * 100)).toFixed(2);
+  // 오늘 위치
+  const today    = new Date(); today.setHours(0,0,0,0);
+  const todayOff = Math.floor((today - rangeStart) / 86400000);
+  const todayPct = ((todayOff / totalDays) * 100).toFixed(2);
   const showToday = todayOff >= 0 && todayOff <= totalDays;
 
-  // 월 헤더 HTML
-  const monthHeaders = months.map(m =>
-    `<div style="flex:${m.colSpan};min-width:0;text-align:center;font-size:11px;font-weight:700;
-      color:var(--text3);padding:4px 0;border-right:1px solid var(--border)">${m.label}</div>`
-  ).join('');
+  // 일별 눈금 헤더: 5일 간격으로 날짜 표시
+  const dayTicks = [];
+  for (let d = 0; d < totalDays; d += 5) {
+    const dt  = new Date(rangeStart.getTime() + d * 86400000);
+    const pct = ((d / totalDays) * 100).toFixed(2);
+    dayTicks.push(`<div style="position:absolute;left:${pct}%;top:0;font-size:9px;color:var(--text3);transform:translateX(-50%);white-space:nowrap">
+      ${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}
+    </div>`);
+  }
+  // 마지막 날도 표시
+  const lastPct = (((totalDays-1)/totalDays)*100).toFixed(2);
+  dayTicks.push(`<div style="position:absolute;left:${lastPct}%;top:0;font-size:9px;color:var(--text3);transform:translateX(-50%);white-space:nowrap">
+    ${String(rangeEnd.getMonth()+1).padStart(2,'0')}/${String(rangeEnd.getDate()).padStart(2,'0')}
+  </div>`);
 
-  // 간트 바 행 HTML
+  // 주문 행
   const ganttRows = orders.map(o => {
-    const s    = new Date(o.startDate); s.setHours(0,0,0,0);
-    const e    = new Date(o.endDate);   e.setHours(0,0,0,0);
-    const off  = Math.floor((s - startMonth) / 86400000);
-    const dur  = Math.floor((e - s) / 86400000) + 1;
-    const left = ((off / totalDays) * 100).toFixed(2);
-    const wid  = ((dur / totalDays) * 100).toFixed(2);
-    const col  = STATUS_COLOR[o.status] || '#64748b';
-    const icon = TYPE_ICON[o.type] || '📦';
-
-    const kwTip = o.rewardKeywords?.length
-      ? ` · ${o.rewardKeywords.join(', ')}`
-      : '';
+    const s   = new Date(o.startDate); s.setHours(0,0,0,0);
+    const e   = new Date(o.endDate);   e.setHours(0,0,0,0);
+    const off = Math.floor((s - rangeStart) / 86400000);
+    const dur = Math.floor((e - s) / 86400000) + 1;
+    const lft = ((off / totalDays) * 100).toFixed(2);
+    const wid = ((dur / totalDays) * 100).toFixed(2);
+    const col = STATUS_COLOR[o.status] || '#64748b';
+    const ico = TYPE_ICON[o.type] || '📦';
+    const kwTip = o.rewardKeywords?.length ? ` | ${o.rewardKeywords.join(', ')}` : '';
 
     return `
-    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
-      <div style="width:160px;flex-shrink:0;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
-           title="${o.product}${kwTip}">
-        ${icon} ${o.product}
-      </div>
-      <div style="flex:1;position:relative;height:22px">
-        <!-- 배경 그리드 -->
-        <div style="position:absolute;inset:0;display:flex">
-          ${months.map(m=>`<div style="flex:${m.colSpan};border-right:1px solid var(--border);opacity:.4"></div>`).join('')}
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="width:150px;flex-shrink:0;font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+           title="${o.product}${kwTip}">${ico} ${o.product}</div>
+      <div style="flex:1;position:relative;height:20px">
+        <!-- 일별 그리드 구분선: 7일마다 약한 선 -->
+        <div style="position:absolute;inset:0">
+          ${Array.from({length:Math.ceil(totalDays/7)}, (_,i) => {
+            const p = ((i*7/totalDays)*100).toFixed(2);
+            return `<div style="position:absolute;left:${p}%;top:0;bottom:0;width:1px;background:var(--border);opacity:.5"></div>`;
+          }).join('')}
         </div>
         <!-- 간트 바 -->
-        <div style="position:absolute;top:2px;height:18px;border-radius:4px;
-          left:${left}%;width:${wid}%;
-          background:${o.status==='done'?'rgba(100,116,139,.35)':`${col}22`};
-          border:1px solid ${col}55;
-          display:flex;align-items:center;justify-content:center;overflow:hidden"
+        <div style="position:absolute;top:1px;height:18px;border-radius:4px;
+          left:${lft}%;width:${wid}%;min-width:2px;
+          background:${o.status==='done'?'rgba(100,116,139,.3)':`${col}25`};
+          border:1px solid ${col}66;"
           title="${o.startDate} ~ ${o.endDate}${kwTip}">
-          <span style="font-size:10px;font-weight:700;color:${col};white-space:nowrap;padding:0 4px">${o.daysLeft > 0 ? `잔여 ${o.daysLeft}일` : ''}</span>
+          <div style="height:100%;border-radius:3px;background:${o.status==='done'?'rgba(100,116,139,.4)':`${col}55`};
+            display:flex;align-items:center;justify-content:center;overflow:hidden">
+            <span style="font-size:9px;font-weight:700;color:${o.status==='done'?'#94a3b8':col};padding:0 4px;white-space:nowrap">
+              ${o.daysLeft > 0 ? `잔여 ${o.daysLeft}일` : (o.status==='done'?'완료':'')}
+            </span>
+          </div>
         </div>
+        <!-- 오늘선 -->
+        ${showToday ? `<div style="position:absolute;top:0;bottom:0;left:${todayPct}%;width:1.5px;background:rgba(251,191,36,.8);z-index:2"></div>` : ''}
       </div>
-      <div style="width:44px;flex-shrink:0;text-align:right">${STATUS_BADGE[o.status]||''}</div>
+      <div style="width:40px;flex-shrink:0">${STATUS_BADGE[o.status]||''}</div>
     </div>`;
   }).join('');
 
   const ganttChart = `
-  <div style="margin-bottom:18px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)">
-    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">📅 주문 일정 현황</div>
-    <!-- 월 헤더 -->
-    <div style="display:flex;margin-left:170px;margin-bottom:4px;border-bottom:1px solid var(--border)">
-      ${monthHeaders}
+  <div style="margin-bottom:16px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:12px;font-weight:700;color:var(--text)">📅 주문 일정 (일별)</span>
+      <span style="font-size:10px;color:var(--text3)">${String(rangeStart.getMonth()+1).padStart(2,'0')}/${String(rangeStart.getDate()).padStart(2,'0')} ~ ${String(rangeEnd.getMonth()+1).padStart(2,'0')}/${String(rangeEnd.getDate()).padStart(2,'0')} · 총 ${totalDays}일</span>
     </div>
+    <!-- 날짜 눈금 헤더 -->
+    <div style="position:relative;height:16px;margin-left:158px;margin-bottom:4px">${dayTicks.join('')}</div>
     <!-- 간트 행 -->
-    <div style="position:relative">
-      ${ganttRows}
-      <!-- 오늘 선 -->
-      ${showToday ? `<div style="position:absolute;top:0;bottom:0;left:calc(170px + ${todayPct}%);width:1.5px;background:rgba(251,191,36,.7);pointer-events:none">
-        <span style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:#fbbf24;white-space:nowrap;font-weight:700">TODAY</span>
-      </div>` : ''}
-    </div>
+    <div style="position:relative">${ganttRows}</div>
+    <!-- TODAY 레이블 -->
+    ${showToday ? `<div style="position:relative;height:14px;margin-left:158px">
+      <div style="position:absolute;left:${todayPct}%;transform:translateX(-50%);font-size:9px;color:#fbbf24;font-weight:700;white-space:nowrap">TODAY</div>
+    </div>` : ''}
   </div>`;
 
   /* ── 주문 카드 목록 ── */
   const orderCards = orders.map(o => {
-    const icon = TYPE_ICON[o.type] || '📦';
+    const ico = TYPE_ICON[o.type] || '📦';
     const kwSection = o.type === 'reward' && o.rewardKeywords?.length
-      ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+      ? `<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
            <span style="font-size:11px;color:var(--text3)">작업 키워드</span>
            ${o.rewardKeywords.map(kw =>
-             `<span style="padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;
-               background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--cyan)">${kw}</span>`
+             `<span style="padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--cyan)">${kw}</span>`
            ).join('')}
          </div>`
       : '';
-
     return `
-    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg-card)">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:700;color:var(--text)">${icon} ${o.product}</span>
-        ${STATUS_BADGE[o.status] || ''}
+    <div style="padding:11px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;background:var(--bg-card)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">${ico} ${o.product}</span>
+        ${STATUS_BADGE[o.status]||''}
         <span style="font-size:11px;color:var(--text3);margin-left:auto">${o.id}</span>
       </div>
       <div style="font-size:11px;color:var(--text3)">
         ${o.startDate} ~ ${o.endDate}
-        ${o.status === 'active' && o.daysLeft > 0 ? `<span style="color:var(--cyan);margin-left:8px">잔여 ${o.daysLeft}일</span>` : ''}
+        ${o.status==='active'&&o.daysLeft>0 ? `<span style="color:var(--cyan);margin-left:8px">잔여 ${o.daysLeft}일</span>` : ''}
       </div>
       ${kwSection}
     </div>`;
@@ -843,7 +1073,6 @@ function drawCharts() {
         datasets: [
           { label:'영수증리뷰', data:p.trendReview, borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.08)', tension:.4, pointRadius:2, fill:false },
           { label:'블로그리뷰', data:p.trendBlog,   borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.08)', tension:.4, pointRadius:2, fill:false },
-          { label:'저장수(÷10)', data:p.trendSaved.map(v=>Math.round(v/10)), borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.08)', tension:.4, pointRadius:2, fill:false },
         ]
       },
       options: {
