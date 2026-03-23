@@ -1085,155 +1085,171 @@ function buildOrders(p) {
     </div>`;
 
   /* ── 상수 ─────────────────────────────── */
-  const STATUS_COLOR = { active:'#22c55e', pending:'#f59e0b', done:'#64748b', cancel:'#ef4444' };
-  const STATUS_BG    = { active:'rgba(34,197,94,.15)', pending:'rgba(245,158,11,.15)', done:'rgba(100,116,139,.15)', cancel:'rgba(239,68,68,.15)' };
-  const STATUS_LABEL = { active:'진행중', pending:'대기중', done:'완료', cancel:'취소' };
+  const STATUS_COLOR = { active:'#22c55e', pending:'#f59e0b', done:'#64748b', cancel:'#ef4444', disputed:'#8b5cf6' };
+  const STATUS_BG    = { active:'rgba(34,197,94,.18)', pending:'rgba(245,158,11,.18)', done:'rgba(100,116,139,.15)', cancel:'rgba(239,68,68,.15)', disputed:'rgba(139,92,246,.15)' };
+  const STATUS_LABEL = { active:'진행중', pending:'대기중', done:'완료', cancel:'취소', disputed:'분쟁' };
   const TYPE_ICON    = { reward:'🎯', save:'🔖', blog:'📝', rank:'📌' };
   const TYPE_LABEL   = { reward:'리워드', save:'저장하기', blog:'블로그', rank:'순위' };
   const DAY_KO       = ['일','월','화','수','목','금','토'];
 
-  /* ── 월 상태 ──────────────────────────── */
+  /* ── 주 오프셋 상태 ────────────────────── */
   if (!window._orderCalState) window._orderCalState = {};
   const stateKey = 'cal_' + p.id;
-  if (!window._orderCalState[stateKey]) {
-    const now = new Date();
-    window._orderCalState[stateKey] = { year: now.getFullYear(), month: now.getMonth() };
-  }
-  const { year, month } = window._orderCalState[stateKey];
+  if (window._orderCalState[stateKey] === undefined) window._orderCalState[stateKey] = 0;
+  const offset = window._orderCalState[stateKey];
+
+  /* ── 오늘 & 이번 주 일요일 ─────────────── */
   const today = new Date(); today.setHours(0,0,0,0);
+  const thisWeekSun = new Date(today);
+  thisWeekSun.setDate(today.getDate() - today.getDay());
 
-  /* ── 달력 셀 배열 ─────────────────────── */
-  const firstDay   = new Date(year, month, 1);
-  const lastDay    = new Date(year, month + 1, 0);
-  const startPad   = firstDay.getDay();
-  const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7;
-  const cells = Array.from({ length: totalCells }, (_, i) => {
-    const d = i - startPad + 1;
-    return (d >= 1 && d <= lastDay.getDate()) ? new Date(year, month, d) : null;
+  /* ── 뷰 시작 = 전주 일요일 ─────────────── */
+  const viewStart = new Date(thisWeekSun);
+  viewStart.setDate(thisWeekSun.getDate() + offset * 7 - 7);
+
+  /* ── 5주 날짜 배열 ─────────────────────── */
+  const SHOW_WEEKS = 5;
+  const allDates = Array.from({ length: SHOW_WEEKS * 7 }, (_, i) => {
+    const d = new Date(viewStart); d.setDate(viewStart.getDate() + i); return d;
   });
-  const weeks = Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i*7, i*7+7));
+  const weeks = Array.from({ length: SHOW_WEEKS }, (_, i) => allDates.slice(i * 7, i * 7 + 7));
 
-  /* ── 월 이동 ──────────────────────────── */
-  const prevFn = `(function(){window._orderCalState['${stateKey}']={year:${month===0?year-1:year},month:${month===0?11:month-1}};renderPage();})()`;
-  const nextFn = `(function(){window._orderCalState['${stateKey}']={year:${month===11?year+1:year},month:${month===11?0:month+1}};renderPage();})()`;
+  /* ── 날짜별 주문 인덱스 맵 ─────────────── */
+  // dateKey → [orderIdx, ...]  (각 날짜에 해당하는 주문 순서 리스트)
+  const dayOrderMap = {};
+  orders.forEach((o, oi) => {
+    const s = new Date(o.startDate); s.setHours(0,0,0,0);
+    const e = new Date(o.endDate);   e.setHours(0,0,0,0);
+    for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
+      const key = d.toISOString().slice(0, 10);
+      if (!dayOrderMap[key]) dayOrderMap[key] = [];
+      dayOrderMap[key].push(oi);
+    }
+  });
+
+  /* ── 이동 버튼 ─────────────────────────── */
+  const prevFn  = `(function(){window._orderCalState['${stateKey}']=${offset-1};renderPage();})()`;
+  const nextFn  = `(function(){window._orderCalState['${stateKey}']=${offset+1};renderPage();})()`;
+  const resetFn = `(function(){window._orderCalState['${stateKey}']=0;renderPage();})()`;
+  const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+  const viewEnd = new Date(viewStart); viewEnd.setDate(viewStart.getDate() + SHOW_WEEKS * 7 - 1);
 
   /* ── 헤더 ─────────────────────────────── */
-  const MONTH_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   const calHeader = `
   <div class="cal-header">
     <div class="cal-title">
       <span>📅</span>
-      <span>${year}년 ${MONTH_KO[month]}</span>
+      <span>${fmt(viewStart)} — ${fmt(viewEnd)}</span>
+      ${offset !== 0 ? `<button onclick="${resetFn}" style="margin-left:8px;padding:2px 8px;border-radius:5px;border:1px solid var(--cyan);background:transparent;color:var(--cyan);cursor:pointer;font-size:11px;font-weight:700;">오늘</button>` : ''}
     </div>
     <div class="cal-nav">
-      <button class="cal-nav-btn" onclick="${prevFn}">◀</button>
-      <button class="cal-nav-btn" onclick="${nextFn}">▶</button>
+      <button class="cal-nav-btn" onclick="${prevFn}">◀ 이전</button>
+      <button class="cal-nav-btn" onclick="${nextFn}">다음 ▶</button>
     </div>
   </div>`;
 
-  /* ── 요일 헤더 ────────────────────────── */
+  /* ── 요일 헤더 ─────────────────────────── */
   const dowHeader = `
   <div class="cal-dow">
     ${DAY_KO.map((d,i) => `<div class="cal-dow-cell${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}
   </div>`;
 
-  /* ── 상수: 픽셀 치수 ───────────────────── */
-  const CELL_H  = 84;   // 셀 높이 px
-  const DATE_H  = 30;   // 날짜 숫자 영역 높이 px
-  const BAR_H   = 20;   // 바 높이 px
-  const BAR_GAP = 3;    // 바 사이 간격 px
-  const GRID_GAP = 3;   // 셀 사이 gap px
+  /* ── 주별 렌더 ─────────────────────────── */
+  const gridRows = weeks.map((week, wi) => {
+    const isCurrentWk = week[0].getTime() === thisWeekSun.getTime();
+    const weekLabel   = isCurrentWk ? '이번 주' : wi === 0 ? '전 주' : `+${wi}주`;
+    const lblColor    = isCurrentWk ? 'var(--cyan)' : 'var(--text3)';
 
-  /* ── 주별 렌더 ────────────────────────── */
-  const gridRows = weeks.map(week => {
-
-    /* 날짜 셀 배경 */
-    const dateCells = week.map((date, di) => {
-      if (!date) return `<div class="cal-cell empty"></div>`;
-      const isToday   = date.getTime() === today.getTime();
-      const isPast    = date < today;
-      const isSun     = di === 0;
-      const isSat     = di === 6;
-      const cellCls   = `cal-cell${isToday?' today':isPast?' past':(isSun||isSat)?' weekend':''}`;
-      const numCls    = `cal-date-num${isToday?' today':isPast?' past':isSun?' sun':isSat?' sat':''}`;
-      return `<div class="${cellCls}"><span class="${numCls}">${date.getDate()}</span></div>`;
-    }).join('');
-
-    /* 이 주에 걸치는 주문 */
-    const validDates = week.filter(Boolean);
-    if (!validDates.length) return `<div class="cal-week">${dateCells}</div>`;
-
-    const weekStart = validDates[0];
-    const weekEnd   = validDates[validDates.length - 1];
-    const weekOrders = orders.filter(o => {
-      const s = new Date(o.startDate); s.setHours(0,0,0,0);
-      const e = new Date(o.endDate);   e.setHours(0,0,0,0);
-      return s <= weekEnd && e >= weekStart;
+    /* 이 주에서 등장하는 최대 주문 수 → 셀 높이 결정 */
+    let maxPerDay = 0;
+    week.forEach(date => {
+      const key = date.toISOString().slice(0, 10);
+      const cnt = (dayOrderMap[key] || []).length;
+      if (cnt > maxPerDay) maxPerDay = cnt;
     });
+    const CHIP_H  = 22; // 칩 높이
+    const CHIP_GAP = 3;
+    const DATE_H  = 28;
+    const cellH   = Math.max(72, DATE_H + maxPerDay * (CHIP_H + CHIP_GAP) + 8);
 
-    /* 주문 바 절대 좌표 계산 */
-    const bars = weekOrders.map((o, oi) => {
-      const s = new Date(o.startDate); s.setHours(0,0,0,0);
-      const e = new Date(o.endDate);   e.setHours(0,0,0,0);
+    /* 각 날짜 셀 렌더 */
+    const cellsHtml = week.map((date, di) => {
+      const isToday  = date.getTime() === today.getTime();
+      const isPast   = date < today;
+      const isSun    = di === 0;
+      const isSat    = di === 6;
+      const cellCls  = `cal-cell${isToday?' today':isPast?' past':(isSun||isSat)?' weekend':''}`;
+      const numCls   = `cal-date-num${isToday?' today':isPast?' past':isSun?' sun':isSat?' sat':''}`;
+      const showMon  = date.getDate() === 1;
+      const monTag   = showMon ? `<span style="font-size:9px;color:var(--text3);margin-left:2px;font-weight:600">${date.getMonth()+1}월</span>` : '';
 
-      let colStart = week.findIndex(d => d && d.getTime() === s.getTime());
-      if (colStart < 0) colStart = week.findIndex(Boolean);  // 이전 주에서 넘어온 것
+      const key      = date.toISOString().slice(0, 10);
+      const dayOIs   = dayOrderMap[key] || [];
 
-      let colEnd = week.findIndex(d => d && d.getTime() === e.getTime());
-      if (colEnd < 0) colEnd = week.reduce((acc, d, i) => d ? i : acc, colStart);  // 다음 주로 이어짐
+      /* 이 날짜의 주문 칩들 */
+      const chips = dayOIs.map(oi => {
+        const o   = orders[oi];
+        const col = STATUS_COLOR[o.status] || '#64748b';
+        const bg  = STATUS_BG[o.status]    || 'rgba(100,116,139,.15)';
+        const icon = TYPE_ICON[o.type] || '📦';
+        const name = (o.product || '').slice(0, 10);
 
-      if (colStart > colEnd) colStart = colEnd;
+        /* 시작일 셀에만 아이콘+이름, 나머지는 색 띠만 */
+        const isStartDay = date.toISOString().slice(0,10) === new Date(o.startDate).toISOString().slice(0,10);
+        const isEndDay   = date.toISOString().slice(0,10) === new Date(o.endDate).toISOString().slice(0,10);
 
-      const spanCols  = colEnd - colStart + 1;
-      const isStart   = colStart === week.findIndex(d => d && d.getTime() === s.getTime());
-      const isEnd     = colEnd   === week.findIndex(d => d && d.getTime() === e.getTime());
+        /* 연결감: 시작=왼쪽 둥글, 끝=오른쪽 둥글, 중간=사각 */
+        const brLeft  = isStartDay ? '4px' : '0';
+        const brRight = isEndDay   ? '4px' : '0';
+        const borderL = isStartDay ? `2px solid ${col}` : 'none';
 
-      const col = STATUS_COLOR[o.status] || '#64748b';
-      const bg  = STATUS_BG[o.status]    || 'rgba(100,116,139,.15)';
+        const tip = `${o.product||''} · ${STATUS_LABEL[o.status]||o.status} · ${o.startDate}~${o.endDate}`;
 
-      // border-radius: 시작이면 왼쪽, 끝이면 오른쪽 둥글게
-      const br = `${isStart?'6px':'0'} ${isEnd?'6px':'0'} ${isEnd?'6px':'0'} ${isStart?'6px':'0'}`;
+        return `<div title="${tip}" style="
+          height:${CHIP_H}px;
+          margin-bottom:${CHIP_GAP}px;
+          background:${bg};
+          border-top:1.5px solid ${col}55;
+          border-bottom:1.5px solid ${col}55;
+          border-left:${borderL};
+          border-right:${isEndDay ? `1.5px solid ${col}55` : 'none'};
+          border-radius:${brLeft} ${brRight} ${brRight} ${brLeft};
+          display:flex;align-items:center;
+          padding:0 4px;
+          overflow:hidden;
+          color:${col};
+          font-size:10px;font-weight:600;
+          white-space:nowrap;
+          cursor:default;
+          transition:filter .15s;
+        " onmouseenter="this.style.filter='brightness(1.15)'" onmouseleave="this.style.filter=''">
+          ${isStartDay ? `<span style="margin-right:3px;font-size:11px">${icon}</span><span style="overflow:hidden;text-overflow:ellipsis">${name}</span>` : ''}
+        </div>`;
+      }).join('');
 
-      // 절대 좌표 — calc()로 gap 정확히 반영
-      const topPx    = DATE_H + oi * (BAR_H + BAR_GAP);
-      const leftCalc = `calc(${colStart} * (100% / 7) + ${colStart} * ${GRID_GAP}px / 7)`;
-      const widthCalc= `calc(${spanCols} * (100% / 7) + (${spanCols - 1}) * ${GRID_GAP}px / 7 - 1px)`;
-
-      const icon  = isStart ? (TYPE_ICON[o.type] || '📦') : '';
-      const label = isStart ? ' ' + (o.product || '').slice(0, 14) : '';
-
-      const tooltip = `${o.product||''} (${STATUS_LABEL[o.status]||o.status}) ${o.startDate}~${o.endDate}`;
-
-      return `<div class="cal-bar" style="
-        top:${topPx}px;
-        left:${leftCalc};
-        width:${widthCalc};
-        height:${BAR_H}px;
-        background:${bg};
-        border-top:1.5px solid ${col}99;
-        border-bottom:1.5px solid ${col}99;
-        border-left:${isStart ? `2.5px solid ${col}` : 'none'};
-        border-right:${isEnd   ? `1.5px solid ${col}99` : 'none'};
-        border-radius:${br};
-        color:${col};
-      " title="${tooltip}">
-        <span class="cal-bar-label">${icon}${label}</span>
+      return `<div class="${cellCls}" style="min-height:${cellH}px;padding:4px 4px 2px;">
+        <div style="display:flex;align-items:center;gap:2px;margin-bottom:4px">
+          <span class="${numCls}">${date.getDate()}</span>${monTag}
+        </div>
+        ${chips}
       </div>`;
     }).join('');
 
-    /* 이 주의 필요 높이 = 날짜 영역 + 바들 */
-    const weekH = Math.max(CELL_H, DATE_H + weekOrders.length * (BAR_H + BAR_GAP) + 6);
-
-    return `<div class="cal-week" style="min-height:${weekH}px">
-      ${dateCells}
-      ${bars}
+    return `
+    <div style="display:flex;align-items:stretch;gap:4px;margin-bottom:3px">
+      <div style="width:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
+        <span style="font-size:9px;font-weight:700;color:${lblColor};writing-mode:vertical-lr;transform:rotate(180deg);letter-spacing:.5px;white-space:nowrap">${weekLabel}</span>
+      </div>
+      <div class="cal-week" style="flex:1;min-height:${cellH}px${isCurrentWk ? ';box-shadow:0 0 0 1.5px var(--cyan) inset;border-radius:8px;' : ''}">
+        ${cellsHtml}
+      </div>
     </div>`;
   }).join('');
 
   /* ── 범례 ─────────────────────────────── */
   const legend = `
   <div class="cal-legend">
-    <span style="font-size:11px;font-weight:700;color:var(--text2);margin-right:4px">범례</span>
+    <span style="font-size:11px;font-weight:700;color:var(--text2);margin-right:4px">상태</span>
     ${Object.entries(STATUS_COLOR).map(([k,c]) => `
       <div class="cal-legend-item">
         <div class="cal-legend-dot" style="background:${STATUS_BG[k]};border:1.5px solid ${c}88"></div>
@@ -1245,7 +1261,7 @@ function buildOrders(p) {
     </div>
   </div>`;
 
-  /* ── 주문 카드 목록 ───────────────────── */
+  /* ── 주문 카드 목록 ─────────────────────── */
   const orderCards = orders.map(o => {
     const e    = new Date(o.endDate);
     const diff = Math.round((e - today) / 86400000);
@@ -1255,12 +1271,11 @@ function buildOrders(p) {
     const isActive = o.status === 'active';
     const dday = isActive ? (diff >= 0 ? `D-${diff}` : '종료') : '';
     const ddayColor = diff <= 3 ? '#f87171' : 'var(--cyan)';
-
     return `
-    <div class="cal-order-card" style="border-left:3px solid ${col};">
-      <div class="cal-order-icon">${TYPE_ICON[o.type] || '📦'}</div>
+    <div class="cal-order-card" style="border-left:3px solid ${col}">
+      <div class="cal-order-icon">${TYPE_ICON[o.type]||'📦'}</div>
       <div class="cal-order-info">
-        <div class="cal-order-name">${o.product || '상품명 없음'}</div>
+        <div class="cal-order-name">${o.product||'상품명 없음'}</div>
         <div class="cal-order-meta">
           <span>📅 ${o.startDate} ~ ${o.endDate}</span>
           ${o.keywords?.length ? `<span>🔑 ${o.keywords.join(', ')}</span>` : ''}
@@ -1280,6 +1295,7 @@ function buildOrders(p) {
   <div class="cal-order-list">${orderCards}</div>
 </div>`;
 }
+
 
 function crawlBadge(status) {
   if (status === 'ok')    return `<span class="crawl-status-badge crawl-ok">✅ 정상</span>`;
