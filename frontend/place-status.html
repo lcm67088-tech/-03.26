@@ -1115,7 +1115,6 @@ function buildOrders(p) {
   const weeks = Array.from({ length: SHOW_WEEKS }, (_, i) => allDates.slice(i * 7, i * 7 + 7));
 
   /* ── 날짜별 주문 인덱스 맵 ─────────────── */
-  // dateKey → [orderIdx, ...]  (각 날짜에 해당하는 주문 순서 리스트)
   const dayOrderMap = {};
   orders.forEach((o, oi) => {
     const s = new Date(o.startDate); s.setHours(0,0,0,0);
@@ -1155,54 +1154,75 @@ function buildOrders(p) {
   </div>`;
 
   /* ── 주별 렌더 ─────────────────────────── */
+  const CHIP_H  = 22;
+  const CHIP_GAP = 3;
+  const DATE_H  = 28;
+  const CNT_H   = 20; // 타입별 수량 뱃지 영역
+
   const gridRows = weeks.map((week, wi) => {
     const isCurrentWk = week[0].getTime() === thisWeekSun.getTime();
     const weekLabel   = isCurrentWk ? '이번 주' : wi === 0 ? '전 주' : `+${wi}주`;
     const lblColor    = isCurrentWk ? 'var(--cyan)' : 'var(--text3)';
 
-    /* 이 주에서 등장하는 최대 주문 수 → 셀 높이 결정 */
+    /* 이 주 최대 주문 수 → 셀 높이 */
     let maxPerDay = 0;
     week.forEach(date => {
-      const key = date.toISOString().slice(0, 10);
-      const cnt = (dayOrderMap[key] || []).length;
+      const cnt = (dayOrderMap[date.toISOString().slice(0,10)] || []).length;
       if (cnt > maxPerDay) maxPerDay = cnt;
     });
-    const CHIP_H  = 22; // 칩 높이
-    const CHIP_GAP = 3;
-    const DATE_H  = 28;
-    const cellH   = Math.max(72, DATE_H + maxPerDay * (CHIP_H + CHIP_GAP) + 8);
+    const cellH = Math.max(80, DATE_H + CNT_H + maxPerDay * (CHIP_H + CHIP_GAP) + 8);
 
-    /* 각 날짜 셀 렌더 */
+    /* 날짜 셀 */
     const cellsHtml = week.map((date, di) => {
-      const isToday  = date.getTime() === today.getTime();
-      const isPast   = date < today;
-      const isSun    = di === 0;
-      const isSat    = di === 6;
-      const cellCls  = `cal-cell${isToday?' today':isPast?' past':(isSun||isSat)?' weekend':''}`;
-      const numCls   = `cal-date-num${isToday?' today':isPast?' past':isSun?' sun':isSat?' sat':''}`;
-      const showMon  = date.getDate() === 1;
-      const monTag   = showMon ? `<span style="font-size:9px;color:var(--text3);margin-left:2px;font-weight:600">${date.getMonth()+1}월</span>` : '';
+      const isToday = date.getTime() === today.getTime();
+      const isPast  = date < today;
+      const isSun   = di === 0;
+      const isSat   = di === 6;
+      const cellCls = `cal-cell${isToday?' today':isPast?' past':(isSun||isSat)?' weekend':''}`;
+      const numCls  = `cal-date-num${isToday?' today':isPast?' past':isSun?' sun':isSat?' sat':''}`;
+      const showMon = date.getDate() === 1;
+      const monTag  = showMon ? `<span style="font-size:9px;color:var(--text3);margin-left:2px;font-weight:600">${date.getMonth()+1}월</span>` : '';
 
-      const key      = date.toISOString().slice(0, 10);
-      const dayOIs   = dayOrderMap[key] || [];
+      const key    = date.toISOString().slice(0, 10);
+      const dayOIs = dayOrderMap[key] || [];
 
-      /* 이 날짜의 주문 칩들 */
+      /* ── 타입별 수량 집계 뱃지 ── */
+      const typeCnt = {};
+      dayOIs.forEach(oi => {
+        const t = orders[oi].type || 'etc';
+        typeCnt[t] = (typeCnt[t] || 0) + 1;
+      });
+      const cntBadges = Object.entries(typeCnt).map(([t, n]) => {
+        const icon = TYPE_ICON[t] || '📦';
+        return `<span style="
+          display:inline-flex;align-items:center;gap:2px;
+          font-size:10px;font-weight:700;
+          color:var(--text2);
+          background:var(--bg3);
+          border-radius:4px;
+          padding:1px 5px;
+          line-height:1.6;
+        ">${icon} ${n}</span>`;
+      }).join('');
+
+      const cntRow = dayOIs.length > 0 ? `
+        <div style="display:flex;gap:3px;flex-wrap:wrap;margin-bottom:4px;min-height:${CNT_H}px;align-items:center;">
+          ${cntBadges}
+        </div>` : `<div style="min-height:${CNT_H}px;"></div>`;
+
+      /* ── 주문 칩들 ── */
       const chips = dayOIs.map(oi => {
         const o   = orders[oi];
         const col = STATUS_COLOR[o.status] || '#64748b';
         const bg  = STATUS_BG[o.status]    || 'rgba(100,116,139,.15)';
         const icon = TYPE_ICON[o.type] || '📦';
-        const name = (o.product || '').slice(0, 10);
+        const name = (o.product || '상품명 없음').slice(0, 12);
 
-        /* 시작일 셀에만 아이콘+이름, 나머지는 색 띠만 */
-        const isStartDay = date.toISOString().slice(0,10) === new Date(o.startDate).toISOString().slice(0,10);
-        const isEndDay   = date.toISOString().slice(0,10) === new Date(o.endDate).toISOString().slice(0,10);
-
-        /* 연결감: 시작=왼쪽 둥글, 끝=오른쪽 둥글, 중간=사각 */
+        const isStartDay = key === new Date(o.startDate).toISOString().slice(0,10);
+        const isEndDay   = key === new Date(o.endDate).toISOString().slice(0,10);
         const brLeft  = isStartDay ? '4px' : '0';
         const brRight = isEndDay   ? '4px' : '0';
-        const borderL = isStartDay ? `2px solid ${col}` : 'none';
-
+        const borderL = isStartDay ? `2px solid ${col}` : `1px solid ${col}33`;
         const tip = `${o.product||''} · ${STATUS_LABEL[o.status]||o.status} · ${o.startDate}~${o.endDate}`;
 
         return `<div title="${tip}" style="
@@ -1214,23 +1234,25 @@ function buildOrders(p) {
           border-left:${borderL};
           border-right:${isEndDay ? `1.5px solid ${col}55` : 'none'};
           border-radius:${brLeft} ${brRight} ${brRight} ${brLeft};
-          display:flex;align-items:center;
-          padding:0 4px;
+          display:flex;align-items:center;gap:3px;
+          padding:0 5px;
           overflow:hidden;
           color:${col};
           font-size:10px;font-weight:600;
           white-space:nowrap;
           cursor:default;
           transition:filter .15s;
-        " onmouseenter="this.style.filter='brightness(1.15)'" onmouseleave="this.style.filter=''">
-          ${isStartDay ? `<span style="margin-right:3px;font-size:11px">${icon}</span><span style="overflow:hidden;text-overflow:ellipsis">${name}</span>` : ''}
+        " onmouseenter="this.style.filter='brightness(1.2)'" onmouseleave="this.style.filter=''">
+          <span style="font-size:11px;flex-shrink:0">${icon}</span>
+          <span style="overflow:hidden;text-overflow:ellipsis">${name}</span>
         </div>`;
       }).join('');
 
-      return `<div class="${cellCls}" style="min-height:${cellH}px;padding:4px 4px 2px;">
-        <div style="display:flex;align-items:center;gap:2px;margin-bottom:4px">
+      return `<div class="${cellCls}" style="min-height:${cellH}px;padding:4px 5px 3px;">
+        <div style="display:flex;align-items:center;gap:2px;margin-bottom:4px;">
           <span class="${numCls}">${date.getDate()}</span>${monTag}
         </div>
+        ${cntRow}
         ${chips}
       </div>`;
     }).join('');
@@ -1240,25 +1262,17 @@ function buildOrders(p) {
       <div style="width:32px;flex-shrink:0;display:flex;align-items:center;justify-content:center">
         <span style="font-size:9px;font-weight:700;color:${lblColor};writing-mode:vertical-lr;transform:rotate(180deg);letter-spacing:.5px;white-space:nowrap">${weekLabel}</span>
       </div>
-      <div class="cal-week" style="flex:1;min-height:${cellH}px${isCurrentWk ? ';box-shadow:0 0 0 1.5px var(--cyan) inset;border-radius:8px;' : ''}">
+      <div class="cal-week" style="flex:1;min-height:${cellH}px${isCurrentWk?';box-shadow:0 0 0 1.5px var(--cyan) inset;border-radius:8px;':''}">
         ${cellsHtml}
       </div>
     </div>`;
   }).join('');
 
-  /* ── 범례 ─────────────────────────────── */
+  /* ── 범례: 타입 아이콘만 (상태 제거) ───── */
   const legend = `
-  <div class="cal-legend">
-    <span style="font-size:11px;font-weight:700;color:var(--text2);margin-right:4px">상태</span>
-    ${Object.entries(STATUS_COLOR).map(([k,c]) => `
-      <div class="cal-legend-item">
-        <div class="cal-legend-dot" style="background:${STATUS_BG[k]};border:1.5px solid ${c}88"></div>
-        <span>${STATUS_LABEL[k]}</span>
-      </div>`).join('')}
-    <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
-      ${Object.entries(TYPE_ICON).map(([k,v]) => `
-        <div class="cal-legend-item"><span>${v}</span><span>${TYPE_LABEL[k]}</span></div>`).join('')}
-    </div>
+  <div class="cal-legend" style="justify-content:flex-end">
+    ${Object.entries(TYPE_ICON).map(([k,v]) => `
+      <div class="cal-legend-item"><span>${v}</span><span>${TYPE_LABEL[k]}</span></div>`).join('')}
   </div>`;
 
   /* ── 주문 카드 목록 ─────────────────────── */
