@@ -179,11 +179,18 @@ const PLACES = [
     trendSaved: [1050,1080,1100,1130,1150,1175,1195,1210,1225,1240],
     trendVisitor:[3400,3500,3600,3700,3800,3900,3950,4050,4150,4200],
     trendBlog:   [100,105,108,112,115,118,120,123,126,128],
-    /* 광고 */
-    adPowerLink:true, adPlaceAd:false,
-    adPowerLinkKeywords:['강남 맛집','테헤란로 맛집'],
-    adBudgetMonthly:150000, adClickEstimate:320,
-    adLastChecked:'2026-03-19 06:00',
+    /* 주문 */
+    orders:[
+      { id:'ORD-1024', product:'리워드 유입 — 프리미엄', type:'reward', status:'active',
+        startDate:'2026-03-01', endDate:'2026-03-31', daysLeft:8,
+        rewardKeywords:['강남 맛집','테헤란로 맛집','강남역 한식'] },
+      { id:'ORD-1018', product:'저장하기 패키지', type:'save', status:'active',
+        startDate:'2026-03-10', endDate:'2026-03-31', daysLeft:8,
+        rewardKeywords:[] },
+      { id:'ORD-0991', product:'리워드 유입 — 스탠다드', type:'reward', status:'done',
+        startDate:'2026-02-01', endDate:'2026-02-28', daysLeft:0,
+        rewardKeywords:['강남 점심','역삼동 맛집'] },
+    ],
     /* 메뉴 */
     menus:[
       { name:'김치찌개',    price:'8,000원',    highlight:true  },
@@ -241,10 +248,14 @@ const PLACES = [
     trendSaved: [620,635,645,655,665,675,685,695,710,720],
     trendVisitor:[1800,1850,1880,1920,1950,1970,1980,1990,2050,2100],
     trendBlog:   [50,52,54,56,57,58,59,61,63,64],
-    adPowerLink:false, adPlaceAd:true,
-    adPowerLinkKeywords:[],
-    adBudgetMonthly:80000, adClickEstimate:180,
-    adLastChecked:'2026-03-19 06:00',
+    orders:[
+      { id:'ORD-1025', product:'리워드 유입 — 스탠다드', type:'reward', status:'active',
+        startDate:'2026-03-05', endDate:'2026-04-04', daysLeft:12,
+        rewardKeywords:['홍대 맛집','홍대입구역 맛집'] },
+      { id:'ORD-0998', product:'블로그 리뷰 작성', type:'blog', status:'pending',
+        startDate:'2026-03-25', endDate:'2026-04-10', daysLeft:18,
+        rewardKeywords:[] },
+    ],
     menus:[
       { name:'비빔밥',   price:'9,000원',  highlight:true  },
       { name:'갈비탕',   price:'13,000원', highlight:false },
@@ -275,7 +286,7 @@ const PLACES = [
 
 /* ══════ 전역 상태 ══════ */
 let _selId  = PLACES[0].id;
-let _subTab = 'stats'; // stats | keywords | reviews | menu | crawl | ad
+let _subTab = 'stats'; // stats | keywords | reviews | menu | crawl | orders
 
 /* ══════════════════════════════════════
    렌더링
@@ -323,7 +334,7 @@ function buildHTML() {
       ['reviews',  '💬 리뷰'],
       ['menu',     '🍽️ 메뉴'],
       ['crawl',    '🤖 크롤링 이력'],
-      ['ad',       '📢 광고 현황'],
+      ['orders',   '📦 주문 현황'],
     ].map(([key, label]) => `
       <button class="detail-tab${_subTab===key?' active':''}" onclick="switchSubTab('${key}')">${label}</button>
     `).join('')}
@@ -414,7 +425,7 @@ function buildSubTab(p) {
   if (_subTab === 'reviews')  return buildReviews(p);
   if (_subTab === 'menu')     return buildMenu(p);
   if (_subTab === 'crawl')    return buildCrawlLog(p);
-  if (_subTab === 'ad')       return buildAd(p);
+  if (_subTab === 'orders')   return buildOrders(p);
   return '';
 }
 
@@ -629,33 +640,44 @@ function buildCrawlLog(p) {
   `).join('')}`;
 }
 
-/* ── 광고 현황 탭 ── */
-function buildAd(p) {
-  return `
-  <div class="ad-row">
-    <span style="font-size:13px;color:var(--text2);font-weight:600">파워링크 광고</span>
-    <span style="font-size:13px;font-weight:700;color:${p.adPowerLink?'var(--green)':'var(--text3)'}">${p.adPowerLink ? '✅ 집행 중' : '❌ 미집행'}</span>
-  </div>
-  <div class="ad-row">
-    <span style="font-size:13px;color:var(--text2);font-weight:600">플레이스 광고</span>
-    <span style="font-size:13px;font-weight:700;color:${p.adPlaceAd?'var(--green)':'var(--text3)'}">${p.adPlaceAd ? '✅ 집행 중' : '❌ 미집행'}</span>
-  </div>
-  ${p.adPowerLinkKeywords.length > 0 ? `
-  <div class="ad-row">
-    <span style="font-size:13px;color:var(--text2);font-weight:600">파워링크 키워드</span>
-    <div style="display:flex;flex-wrap:wrap;gap:5px">
-      ${p.adPowerLinkKeywords.map(k => `<span style="padding:2px 8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:4px;font-size:11px;font-weight:600;color:var(--red)">CPC ${k}</span>`).join('')}
-    </div>
-  </div>` : ''}
-  <div class="ad-row">
-    <span style="font-size:13px;color:var(--text2);font-weight:600">월 예산 (추정)</span>
-    <span style="font-size:13px;font-weight:700;color:var(--text)">${p.adBudgetMonthly.toLocaleString()}원</span>
-  </div>
-  <div class="ad-row" style="border-bottom:none">
-    <span style="font-size:13px;color:var(--text2);font-weight:600">클릭 추정 (월)</span>
-    <span style="font-size:13px;font-weight:700;color:var(--text)">${p.adClickEstimate.toLocaleString()}회</span>
-  </div>
-  <div style="font-size:11px;color:var(--text3);margin-top:8px">마지막 확인: ${p.adLastChecked} · 추정값이며 실제와 다를 수 있습니다.</div>`;
+/* ── 주문 현황 탭 ── */
+function buildOrders(p) {
+  const orders = p.orders || [];
+  if (!orders.length) return `<div style="padding:32px;text-align:center;color:var(--text3);font-size:13px">등록된 주문이 없습니다.</div>`;
+
+  const TYPE_LABEL = { reward:'리워드 유입', save:'저장하기', blog:'블로그 리뷰', rank:'순위 관리', etc:'기타' };
+  const STATUS_BADGE = {
+    active:  `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green)">진행중</span>`,
+    pending: `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.25);color:#facc15">대기중</span>`,
+    done:    `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.2);color:var(--text3)">완료</span>`,
+    cancel:  `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red)">취소</span>`,
+  };
+
+  return orders.map(o => {
+    const isReward = o.type === 'reward';
+    const kwSection = isReward && o.rewardKeywords?.length
+      ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+           <span style="font-size:11px;color:var(--text3);margin-right:2px">작업 키워드</span>
+           ${o.rewardKeywords.map(kw =>
+             `<span style="padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--cyan)">${kw}</span>`
+           ).join('')}
+         </div>`
+      : '';
+
+    return `
+    <div style="padding:14px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:var(--bg-card)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+        <span style="font-size:13px;font-weight:700;color:var(--text)">${o.product}</span>
+        ${STATUS_BADGE[o.status] || ''}
+        <span style="font-size:11px;color:var(--text3);margin-left:auto">${o.id}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap">
+        <span>📅 ${o.startDate} ~ ${o.endDate}</span>
+        ${o.status === 'active' ? `<span style="color:var(--cyan)">잔여 ${o.daysLeft}일</span>` : ''}
+      </div>
+      ${kwSection}
+    </div>`;
+  }).join('');
 }
 
 /* ══════ 헬퍼 ══════ */
