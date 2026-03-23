@@ -1,7 +1,7 @@
 /**
  * nplace.io — 공통 JavaScript (v3.1)
  * 인증·라우팅·사이드바·헤더·테마·토스트·모달·유틸
- * updated: 2026-03-25 (cache-bust) — place-status 메뉴 포함
+ * updated: 2026-03-23 (refactor) — 폴더구조 정리, 달력 간트차트, 주문 테이블 개선
  */
 
 /* ═══════════════════════════════════════════════
@@ -511,14 +511,15 @@ function rankBadge(rank) {
   return `<span class="rank-badge ${cls}">${rank}</span>`;
 }
 
+// ORDER_STATUS: DB OrderStatus enum 기준 (pending/confirmed/in_progress/completed/cancelled/refunded/disputed)
 const ORDER_STATUS = {
-  pending:          { label: '결제 대기', cls: 'badge-yellow' },
-  confirmed:        { label: '확인 완료', cls: 'badge-blue' },
-  in_progress:      { label: '진행 중',  cls: 'badge-purple' },
-  completed:        { label: '완료',     cls: 'badge-green' },
-  cancelled:        { label: '취소',     cls: 'badge-gray' },
-  refund_requested: { label: '환불 요청', cls: 'badge-orange' },
-  refunded:         { label: '환불 완료', cls: 'badge-red' },
+  pending:     { label: '결제 대기', cls: 'badge-yellow' },
+  confirmed:   { label: '확인 완료', cls: 'badge-blue' },
+  in_progress: { label: '진행 중',  cls: 'badge-purple' },
+  completed:   { label: '완료',     cls: 'badge-green' },
+  cancelled:   { label: '취소',     cls: 'badge-gray' },
+  refunded:    { label: '환불 완료', cls: 'badge-red' },
+  disputed:    { label: '분쟁 처리', cls: 'badge-orange' },  // DB: disputed (구 refund_requested)
 };
 function orderBadge(status) {
   const s = ORDER_STATUS[status] || { label: status, cls: 'badge-gray' };

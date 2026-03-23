@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# 환경 변수 (절대 커밋 금지)
+.env
+.env.local
+.env.*.local
+
+# 가상환경
+venv/
+.venv/
+env/
+ENV/
+
+# Alembic
+# alembic/versions/*.pyc 는 위 *.pyc에서 커버
+
+# 로그
+*.log
+logs/
+*.log.*
+
+# PM2
+.pm2/
+pids/
+*.pid
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# 임시 파일
+*.bak
+*.tmp
+*.backup
+/tmp/
+
+# 노드 (ecosystem 설정 파일은 커밋 유지)
+node_modules/

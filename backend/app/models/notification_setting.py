@@ -1,23 +1,22 @@
 """
 알림 설정 모델 모듈
 Sprint 7: 알림 시스템 구현
+Refactor: Base → BaseModel 상속 (UUID PK + timezone-aware 타임스탬프 통일)
 - NotificationSetting: 사용자별 알림 타입 수신 채널 설정 모델
 """
 
-import uuid
-from datetime import datetime
-
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, UniqueConstraint
+from sqlalchemy import Boolean, Column, Enum, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.models.base import Base
+from app.models.base import BaseModel
 from app.models.notification import NotificationType
 
 
-class NotificationSetting(Base):
+class NotificationSetting(BaseModel):
     """
     알림 설정 모델
+    Refactor: Base → BaseModel 상속 (id, created_at, updated_at 자동 관리)
 
     사용자가 각 알림 타입별로 어떤 채널(인앱/이메일/카카오/SMS)로
     수신할지 선택한 설정값을 저장합니다.
@@ -35,14 +34,7 @@ class NotificationSetting(Base):
             "notification_type",
             name="uq_notification_settings_user_type",
         ),
-    )
-
-    # ── PK ──────────────────────────────────────────────────
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        comment="알림 설정 고유 식별자",
+        {"comment": "사용자 알림 수신 채널 설정"},
     )
 
     # ── FK: 설정 소유자 ──────────────────────────────────────
@@ -90,21 +82,8 @@ class NotificationSetting(Base):
         comment="SMS 알림 수신 여부 (기본값: False, Mock 처리)",
     )
 
-    # ── 타임스탬프 ────────────────────────────────────────────
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        comment="설정 생성 시각 (UTC)",
-    )
-
-    updated_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        comment="설정 마지막 수정 시각 (UTC)",
-    )
+    # created_at, updated_at → BaseModel에서 자동 관리
+    # (timezone=True, server_default=func.now(), onupdate=func.now())
 
     # ── 관계 ─────────────────────────────────────────────────
     user = relationship(

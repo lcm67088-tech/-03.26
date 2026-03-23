@@ -416,3 +416,50 @@ BRAND_SETTINGS = {
 ---
 
 *최종 업데이트: 2026-03-20 (Sprint 10 매체사 상품 설정 심화)*
+
+---
+
+## 🔧 기술 부채 & TODO (DB/인프라)
+
+### keyword_rankings 테이블 파티셔닝 (우선순위: 중)
+
+> **현재 상태**: 단일 테이블에 전체 랭킹 이력 누적  
+> **위험**: 키워드×장소×일별 데이터가 급증 시 쿼리 성능 저하
+
+**권장 파티셔닝 전략 (PostgreSQL Range Partitioning)**:
+
+```sql
+-- 월별 Range 파티셔닝 (예시)
+ALTER TABLE keyword_rankings PARTITION BY RANGE (created_at);
+
+CREATE TABLE keyword_rankings_2026_03
+  PARTITION OF keyword_rankings
+  FOR VALUES FROM ('2026-03-01') TO ('2026-04-01');
+
+CREATE TABLE keyword_rankings_2026_04
+  PARTITION OF keyword_rankings
+  FOR VALUES FROM ('2026-04-01') TO ('2026-05-01');
+```
+
+**마이그레이션 절차 (실 서비스 전 필요)**:
+1. 새 파티션 테이블 생성 → 기존 데이터 COPY → 원본 RENAME
+2. 월 단위 자동 파티션 생성 스크립트 추가 (cron 또는 pg_partman)
+3. 인덱스 재생성: `(place_id, keyword_id, created_at)` 복합 인덱스
+
+**참고**: 현재 데모/개발 단계에서는 파티셔닝 불필요. 월간 조회 수 100만 행 초과 시 적용 권장.
+
+---
+
+### requirements.txt 버전 고정 (우선순위: 배포 전 필수)
+
+> **현재 상태**: `>=` 범위 지정으로 환경별 버전 불일치 위험
+
+**조치 방법 (배포 환경 확정 후)**:
+```bash
+# 가상환경 활성화 후
+pip install -r requirements.txt
+pip freeze > requirements.lock.txt
+# requirements.lock.txt를 배포 환경에서 사용
+```
+
+*최종 업데이트: 2026-03-23 (Phase 4 DB 리팩토링)*

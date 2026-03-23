@@ -83,6 +83,20 @@ class User(BaseModel):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    # Sprint 7: 알림 관계
+    notifications = relationship(
+        "Notification",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+        order_by="Notification.created_at.desc()",
+    )
+    notification_settings = relationship(
+        "NotificationSetting",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="select",
+    )
 
     def __repr__(self) -> str:
         return f"<User {self.email}>"

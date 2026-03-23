@@ -123,6 +123,14 @@ class Workspace(BaseModel):
         cascade="all, delete-orphan",
         order_by="BillingHistory.created_at.desc()",
     )
+    # Sprint 7: 알림 관계
+    notifications = relationship(
+        "Notification",
+        back_populates="workspace",
+        cascade="all, delete-orphan",
+        lazy="dynamic",
+        order_by="Notification.created_at.desc()",
+    )
 
     def __repr__(self) -> str:
         return f"<Workspace {self.name} ({self.plan})>"

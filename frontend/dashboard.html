@@ -54,7 +54,7 @@ const PLACES_DATA = [
       { brand:'유입A',   keyword:'강남 한식 맛집',type:'reward', endDate:'2026-03-20' },
     ],
     rankHistory: [10,8,6,5,5,4,3],
-    reviewCount:342, savedCount:1240,
+    reviewCount:342,
   },
   {
     id:'p2', name:'업체 B (홍대)', category:'한식·분식',
@@ -69,7 +69,7 @@ const PLACES_DATA = [
       { brand:'유입A',  keyword:'홍대 맛집', type:'reward', endDate:'2026-03-20' },
     ],
     rankHistory: [6,5,4,3,3,2,2],
-    reviewCount:187, savedCount:720,
+    reviewCount:187,
   },
   {
     id:'p3', name:'업체 C (청담)', category:'헤어·뷰티',
@@ -84,7 +84,7 @@ const PLACES_DATA = [
       { brand:'블로그C', keyword:'청담 헤어샵', type:'reward', endDate:'2026-03-18' },
     ],
     rankHistory: [12,10,9,8,6,5,4],
-    reviewCount:95, savedCount:340,
+    reviewCount:95,
   },
   {
     id:'p4', name:'업체 D (강동)', category:'스포츠·레저',
@@ -99,7 +99,7 @@ const PLACES_DATA = [
       { brand:'유입D', keyword:'강동 헬스장', type:'reward', endDate:'2026-03-18' },
     ],
     rankHistory: [22,20,19,18,17,16,15],
-    reviewCount:58, savedCount:210,
+    reviewCount:58,
   },
 ];
 
@@ -208,11 +208,11 @@ function buildHTML() {
     </div>
     <div class="table-wrap" style="border:none;margin:0 -4px">
       <table>
-        <thead><tr><th>주문번호</th><th>상품</th><th>금액</th><th>상태</th></tr></thead>
+        <thead><tr><th>플레이스명</th><th>상품명</th><th>금액</th><th>상태</th></tr></thead>
         <tbody>
           ${RECENT_ORDERS.map(o=>`<tr style="cursor:pointer" onclick="location.href='orders.html'">
-            <td style="color:var(--cyan);font-weight:600;font-size:12px">${o.id}</td>
-            <td><div style="font-weight:500;font-size:12px">${o.product}</div><div style="font-size:11px;color:var(--text3)">${o.place}</div></td>
+            <td style="font-weight:600;font-size:12px;color:var(--text-title)">${o.place}</td>
+            <td style="font-weight:500;font-size:12px">${o.product}</td>
             <td style="font-weight:600;font-size:12px">${formatKRW(o.amount)}</td>
             <td>${orderBadge(o.status)}</td>
           </tr>`).join('')}

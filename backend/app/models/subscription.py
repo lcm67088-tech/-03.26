@@ -1,22 +1,20 @@
 """
 구독 및 결제 내역 모델
 Sprint 8: 빌링 + 플랜 관리 시스템 구현
+Refactor: Base → BaseModel 상속 (UUID PK + timezone-aware 타임스탬프 통일)
 
 - Subscription  : 워크스페이스의 현재 구독 정보
 - BillingHistory: 결제/변경 이력 (업그레이드, 다운그레이드, 환불 등)
 """
 
-import uuid
-from datetime import datetime
-
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.models.base import Base
+from app.models.base import BaseModel
 
 
-class Subscription(Base):
+class Subscription(BaseModel):
     """
     구독 테이블
 
@@ -32,15 +30,6 @@ class Subscription(Base):
 
     __tablename__ = "subscriptions"
     __table_args__ = {"comment": "워크스페이스 구독 정보"}
-
-    # ── PK ──────────────────────────────────────────────────
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        nullable=False,
-        comment="구독 고유 식별자 (UUID v4)",
-    )
 
     # ── FK: 워크스페이스 ─────────────────────────────────────
     workspace_id = Column(
@@ -85,39 +74,23 @@ class Subscription(Base):
 
     # ── 구독 시작일 ──────────────────────────────────────────
     started_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
+        DateTime(timezone=True),
+        nullable=True,
         comment="구독 시작 시각 (UTC)",
     )
 
     # ── 다음 결제일 ──────────────────────────────────────────
     next_billing_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
         comment="다음 결제 예정 시각 (UTC, free 플랜은 null)",
     )
 
     # ── 구독 취소일 ──────────────────────────────────────────
     cancelled_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
         comment="구독 취소 시각 (UTC)",
-    )
-
-    # ── 생성/수정 시각 ───────────────────────────────────────
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        comment="생성 시각 (UTC)",
-    )
-    updated_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        comment="수정 시각 (UTC)",
     )
 
     # ── 관계 ─────────────────────────────────────────────────
@@ -135,9 +108,10 @@ class Subscription(Base):
         )
 
 
-class BillingHistory(Base):
+class BillingHistory(BaseModel):
     """
     결제 내역 테이블
+    Refactor: Base → BaseModel 상속
 
     구독 생성, 업그레이드, 다운그레이드, 환불 등
     모든 결제 관련 이벤트를 불변(immutable) 로그로 저장합니다.
@@ -156,15 +130,6 @@ class BillingHistory(Base):
 
     __tablename__ = "billing_histories"
     __table_args__ = {"comment": "결제 내역 이력"}
-
-    # ── PK ──────────────────────────────────────────────────
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        nullable=False,
-        comment="결제 내역 고유 식별자 (UUID v4)",
-    )
 
     # ── FK: 워크스페이스 ─────────────────────────────────────
     workspace_id = Column(
@@ -237,15 +202,6 @@ class BillingHistory(Base):
         nullable=False,
         default="",
         comment="내역 설명 (예: 'Pro 플랜으로 업그레이드')",
-    )
-
-    # ── 생성 시각 ────────────────────────────────────────────
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        index=True,
-        comment="결제 처리 시각 (UTC)",
     )
 
     # ── 관계 ─────────────────────────────────────────────────

@@ -1,22 +1,20 @@
 """
 정산(Settlement) 모델
 Sprint 9: 어드민 심화 — 미디어사 월별 정산 관리
+Refactor: Base → BaseModel 상속 (UUID PK + timezone-aware 타임스탬프 통일)
 
 - Settlement     : 미디어사별 월별 정산 헤더
 - SettlementItem : 정산에 포함된 개별 주문 라인
 """
 
-import uuid
-from datetime import datetime
-
 from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from app.models.base import Base
+from app.models.base import BaseModel
 
 
-class Settlement(Base):
+class Settlement(BaseModel):
     """
     정산 테이블 (헤더)
 
@@ -31,15 +29,6 @@ class Settlement(Base):
 
     __tablename__ = "settlements"
     __table_args__ = {"comment": "미디어사 월별 정산 헤더"}
-
-    # ── PK ──────────────────────────────────────────────────
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        nullable=False,
-        comment="정산 고유 식별자 (UUID v4)",
-    )
 
     # ── FK: 미디어사 ─────────────────────────────────────────
     media_company_id = Column(
@@ -97,29 +86,14 @@ class Settlement(Base):
 
     # ── 처리 일시 ────────────────────────────────────────────
     approved_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
         comment="승인 시각 (UTC)",
     )
     paid_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
         comment="지급 완료 시각 (UTC)",
-    )
-
-    # ── 생성/수정 시각 ───────────────────────────────────────
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        comment="생성 시각 (UTC)",
-    )
-    updated_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow,
-        comment="수정 시각 (UTC)",
     )
 
     # ── 관계 ─────────────────────────────────────────────────
@@ -137,9 +111,10 @@ class Settlement(Base):
         )
 
 
-class SettlementItem(Base):
+class SettlementItem(BaseModel):
     """
     정산 상세 항목 테이블
+    Refactor: Base → BaseModel 상속
 
     정산에 포함된 개별 주문(Order)을 기록합니다.
     한 주문은 한 정산 아이템에만 포함됩니다.
@@ -147,15 +122,6 @@ class SettlementItem(Base):
 
     __tablename__ = "settlement_items"
     __table_args__ = {"comment": "정산 상세 항목 (주문별)"}
-
-    # ── PK ──────────────────────────────────────────────────
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        nullable=False,
-        comment="정산 항목 고유 식별자 (UUID v4)",
-    )
 
     # ── FK: 정산 헤더 ────────────────────────────────────────
     settlement_id = Column(
@@ -187,14 +153,6 @@ class SettlementItem(Base):
         nullable=False,
         default=0,
         comment="해당 주문 지급액 = round(amount * commission_rate)",
-    )
-
-    # ── 생성 시각 ────────────────────────────────────────────
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        comment="생성 시각 (UTC)",
     )
 
     # ── 관계 ─────────────────────────────────────────────────

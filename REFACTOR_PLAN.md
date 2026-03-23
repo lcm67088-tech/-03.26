@@ -56,8 +56,8 @@ nplace-project/                        nplace-project/
 
 | # | 작업 | 방법 | 상태 |
 |---|------|------|------|
-| 0-1 | 전체 프로젝트 tar.gz 백업 | `ProjectBackup` 툴 실행 | ⏳ 대기 |
-| 0-2 | git pre-refactor 커밋 | `git add . && git commit -m "pre-refactor snapshot"` | ⏳ 대기 |
+| 0-1 | 전체 프로젝트 tar.gz 백업 | `ProjectBackup` 툴 실행 | ✅ 완료 (2026-03-23) |
+| 0-2 | git pre-refactor 커밋 | `git add . && git commit -m "pre-refactor snapshot"` | ✅ 완료 (2026-03-23) |
 
 ---
 
@@ -65,11 +65,11 @@ nplace-project/                        nplace-project/
 
 | # | 작업 | 정확한 조작 | 상태 |
 |---|------|-------------|------|
-| 1-1 | `frontend_html` → `frontend` 리네임 | `mv frontend_html frontend` | ⏳ 대기 |
-| 1-2 | 루트 `__pycache__` 삭제 | `rm -rf __pycache__` | ⏳ 대기 |
-| 1-3 | `parser/__pycache__` 삭제 | `rm -rf parser/__pycache__` | ⏳ 대기 |
-| 1-4 | `frontend/test-login.html` 삭제 | `rm frontend/test-login.html` | ⏳ 대기 |
-| 1-5 | `.gitignore` 보강 | `**/__pycache__/`, `*.pyc`, `.env`, `*.log` 추가 | ⏳ 대기 |
+| 1-1 | `frontend_html` → `frontend` 리네임 | `mv frontend_html frontend` | ✅ 완료 (2026-03-23) |
+| 1-2 | 루트 `__pycache__` 삭제 | `rm -rf __pycache__` | ✅ 완료 (2026-03-23) |
+| 1-3 | `parser/__pycache__` 삭제 | `rm -rf parser/__pycache__` | ✅ 완료 (2026-03-23) |
+| 1-4 | `frontend/test-login.html` 삭제 | `rm frontend/test-login.html` | ✅ 완료 (2026-03-23) |
+| 1-5 | `.gitignore` 보강 | `**/__pycache__/`, `*.pyc`, `.env`, `*.log` 추가 | ✅ 완료 (2026-03-23) |
 
 ---
 
@@ -77,9 +77,9 @@ nplace-project/                        nplace-project/
 
 | # | 작업 | 정확한 조작 | 상태 |
 |---|------|-------------|------|
-| 2-1 | `ecosystem.config.cjs` 수정 | `cwd: frontend_html` → `cwd: frontend` + parser 앱 항목 병합 | ⏳ 대기 |
-| 2-2 | `parser_ecosystem.config.cjs` 삭제 | `rm parser_ecosystem.config.cjs` | ⏳ 대기 |
-| 2-3 | PM2 재시작 & 검증 | `pm2 delete all && pm2 start ecosystem.config.cjs && pm2 list` → `nplace-demo`, `nplace-parser-api` 둘 다 `online` 확인 | ⏳ 대기 |
+| 2-1 | `ecosystem.config.cjs` 수정 | `cwd: frontend_html` → `cwd: frontend` + parser 앱 항목 병합 | ✅ 완료 (2026-03-23) |
+| 2-2 | `parser_ecosystem.config.cjs` 삭제 | `rm parser_ecosystem.config.cjs` | ✅ 완료 (2026-03-23) |
+| 2-3 | PM2 재시작 & 검증 | `pm2 delete all && pm2 start ecosystem.config.cjs && pm2 list` → `nplace-demo`, `nplace-parser-api` 둘 다 `online` 확인 | ✅ 완료 (2026-03-23) |
 
 ---
 
@@ -87,10 +87,10 @@ nplace-project/                        nplace-project/
 
 | # | 작업 | 파일 | 정확한 조작 | 상태 |
 |---|------|------|-------------|------|
-| 3-1 | 최근 주문 테이블 컬럼 수정 | `dashboard.html` L211 | `<th>주문번호</th><th>상품</th>` → `<th>플레이스명</th><th>상품명</th>` / 주문번호 `<td>` 삭제, 각 컬럼 독립 `<td>` | ⏳ 대기 |
-| 3-2 | `savedCount` 제거 | `dashboard.html` L57,87,102,103 | `savedCount:xxxx` 4곳 삭제 | ⏳ 대기 |
-| 3-3 | 간트차트 달력형 재작성 | `place-status.html` L941~ | `buildOrders()` 전체 교체 — 7열(일~토) 달력 그리드, 주 단위 행, 오늘 파란 원 강조, ◀▶ 월 이동 버튼 | ⏳ 대기 |
-| 3-4 | `app.js` 버전 주석 업데이트 | `app.js` L4 | `updated: 2026-03-25` → `2026-03-23` | ⏳ 대기 |
+| 3-1 | 최근 주문 테이블 컬럼 수정 | `dashboard.html` L211 | `<th>주문번호</th><th>상품</th>` → `<th>플레이스명</th><th>상품명</th>` / 주문번호 `<td>` 삭제, 각 컬럼 독립 `<td>` | ✅ 완료 (2026-03-23) |
+| 3-2 | `savedCount` 제거 | `dashboard.html` L57,87,102,103 | `savedCount:xxxx` 4곳 삭제 | ✅ 완료 (2026-03-23) |
+| 3-3 | 간트차트 달력형 재작성 | `place-status.html` L941~ | `buildOrders()` 전체 교체 — 7열(일~토) 달력 그리드, 주 단위 행, 오늘 파란 원 강조, ◀▶ 월 이동 버튼 | ✅ 완료 (2026-03-23) |
+| 3-4 | `app.js` 버전 주석 업데이트 | `app.js` L4 | `updated: 2026-03-25` → `2026-03-23` | ✅ 완료 (2026-03-23) |
 
 ---
 
@@ -134,14 +134,14 @@ nplace-project/                        nplace-project/
 
 | Phase | 항목 수 | 완료 | 상태 |
 |-------|---------|------|------|
-| Phase 0 — 백업 | 2 | 0 | ⏳ |
-| Phase 1 — 폴더 정리 | 5 | 0 | ⏳ |
-| Phase 2 — PM2 통합 | 3 | 0 | ⏳ |
-| Phase 3 — Frontend | 4 | 0 | ⏳ |
+| Phase 0 — 백업 | 2 | 2 | ✅ |
+| Phase 1 — 폴더 정리 | 5 | 5 | ✅ |
+| Phase 2 — PM2 통합 | 3 | 3 | ✅ |
+| Phase 3 — Frontend | 4 | 4 | ✅ |
 | Phase 4 — DB 모델 | 7 | 0 | ⏳ |
 | Phase 5 — 검증 | 5 | 0 | ⏳ |
-| **합계** | **26** | **0** | ⏳ |
+| **합계** | **26** | **14** | 🔄 |
 
 ---
 
-*최종 업데이트: Phase 시작 전*
+*최종 업데이트: Phase 3 완료 (2026-03-23)*

@@ -1,19 +1,18 @@
 """
 알림 모델 모듈
 Sprint 7: 알림 시스템 구현
+Refactor: Base → BaseModel 상속 (UUID PK + timezone-aware 타임스탬프 통일)
 - NotificationType: 25가지 알림 타입 enum
 - Notification: 알림 데이터 모델
 """
 
 import enum
-import uuid
-from datetime import datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, String, func
 from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import relationship
 
-from app.models.base import Base
+from app.models.base import BaseModel
 
 
 class NotificationType(str, enum.Enum):
@@ -58,9 +57,10 @@ class NotificationType(str, enum.Enum):
     PAYMENT_REFUNDED = "PAYMENT_REFUNDED"     # 결제 환불됨
 
 
-class Notification(Base):
+class Notification(BaseModel):
     """
     알림 모델
+    Refactor: Base → BaseModel 상속 (id, created_at, updated_at 자동 관리)
 
     사용자에게 발송되는 모든 인앱 알림을 저장하는 테이블.
     알림 타입별 data 구조:
@@ -75,14 +75,7 @@ class Notification(Base):
     """
 
     __tablename__ = "notifications"
-
-    # ── PK ──────────────────────────────────────────────────
-    id = Column(
-        UUID(as_uuid=True),
-        primary_key=True,
-        default=uuid.uuid4,
-        comment="알림 고유 식별자",
-    )
+    __table_args__ = {"comment": "사용자 인앱 알림"}
 
     # ── FK: 수신 사용자 ──────────────────────────────────────
     user_id = Column(
@@ -141,18 +134,10 @@ class Notification(Base):
         comment="읽음 여부 (기본값: False)",
     )
 
-    # ── 생성 시각 ────────────────────────────────────────────
-    created_at = Column(
-        DateTime,
-        nullable=False,
-        default=datetime.utcnow,
-        index=True,
-        comment="알림 생성 시각 (UTC)",
-    )
-
     # ── 읽은 시각 ────────────────────────────────────────────
+    # created_at은 BaseModel에서 자동 관리 (timezone=True, server_default=func.now())
     read_at = Column(
-        DateTime,
+        DateTime(timezone=True),
         nullable=True,
         comment="알림 읽은 시각 (UTC, 읽지 않으면 None)",
     )
