@@ -132,11 +132,11 @@ const USER_MENU = [
       { href: 'dashboard.html',     icon: iconDashboard(),  label: '대시보드' },
       { href: 'places.html',        icon: iconMapPin(),     label: '플레이스 관리' },
       { href: 'orders.html',        icon: iconCart(),       label: '주문 관리' },
+      { href: 'place-status.html',  icon: iconChart(),      label: '플레이스 현황' },
     ]
   },
   {
     group: '분석', items: [
-      { href: 'place-status.html',  icon: iconChart(),      label: '플레이스 현황' },
       { href: 'notifications.html', icon: iconBell(),       label: '알림', badgeKey: 'unread' },
     ]
   },
