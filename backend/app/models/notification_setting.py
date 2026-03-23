@@ -48,7 +48,7 @@ class NotificationSetting(BaseModel):
 
     # ── 알림 타입 ────────────────────────────────────────────
     notification_type = Column(
-        Enum(NotificationType, name="notificationtype"),
+        Enum(NotificationType, name="notificationtype", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         comment="설정 대상 알림 타입",
     )

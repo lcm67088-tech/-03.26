@@ -59,7 +59,7 @@ class Workspace(BaseModel):
 
     # 구독 플랜
     plan = Column(
-        Enum(WorkspacePlan),
+        Enum(WorkspacePlan, values_callable=lambda x: [e.value for e in x]),
         default=WorkspacePlan.FREE,
         nullable=False,
         comment="구독 플랜 (free/starter/pro/enterprise)",
@@ -161,7 +161,7 @@ class WorkspaceMember(BaseModel):
         comment="유저 FK",
     )
     role = Column(
-        Enum(MemberRole),
+        Enum(MemberRole, values_callable=lambda x: [e.value for e in x]),
         default=MemberRole.VIEWER,
         nullable=False,
         comment="멤버 역할 (owner/manager/viewer)",

@@ -122,7 +122,7 @@ class Order(BaseModel):
 
     # 주문 카테고리 (Sprint 12 추가)
     category = Column(
-        Enum(OrderCategory),
+        Enum(OrderCategory, values_callable=lambda x: [e.value for e in x]),
         nullable=True,
         index=True,
         comment="주문 카테고리 (blog/reward_traffic/reward_save/receipt/sns)",
@@ -187,7 +187,7 @@ class Order(BaseModel):
 
     # 상태
     status = Column(
-        Enum(OrderStatus),
+        Enum(OrderStatus, values_callable=lambda x: [e.value for e in x]),
         default=OrderStatus.PENDING,
         nullable=False,
         index=True,
@@ -272,12 +272,12 @@ class Payment(BaseModel):
         comment="결제 금액 (원 단위)",
     )
     method = Column(
-        Enum(PaymentMethod),
+        Enum(PaymentMethod, values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         comment="결제 수단",
     )
     status = Column(
-        Enum(PaymentStatus),
+        Enum(PaymentStatus, values_callable=lambda x: [e.value for e in x]),
         default=PaymentStatus.PENDING,
         nullable=False,
         comment="결제 상태",

@@ -6,26 +6,26 @@ from typing import Any, Dict, Optional
 
 from fastapi import HTTPException, status
 from jose import ExpiredSignatureError, JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from app.core.config import settings
 
-# bcrypt 비밀번호 해시 컨텍스트
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 
 # ============================
-# 비밀번호 유틸리티
+# 비밀번호 유틸리티 (bcrypt 직접 사용 — passlib 버전 충돌 우회)
 # ============================
 
 def get_password_hash(password: str) -> str:
     """평문 비밀번호를 bcrypt 해시로 변환"""
-    return pwd_context.hash(password)
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """평문 비밀번호와 bcrypt 해시 비교"""
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except Exception:
+        return False
 
 
 # ============================

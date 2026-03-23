@@ -97,7 +97,7 @@ class Notification(BaseModel):
 
     # ── 알림 타입 ────────────────────────────────────────────
     type = Column(
-        Enum(NotificationType, name="notificationtype"),
+        Enum(NotificationType, name="notificationtype", values_callable=lambda x: [e.value for e in x]),
         nullable=False,
         index=True,
         comment="알림 타입 (NotificationType enum 값)",

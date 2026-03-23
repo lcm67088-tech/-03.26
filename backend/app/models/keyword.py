@@ -108,7 +108,7 @@ class KeywordRanking(BaseModel):
         comment="순위 (미진입 시 NULL)",
     )
     case_type = Column(
-        Enum(RankCaseType),
+        Enum(RankCaseType, values_callable=lambda x: [e.value for e in x]),
         default=RankCaseType.NORMAL,
         nullable=False,
         comment="순위 케이스 타입",

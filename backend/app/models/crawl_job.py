@@ -60,7 +60,7 @@ class CrawlJob(BaseModel):
 
     # ── 상태 관리 ─────────────────────────────────────────────
     status = Column(
-        Enum(CrawlJobStatus),
+        Enum(CrawlJobStatus, values_callable=lambda x: [e.value for e in x]),
         default=CrawlJobStatus.QUEUED,
         nullable=False,
         index=True,

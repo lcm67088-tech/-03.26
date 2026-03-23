@@ -54,7 +54,7 @@ class User(BaseModel):
 
     # 역할 및 상태
     role = Column(
-        Enum(UserRole),
+        Enum(UserRole, values_callable=lambda x: [e.value for e in x]),
         default=UserRole.USER,
         nullable=False,
         comment="유저 역할 (user/admin/superadmin)",
