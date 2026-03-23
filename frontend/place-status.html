@@ -142,6 +142,143 @@
 /* ── 미니 스파크라인 ── */
 .sparkline { display:flex; align-items:flex-end; gap:2px; height:28px; margin-top:4px; }
 .spark-bar { width:4px; border-radius:1px; background:var(--cyan); opacity:.7; }
+
+/* ════════════════════════════════════════════
+   주문 현황 캘린더 간트차트
+════════════════════════════════════════════ */
+
+/* 전체 래퍼 */
+.cal-wrap { user-select:none; }
+
+/* 헤더 (월 제목 + 이동 버튼) */
+.cal-header {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:16px;
+}
+.cal-title {
+  font-size:15px; font-weight:800; color:var(--text-title);
+  display:flex; align-items:center; gap:6px;
+}
+.cal-nav { display:flex; gap:6px; }
+.cal-nav-btn {
+  padding:5px 13px; border-radius:8px; border:1px solid var(--border);
+  background:var(--bg-input); color:var(--text); cursor:pointer;
+  font-size:13px; transition:all .15s; line-height:1;
+}
+.cal-nav-btn:hover { background:var(--bg-hover); border-color:var(--cyan); color:var(--cyan); }
+
+/* 요일 헤더 */
+.cal-dow {
+  display:grid; grid-template-columns:repeat(7,1fr); gap:3px;
+  margin-bottom:3px;
+}
+.cal-dow-cell {
+  text-align:center; padding:6px 0; font-size:11px; font-weight:700;
+  letter-spacing:.3px; text-transform:uppercase;
+  color:var(--text3);
+  background:var(--bg-hover2); border-radius:5px;
+}
+.cal-dow-cell.sun { color:#f87171; }
+.cal-dow-cell.sat { color:#60a5fa; }
+
+/* 주(week) 컨테이너 — 바 오버레이의 기준 */
+.cal-week {
+  position:relative;
+  display:grid; grid-template-columns:repeat(7,1fr); gap:3px;
+  margin-bottom:3px;
+}
+
+/* 날짜 셀 */
+.cal-cell {
+  height:80px; padding:6px; border-radius:8px;
+  border:1px solid var(--border);
+  background:var(--bg2);
+  box-sizing:border-box; overflow:hidden;
+  transition:background .1s;
+}
+.cal-cell.past      { background:var(--bg-hover2); }
+.cal-cell.today     { border-color:var(--cyan); background:rgba(0,212,255,.05); }
+.cal-cell.empty     { background:transparent; border-color:transparent; opacity:.0; pointer-events:none; }
+.cal-cell.weekend   { background:var(--bg-hover2); }
+
+/* 날짜 숫자 */
+.cal-date-num {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:24px; height:24px; border-radius:50%;
+  font-size:12px; font-weight:700; color:var(--text2);
+  line-height:1;
+}
+.cal-date-num.today  { background:var(--cyan); color:#000; }
+.cal-date-num.sun    { color:#f87171; }
+.cal-date-num.sat    { color:#60a5fa; }
+.cal-date-num.past   { color:var(--text3); }
+
+/* 주문 바 (position:absolute, week 컨테이너 기준) */
+.cal-bar {
+  position:absolute;
+  height:20px;
+  display:flex; align-items:center;
+  padding:0 7px;
+  overflow:hidden;
+  box-sizing:border-box;
+  cursor:default;
+  z-index:3;
+  transition:filter .15s, transform .1s;
+}
+.cal-bar:hover {
+  filter:brightness(1.15);
+  transform:scaleY(1.08);
+  z-index:10;
+}
+.cal-bar-label {
+  font-size:10px; font-weight:700;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  pointer-events:none;
+}
+
+/* 범례 영역 */
+.cal-legend {
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  margin-top:10px; margin-bottom:18px;
+  padding:10px 14px; border-radius:8px;
+  background:var(--bg-hover2); border:1px solid var(--border);
+}
+.cal-legend-item {
+  display:flex; align-items:center; gap:5px;
+  font-size:11px; color:var(--text3);
+}
+.cal-legend-dot {
+  width:10px; height:10px; border-radius:3px; flex-shrink:0;
+}
+
+/* 주문 카드 목록 */
+.cal-order-list { margin-top:4px; }
+.cal-order-card {
+  display:flex; align-items:center; gap:12px;
+  padding:11px 14px; border-radius:10px;
+  border:1px solid var(--border); background:var(--bg2);
+  margin-bottom:8px; transition:background .15s;
+}
+.cal-order-card:hover { background:var(--bg-hover2); }
+.cal-order-icon { font-size:18px; flex-shrink:0; }
+.cal-order-info { flex:1; min-width:0; }
+.cal-order-name { font-size:13px; font-weight:700; color:var(--text-title); margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cal-order-meta { font-size:11px; color:var(--text3); display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+.cal-order-badge {
+  padding:2px 9px; border-radius:20px;
+  font-size:11px; font-weight:700; flex-shrink:0;
+}
+.cal-order-dday {
+  font-size:12px; font-weight:700; flex-shrink:0;
+}
+
+/* 섹션 구분 타이틀 */
+.cal-section-title {
+  font-size:11px; font-weight:700; color:var(--text3);
+  text-transform:uppercase; letter-spacing:.5px;
+  margin-bottom:10px; padding-bottom:6px;
+  border-bottom:1px solid var(--border);
+}
 </style>
 </head>
 <body>
@@ -941,212 +1078,207 @@ function buildRanking(p) {
 
 function buildOrders(p) {
   const orders = p.orders || [];
-  if (!orders.length) return `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">등록된 주문이 없습니다.</div>`;
+  if (!orders.length) return `
+    <div style="padding:48px 0;text-align:center;color:var(--text3)">
+      <div style="font-size:32px;margin-bottom:10px">📭</div>
+      <div style="font-size:13px">등록된 주문이 없습니다.</div>
+    </div>`;
 
-  const STATUS_COLOR = { active:'#22c55e', pending:'#facc15', done:'#94a3b8', cancel:'#ef4444' };
+  /* ── 상수 ─────────────────────────────── */
+  const STATUS_COLOR = { active:'#22c55e', pending:'#f59e0b', done:'#64748b', cancel:'#ef4444' };
+  const STATUS_BG    = { active:'rgba(34,197,94,.15)', pending:'rgba(245,158,11,.15)', done:'rgba(100,116,139,.15)', cancel:'rgba(239,68,68,.15)' };
   const STATUS_LABEL = { active:'진행중', pending:'대기중', done:'완료', cancel:'취소' };
   const TYPE_ICON    = { reward:'🎯', save:'🔖', blog:'📝', rank:'📌' };
+  const TYPE_LABEL   = { reward:'리워드', save:'저장하기', blog:'블로그', rank:'순위' };
   const DAY_KO       = ['일','월','화','수','목','금','토'];
 
-  /* ─ 상태 관리 ─ */
+  /* ── 월 상태 ──────────────────────────── */
   if (!window._orderCalState) window._orderCalState = {};
   const stateKey = 'cal_' + p.id;
   if (!window._orderCalState[stateKey]) {
-    const today = new Date();
-    window._orderCalState[stateKey] = { year: today.getFullYear(), month: today.getMonth() };
+    const now = new Date();
+    window._orderCalState[stateKey] = { year: now.getFullYear(), month: now.getMonth() };
   }
-  let { year, month } = window._orderCalState[stateKey];
-
+  const { year, month } = window._orderCalState[stateKey];
   const today = new Date(); today.setHours(0,0,0,0);
 
-  /* ─ 해당 월의 1일~말일 ─ */
-  const firstDay = new Date(year, month, 1);
-  const lastDay  = new Date(year, month + 1, 0);
-
-  /* ─ 달력 그리드용 날짜 배열 ─ */
-  const startPad  = firstDay.getDay();
+  /* ── 달력 셀 배열 ─────────────────────── */
+  const firstDay   = new Date(year, month, 1);
+  const lastDay    = new Date(year, month + 1, 0);
+  const startPad   = firstDay.getDay();
   const totalCells = Math.ceil((startPad + lastDay.getDate()) / 7) * 7;
-  const cells = [];
-  for (let i = 0; i < totalCells; i++) {
+  const cells = Array.from({ length: totalCells }, (_, i) => {
     const d = i - startPad + 1;
-    cells.push((d >= 1 && d <= lastDay.getDate()) ? new Date(year, month, d) : null);
-  }
-  const weeks = [];
-  for (let w = 0; w < cells.length; w += 7) weeks.push(cells.slice(w, w + 7));
+    return (d >= 1 && d <= lastDay.getDate()) ? new Date(year, month, d) : null;
+  });
+  const weeks = Array.from({ length: cells.length / 7 }, (_, i) => cells.slice(i*7, i*7+7));
 
-  /* ─ 월 이동 ─ */
+  /* ── 월 이동 ──────────────────────────── */
   const prevFn = `(function(){window._orderCalState['${stateKey}']={year:${month===0?year-1:year},month:${month===0?11:month-1}};renderPage();})()`;
   const nextFn = `(function(){window._orderCalState['${stateKey}']={year:${month===11?year+1:year},month:${month===11?0:month+1}};renderPage();})()`;
 
-  /* ─ 달력 헤더 ─ */
+  /* ── 헤더 ─────────────────────────────── */
+  const MONTH_KO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
   const calHeader = `
-  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-    <div style="font-size:13px;font-weight:700;color:var(--text-title)">📅 주문 일정 — ${year}년 ${month+1}월</div>
-    <div style="display:flex;gap:6px">
-      <button onclick="${prevFn}" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);cursor:pointer;font-size:13px">◀</button>
-      <button onclick="${nextFn}" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);cursor:pointer;font-size:13px">▶</button>
+  <div class="cal-header">
+    <div class="cal-title">
+      <span>📅</span>
+      <span>${year}년 ${MONTH_KO[month]}</span>
+    </div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="${prevFn}">◀</button>
+      <button class="cal-nav-btn" onclick="${nextFn}">▶</button>
     </div>
   </div>`;
 
-  /* ─ 요일 헤더 ─ */
+  /* ── 요일 헤더 ────────────────────────── */
   const dowHeader = `
-  <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:2px">
-    ${DAY_KO.map((d,i)=>`<div style="text-align:center;font-size:11px;font-weight:700;padding:5px 0;
-      color:${i===0?'#f87171':i===6?'#60a5fa':'var(--text3)'}">${d}</div>`).join('')}
+  <div class="cal-dow">
+    ${DAY_KO.map((d,i) => `<div class="cal-dow-cell${i===0?' sun':i===6?' sat':''}">${d}</div>`).join('')}
   </div>`;
 
-  /* ─────────────────────────────────────────────────────────
-     핵심: 주(week) 단위로 position:relative 컨테이너를 만들고
-     주문 바를 position:absolute 로 정확히 배치한다.
-     각 셀은 날짜 숫자만 표시하고, 바는 그 위에 오버레이.
-  ───────────────────────────────────────────────────────── */
-  const CELL_H  = 72;   // px — 셀 높이
-  const BAR_H   = 18;   // px — 바 높이
-  const BAR_GAP = 2;    // px — 바 간격
-  const DATE_H  = 26;   // px — 날짜 숫자 영역 높이
-  const GAP     = 2;    // px — 셀 gap
+  /* ── 상수: 픽셀 치수 ───────────────────── */
+  const CELL_H  = 84;   // 셀 높이 px
+  const DATE_H  = 30;   // 날짜 숫자 영역 높이 px
+  const BAR_H   = 20;   // 바 높이 px
+  const BAR_GAP = 3;    // 바 사이 간격 px
+  const GRID_GAP = 3;   // 셀 사이 gap px
 
+  /* ── 주별 렌더 ────────────────────────── */
   const gridRows = weeks.map(week => {
+
     /* 날짜 셀 배경 */
     const dateCells = week.map((date, di) => {
-      if (!date) return `<div style="height:${CELL_H}px;background:var(--bg-hover2);border-radius:6px;opacity:.3"></div>`;
-      const isToday  = date.getTime() === today.getTime();
-      const isPast   = date < today;
-      const isWeekend = di === 0 || di === 6;
-      const numStyle = `display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;
-        font-size:12px;font-weight:700;
-        background:${isToday?'var(--cyan)':'transparent'};
-        color:${isToday?'#000':isWeekend?(di===0?'#f87171':'#60a5fa'):'var(--text)'}`;
-      return `<div style="height:${CELL_H}px;padding:4px;
-        background:${isToday?'rgba(0,212,255,.05)':isPast?'var(--bg-hover2)':'var(--bg2)'};
-        border:1px solid ${isToday?'rgba(0,212,255,.35)':'var(--border)'};
-        border-radius:6px;box-sizing:border-box">
-        <div style="${numStyle}">${date.getDate()}</div>
-      </div>`;
+      if (!date) return `<div class="cal-cell empty"></div>`;
+      const isToday   = date.getTime() === today.getTime();
+      const isPast    = date < today;
+      const isSun     = di === 0;
+      const isSat     = di === 6;
+      const cellCls   = `cal-cell${isToday?' today':isPast?' past':(isSun||isSat)?' weekend':''}`;
+      const numCls    = `cal-date-num${isToday?' today':isPast?' past':isSun?' sun':isSat?' sat':''}`;
+      return `<div class="${cellCls}"><span class="${numCls}">${date.getDate()}</span></div>`;
     }).join('');
 
-    /* 이 주(week)에서 보여야 할 주문 바 계산 */
-    // 이 주의 첫날~끝날 범위 구하기 (null 셀 제외)
+    /* 이 주에 걸치는 주문 */
     const validDates = week.filter(Boolean);
-    if (!validDates.length) {
-      return `<div style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:${GAP}px;margin-bottom:${GAP}px">
-        ${dateCells}
-      </div>`;
-    }
+    if (!validDates.length) return `<div class="cal-week">${dateCells}</div>`;
+
     const weekStart = validDates[0];
     const weekEnd   = validDates[validDates.length - 1];
-
-    // 이 주에 걸치는 주문만 필터
     const weekOrders = orders.filter(o => {
       const s = new Date(o.startDate); s.setHours(0,0,0,0);
       const e = new Date(o.endDate);   e.setHours(0,0,0,0);
       return s <= weekEnd && e >= weekStart;
     });
 
-    /* 주문 바를 절대 좌표로 배치 */
-    // 컨테이너 전체 너비는 CSS가 결정하므로 %로 계산
-    // 각 셀은 (100% - gap*6) / 7 너비, gap 포함
-    // left  = (열인덱스 * (100/7))%
-    // width = (걸치는 열 수 * (100/7))%
-    // gap 보정: gap은 작아서 근사치로 처리 (실제 px gap은 2px)
+    /* 주문 바 절대 좌표 계산 */
     const bars = weekOrders.map((o, oi) => {
       const s = new Date(o.startDate); s.setHours(0,0,0,0);
       const e = new Date(o.endDate);   e.setHours(0,0,0,0);
 
-      // 이 주에서의 시작 열 (0~6)
       let colStart = week.findIndex(d => d && d.getTime() === s.getTime());
-      if (colStart < 0) colStart = week.findIndex(Boolean); // 이전 주에서 시작 → 이 주 첫 셀부터
+      if (colStart < 0) colStart = week.findIndex(Boolean);  // 이전 주에서 넘어온 것
 
-      // 이 주에서의 끝 열 (0~6)
       let colEnd = week.findIndex(d => d && d.getTime() === e.getTime());
-      if (colEnd < 0) colEnd = week.reduce((acc, d, i) => d ? i : acc, colStart); // 다음 주로 이어짐 → 이 주 마지막 셀까지
+      if (colEnd < 0) colEnd = week.reduce((acc, d, i) => d ? i : acc, colStart);  // 다음 주로 이어짐
 
-      if (colStart > colEnd) colStart = colEnd; // 안전장치
+      if (colStart > colEnd) colStart = colEnd;
 
-      const spanCols = colEnd - colStart + 1;
-      const isStart  = s.getTime() === (week[colStart] || s).getTime() && colStart === week.findIndex(d => d && d.getTime() === s.getTime());
-      const isEnd    = e.getTime() === (week[colEnd]   || e).getTime() && colEnd === week.findIndex(d => d && d.getTime() === e.getTime());
+      const spanCols  = colEnd - colStart + 1;
+      const isStart   = colStart === week.findIndex(d => d && d.getTime() === s.getTime());
+      const isEnd     = colEnd   === week.findIndex(d => d && d.getTime() === e.getTime());
 
-      const col  = STATUS_COLOR[o.status] || '#94a3b8';
-      const icon = isStart ? (TYPE_ICON[o.type] || '📦') + ' ' : '';
-      const label = isStart ? (o.product || '').slice(0, 12) : '';
+      const col = STATUS_COLOR[o.status] || '#64748b';
+      const bg  = STATUS_BG[o.status]    || 'rgba(100,116,139,.15)';
 
-      // left: colStart * (1/7 * 100)% + gap 보정
-      // 각 셀 너비 = (100% - 6*2px) / 7 ≈ 14.2857%
-      // 정확한 left/width를 calc()로 표현
-      const leftCalc  = `calc(${colStart} * (100% / 7) + ${colStart > 0 ? colStart + 'px' : '0px'})`;
-      const widthCalc = `calc(${spanCols} * (100% / 7) - ${colStart > 0 ? colStart + 'px' : '0px'} + ${colStart > 0 ? colStart + 'px' : '0px'} - ${GAP}px)`;
+      // border-radius: 시작이면 왼쪽, 끝이면 오른쪽 둥글게
+      const br = `${isStart?'6px':'0'} ${isEnd?'6px':'0'} ${isEnd?'6px':'0'} ${isStart?'6px':'0'}`;
 
-      // 더 단순하게: left = colStart/7 * 100%, width = spanCols/7 * 100%
-      // gap(2px)는 작아서 근사치 허용, 실제로는 calc로 정밀 보정
-      const topPx = DATE_H + oi * (BAR_H + BAR_GAP);
+      // 절대 좌표 — calc()로 gap 정확히 반영
+      const topPx    = DATE_H + oi * (BAR_H + BAR_GAP);
+      const leftCalc = `calc(${colStart} * (100% / 7) + ${colStart} * ${GRID_GAP}px / 7)`;
+      const widthCalc= `calc(${spanCols} * (100% / 7) + (${spanCols - 1}) * ${GRID_GAP}px / 7 - 1px)`;
 
-      const borderRadius = isStart && isEnd ? '4px'
-        : isStart ? '4px 0 0 4px'
-        : isEnd   ? '0 4px 4px 0'
-        : '0';
+      const icon  = isStart ? (TYPE_ICON[o.type] || '📦') : '';
+      const label = isStart ? ' ' + (o.product || '').slice(0, 14) : '';
 
-      // gap 보정 포함한 정확한 calc
-      // colStart개의 gap이 left에, spanCols-1개의 gap이 width에 포함
-      return `<div style="
-        position:absolute;
+      const tooltip = `${o.product||''} (${STATUS_LABEL[o.status]||o.status}) ${o.startDate}~${o.endDate}`;
+
+      return `<div class="cal-bar" style="
         top:${topPx}px;
-        left:calc(${colStart} * (100% / 7) + ${colStart} * ${GAP}px / 7);
-        width:calc(${spanCols} * (100% / 7) + (${spanCols - 1}) * ${GAP}px / 7 - ${GAP * 0.5}px);
+        left:${leftCalc};
+        width:${widthCalc};
         height:${BAR_H}px;
-        background:${col}25;
-        border-top:1.5px solid ${col}88;
-        border-bottom:1.5px solid ${col}88;
-        border-left:${isStart ? `2px solid ${col}` : 'none'};
-        border-right:${isEnd ? `1.5px solid ${col}88` : 'none'};
-        border-radius:${borderRadius};
-        padding:0 5px;
-        display:flex;align-items:center;
-        overflow:hidden;
-        box-sizing:border-box;
-        pointer-events:auto;
-        cursor:default;
-        z-index:2;
-      " title="${o.product||''} (${STATUS_LABEL[o.status]||o.status}) ${o.startDate}~${o.endDate}">
-        <span style="font-size:10px;font-weight:600;color:${col};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${icon}${label}</span>
+        background:${bg};
+        border-top:1.5px solid ${col}99;
+        border-bottom:1.5px solid ${col}99;
+        border-left:${isStart ? `2.5px solid ${col}` : 'none'};
+        border-right:${isEnd   ? `1.5px solid ${col}99` : 'none'};
+        border-radius:${br};
+        color:${col};
+      " title="${tooltip}">
+        <span class="cal-bar-label">${icon}${label}</span>
       </div>`;
     }).join('');
 
-    return `<div style="position:relative;display:grid;grid-template-columns:repeat(7,1fr);gap:${GAP}px;margin-bottom:${GAP}px;min-height:${CELL_H}px">
+    /* 이 주의 필요 높이 = 날짜 영역 + 바들 */
+    const weekH = Math.max(CELL_H, DATE_H + weekOrders.length * (BAR_H + BAR_GAP) + 6);
+
+    return `<div class="cal-week" style="min-height:${weekH}px">
       ${dateCells}
       ${bars}
     </div>`;
   }).join('');
 
-  /* ─ 주문 카드 목록 ─ */
+  /* ── 범례 ─────────────────────────────── */
+  const legend = `
+  <div class="cal-legend">
+    <span style="font-size:11px;font-weight:700;color:var(--text2);margin-right:4px">범례</span>
+    ${Object.entries(STATUS_COLOR).map(([k,c]) => `
+      <div class="cal-legend-item">
+        <div class="cal-legend-dot" style="background:${STATUS_BG[k]};border:1.5px solid ${c}88"></div>
+        <span>${STATUS_LABEL[k]}</span>
+      </div>`).join('')}
+    <div style="margin-left:auto;display:flex;gap:10px;flex-wrap:wrap">
+      ${Object.entries(TYPE_ICON).map(([k,v]) => `
+        <div class="cal-legend-item"><span>${v}</span><span>${TYPE_LABEL[k]}</span></div>`).join('')}
+    </div>
+  </div>`;
+
+  /* ── 주문 카드 목록 ───────────────────── */
   const orderCards = orders.map(o => {
     const e    = new Date(o.endDate);
     const diff = Math.round((e - today) / 86400000);
-    const col  = STATUS_COLOR[o.status] || '#94a3b8';
+    const col  = STATUS_COLOR[o.status] || '#64748b';
+    const bg   = STATUS_BG[o.status]    || 'rgba(100,116,139,.12)';
     const lbl  = STATUS_LABEL[o.status] || o.status;
+    const isActive = o.status === 'active';
+    const dday = isActive ? (diff >= 0 ? `D-${diff}` : '종료') : '';
+    const ddayColor = diff <= 3 ? '#f87171' : 'var(--cyan)';
+
     return `
-    <div style="padding:12px 14px;border-radius:10px;border:1px solid ${col}33;background:${col}0a;margin-bottom:8px">
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
-        <span style="font-size:16px">${TYPE_ICON[o.type]||'📦'}</span>
-        <span style="font-size:13px;font-weight:700;color:var(--text-title);flex:1">${o.product||'상품명 없음'}</span>
-        <span style="font-size:11px;padding:2px 8px;border-radius:20px;background:${col}22;color:${col};border:1px solid ${col}44;font-weight:600">${lbl}</span>
+    <div class="cal-order-card" style="border-left:3px solid ${col};">
+      <div class="cal-order-icon">${TYPE_ICON[o.type] || '📦'}</div>
+      <div class="cal-order-info">
+        <div class="cal-order-name">${o.product || '상품명 없음'}</div>
+        <div class="cal-order-meta">
+          <span>📅 ${o.startDate} ~ ${o.endDate}</span>
+          ${o.keywords?.length ? `<span>🔑 ${o.keywords.join(', ')}</span>` : ''}
+        </div>
       </div>
-      <div style="font-size:11px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap">
-        <span>📅 ${o.startDate} ~ ${o.endDate}</span>
-        ${o.status==='active'
-          ? `<span style="color:${diff<=3?'#f87171':'var(--cyan)'};font-weight:600">${diff>=0?`D-${diff}`:'종료'}</span>`
-          : ''}
-        ${o.keywords?.length ? `<span>🔑 ${o.keywords.join(', ')}</span>` : ''}
-      </div>
+      ${isActive && dday ? `<div class="cal-order-dday" style="color:${ddayColor}">${dday}</div>` : ''}
+      <div class="cal-order-badge" style="background:${bg};color:${col};border:1px solid ${col}44">${lbl}</div>
     </div>`;
   }).join('');
 
-  return `
+  return `<div class="cal-wrap">
   ${calHeader}
   ${dowHeader}
-  <div style="margin-bottom:20px">${gridRows}</div>
-  <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">📋 주문 상세</div>
-  ${orderCards}`;
+  <div style="margin-bottom:4px">${gridRows}</div>
+  ${legend}
+  <div class="cal-section-title">📋 주문 상세 (${orders.length}건)</div>
+  <div class="cal-order-list">${orderCards}</div>
+</div>`;
 }
 
 function crawlBadge(status) {
