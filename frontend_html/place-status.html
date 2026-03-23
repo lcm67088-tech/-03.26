@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>nplace.io — 플레이스 현황</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ── 현황 그리드 ── */
+.status-grid {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px;
+}
+@media(max-width:1100px){.status-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:600px) {.status-grid{grid-template-columns:1fr;}}
+
+/* ── 플레이스 카드 ── */
+.ps-card {
+  background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+  padding:16px; cursor:pointer; transition:all .2s;
+}
+.ps-card:hover, .ps-card.selected {
+  border-color:var(--cyan); box-shadow:0 0 0 1px rgba(var(--cyan-rgb),.15);
+}
+.ps-card.selected { background:rgba(var(--cyan-rgb),.04); }
+.ps-card-name { font-size:14px; font-weight:800; color:var(--text-title); margin-bottom:4px; }
+.ps-card-cat  { font-size:11px; color:var(--text3); margin-bottom:10px; }
+.ps-stat-row  { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.ps-stat-label{ font-size:11px; color:var(--text3); }
+.ps-stat-val  { font-size:13px; font-weight:700; color:var(--text); }
+.ps-stat-val.up   { color:var(--green); }
+.ps-stat-val.down { color:var(--red); }
+
+/* ── 상세 패널 ── */
+.detail-panel {
+  background:var(--bg2); border:1px solid var(--border); border-radius:14px;
+  padding:20px; margin-bottom:20px;
+}
+.detail-tabs {
+  display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:20px;
+}
+.detail-tab {
+  padding:8px 16px; font-size:13px; font-weight:600; color:var(--text3);
+  border:none; background:none; cursor:pointer; border-bottom:2px solid transparent;
+  margin-bottom:-1px; transition:all .15s; font-family:inherit;
+}
+.detail-tab.active { color:var(--cyan); border-bottom-color:var(--cyan); }
+.detail-tab:hover  { color:var(--text); }
+
+/* ── 순위 키워드 테이블 ── */
+.kw-table { width:100%; border-collapse:collapse; }
+.kw-table th {
+  padding:9px 12px; font-size:11px; font-weight:700; color:var(--text3);
+  background:var(--bg-table-head); border-bottom:1px solid var(--border);
+  text-transform:uppercase; letter-spacing:.4px; text-align:left;
+}
+.kw-table td {
+  padding:10px 12px; font-size:12px; color:var(--text);
+  border-bottom:1px solid var(--border); vertical-align:middle;
+}
+.kw-table tr:last-child td { border-bottom:none; }
+.kw-table tr:hover td { background:var(--bg-row-hover); }
+
+/* ── 통계 그리드 ── */
+.stats-grid {
+  display:grid; grid-template-columns:repeat(3,1fr); gap:14px;
+}
+@media(max-width:800px){.stats-grid{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:500px){.stats-grid{grid-template-columns:1fr;}}
+.stat-box {
+  background:var(--bg-hover2); border:1px solid var(--border); border-radius:10px; padding:14px;
+}
+.stat-box-label { font-size:11px; color:var(--text3); margin-bottom:6px; }
+.stat-box-val   { font-size:22px; font-weight:800; color:var(--text-title); line-height:1; }
+.stat-box-change{ font-size:11px; margin-top:5px; }
+.stat-box-change.up   { color:var(--green); }
+.stat-box-change.down { color:var(--red); }
+.stat-box-change.flat { color:var(--text3); }
+
+/* ── 추이 차트 ── */
+.trend-chart-wrap { height:180px; position:relative; margin-top:12px; }
+
+/* ── 크롤링 상태 ── */
+.crawl-status-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:3px 10px; border-radius:20px; font-size:11px; font-weight:700;
+}
+.crawl-ok   { background:rgba(34,197,94,.12); color:var(--green); border:1px solid rgba(34,197,94,.25); }
+.crawl-warn { background:rgba(250,204,21,.12); color:#facc15;      border:1px solid rgba(250,204,21,.25); }
+.crawl-error{ background:rgba(239,68,68,.12);  color:var(--red);   border:1px solid rgba(239,68,68,.25); }
+
+.crawl-log-row {
+  display:flex; align-items:flex-start; gap:12px; padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.crawl-log-row:last-child { border-bottom:none; }
+.crawl-log-dot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px;
+}
+.dot-ok   { background:var(--green); }
+.dot-warn { background:#facc15; }
+.dot-error{ background:var(--red); }
+
+/* ── 리뷰 카드 ── */
+.rev-card {
+  background:var(--bg-hover2); border:1px solid var(--border); border-radius:10px;
+  padding:12px; margin-bottom:10px;
+}
+.rev-card:last-child { margin-bottom:0; }
+.rev-meta { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+.rev-stars { color:#fbbf24; font-size:12px; }
+.rev-author { font-size:12px; font-weight:600; color:var(--text2); }
+.rev-date   { font-size:11px; color:var(--text3); margin-left:auto; }
+.rev-text   { font-size:12px; color:var(--text); line-height:1.6; }
+
+/* ── 광고 섹션 ── */
+.ad-row {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 0; border-bottom:1px solid var(--border);
+}
+.ad-row:last-child { border-bottom:none; }
+
+/* ── 메뉴 그리드 ── */
+.menu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:10px; }
+.menu-item {
+  background:var(--bg-hover2); border:1px solid var(--border); border-radius:10px; padding:12px;
+}
+.menu-item.highlight { border-color:rgba(var(--cyan-rgb),.4); background:rgba(var(--cyan-rgb),.04); }
+.menu-name  { font-size:13px; font-weight:700; color:var(--text-title); margin-bottom:4px; }
+.menu-price { font-size:12px; color:var(--cyan); font-weight:600; }
+
+/* ── 크롤링 아이템 체크리스트 ── */
+.crawl-items { display:flex; flex-wrap:wrap; gap:6px; margin-top:4px; }
+.crawl-item-badge {
+  display:inline-flex; align-items:center; gap:3px; padding:2px 8px;
+  border-radius:4px; font-size:10px; font-weight:600;
+}
+.ci-ok   { background:rgba(34,197,94,.1); color:var(--green); }
+.ci-fail { background:rgba(239,68,68,.1); color:var(--red); }
+
+/* ── 미니 스파크라인 ── */
+.sparkline { display:flex; align-items:flex-end; gap:2px; height:28px; margin-top:4px; }
+.spark-bar { width:4px; border-radius:1px; background:var(--cyan); opacity:.7; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast-container"></div>
+<script src="js/app.js"></script>
+<script>
+renderLayout({ title: '플레이스 현황', activePage: 'place-status.html' });
+
+/* ═══════════════════════════════════════
+   Mock 데이터 (places.html 구조와 동일)
+═══════════════════════════════════════ */
+const PLACES = [
+  {
+    id:1,
+    name:'업체 A (강남)',
+    category:'한식·백반',
+    naverUrl:'https://map.naver.com/v5/entry/place/1005166855',
+    status:'active',
+    crawledAt:'2026-03-19 06:00',
+    crawlStatus:'ok',
+    address:'서울특별시 강남구 테헤란로 123 1층',
+    phone:'02-1234-5678',
+    homepage:'https://example-a.kr',
+    repKeywords: ['강남 맛집', '강남 한식', '테헤란로 맛집', '서초 점심', '강남 한정식'],
+    /* 통계 */
+    reviewCount:342, reviewCountPrev:315,
+    avgRating:4.6,
+    blogReviewCount:128, blogReviewPrev:115,
+    savedCount:1240, savedCountPrev:1180,
+    visitorMonthly:4200, visitorPrev:3900,
+    photoCount:87,
+    /* 추이 (10포인트) */
+    trendDates:['03/01','03/03','03/05','03/07','03/09','03/11','03/13','03/15','03/17','03/19'],
+    trendReview:[290,298,305,310,315,320,325,330,338,342],
+    trendSaved: [1050,1080,1100,1130,1150,1175,1195,1210,1225,1240],
+    trendVisitor:[3400,3500,3600,3700,3800,3900,3950,4050,4150,4200],
+    trendBlog:   [100,105,108,112,115,118,120,123,126,128],
+    /* 광고 */
+    adPowerLink:true, adPlaceAd:false,
+    adPowerLinkKeywords:['강남 맛집','테헤란로 맛집'],
+    adBudgetMonthly:150000, adClickEstimate:320,
+    adLastChecked:'2026-03-19 06:00',
+    /* 메뉴 */
+    menus:[
+      { name:'김치찌개',    price:'8,000원',    highlight:true  },
+      { name:'된장찌개',    price:'8,000원',    highlight:false },
+      { name:'불고기 백반', price:'12,000원',   highlight:true  },
+      { name:'삼겹살',      price:'15,000원/인',highlight:false },
+      { name:'냉면',        price:'9,000원',    highlight:false },
+    ],
+    /* 키워드 (isRankKw:true = 순위키, false = 작업키) */
+    keywords:[
+      { id:1, kw:'강남 맛집',     rank:3,  prev:5,  isRankKw:true,  sortOrder:0,
+        rankHistory:[10,9,8,7,6,5,5,4,4,3,3,3,3,3,3], isTopSection:true,  cpcCount:3, inTop5:true,  lastChecked:'2026-03-19 06:00' },
+      { id:2, kw:'강남 한식 맛집',rank:7,  prev:9,  isRankKw:false, sortOrder:0,
+        rankHistory:[15,14,12,10,9,9,8,7,7,7,8,7,7,7,7], isTopSection:true,  cpcCount:1, inTop5:false, lastChecked:'2026-03-19 06:00' },
+      { id:3, kw:'테헤란로 점심', rank:null,prev:null,isRankKw:false,sortOrder:1,
+        rankHistory:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null], isTopSection:false, cpcCount:0, inTop5:false, lastChecked:'2026-03-19 06:00' },
+      { id:4, kw:'강남역 맛집',   rank:12, prev:15, isRankKw:false, sortOrder:2,
+        rankHistory:[22,20,18,16,14,14,13,13,12,12,11,12,12,12,12], isTopSection:true,  cpcCount:5, inTop5:false, lastChecked:'2026-03-19 06:00' },
+      { id:5, kw:'점심 특선',     rank:6,  prev:8,  isRankKw:false, sortOrder:3,
+        rankHistory:[14,12,10,9,8,7,7,6,6,6,6,6,6,6,6], isTopSection:false, cpcCount:0, inTop5:true,  lastChecked:'2026-03-19 06:00' },
+    ],
+    recentReviews:[
+      { stars:5, text:'음식이 정말 맛있어요! 가성비도 최고입니다. 다음에 또 방문할게요.', date:'2026-03-18', author:'맛집탐방***' },
+      { stars:4, text:'친절하고 맛도 좋았어요. 주차가 조금 불편한게 아쉽네요.', date:'2026-03-16', author:'동네주민***' },
+      { stars:5, text:'블로그에서 보고 왔는데 기대 이상이었어요!', date:'2026-03-14', author:'음식사진가***' },
+    ],
+    crawlLogs:[
+      { ts:'2026-03-19 06:00', status:'ok',   items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true  }, note:'' },
+      { ts:'2026-03-18 20:00', status:'ok',   items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true  }, note:'' },
+      { ts:'2026-03-18 14:00', status:'warn', items:{ basic:true, hours:true, menu:false,review:true, photos:false,keywords:true  }, note:'메뉴 섹션 로드 실패 (재시도 예정)' },
+      { ts:'2026-03-18 06:00', status:'ok',   items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true  }, note:'' },
+    ],
+    photos:[{ type:'음식', count:52 },{ type:'내부', count:21 },{ type:'외부', count:14 }],
+  },
+  {
+    id:2,
+    name:'업체 B (홍대)',
+    category:'한식·분식',
+    naverUrl:'https://map.naver.com/v5/entry/place/19797085',
+    status:'active',
+    crawledAt:'2026-03-19 06:00',
+    crawlStatus:'warn',
+    address:'서울특별시 마포구 홍대입구로 78 2층',
+    phone:'02-2345-6789',
+    homepage:'',
+    repKeywords: ['홍대 맛집', '홍대 한식', '마포구 맛집', '홍대입구역 맛집', '홍대 점심'],
+    reviewCount:187, reviewCountPrev:172,
+    avgRating:4.3,
+    blogReviewCount:64, blogReviewPrev:58,
+    savedCount:720, savedCountPrev:680,
+    visitorMonthly:2100, visitorPrev:1980,
+    photoCount:45,
+    trendDates:['03/01','03/03','03/05','03/07','03/09','03/11','03/13','03/15','03/17','03/19'],
+    trendReview:[150,155,160,163,167,170,172,175,180,187],
+    trendSaved: [620,635,645,655,665,675,685,695,710,720],
+    trendVisitor:[1800,1850,1880,1920,1950,1970,1980,1990,2050,2100],
+    trendBlog:   [50,52,54,56,57,58,59,61,63,64],
+    adPowerLink:false, adPlaceAd:true,
+    adPowerLinkKeywords:[],
+    adBudgetMonthly:80000, adClickEstimate:180,
+    adLastChecked:'2026-03-19 06:00',
+    menus:[
+      { name:'비빔밥',   price:'9,000원',  highlight:true  },
+      { name:'갈비탕',   price:'13,000원', highlight:false },
+      { name:'부대찌개', price:'9,500원',  highlight:true  },
+    ],
+    keywords:[
+      { id:4, kw:'홍대 맛집',      rank:2,  prev:3,  isRankKw:true,  sortOrder:0,
+        rankHistory:[6,5,4,3,3,3,2,2,2,2,2,2,2,2,2], isTopSection:true,  cpcCount:2, inTop5:true,  lastChecked:'2026-03-19 06:00' },
+      { id:5, kw:'홍대 카페',      rank:5,  prev:5,  isRankKw:false, sortOrder:0,
+        rankHistory:[8,7,6,5,5,5,5,5,5,5,5,5,5,5,5], isTopSection:true,  cpcCount:0, inTop5:true,  lastChecked:'2026-03-19 06:00' },
+      { id:6, kw:'마포구 맛집',    rank:null,prev:null,isRankKw:false,sortOrder:1,
+        rankHistory:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null], isTopSection:false, cpcCount:1, inTop5:false, lastChecked:'2026-03-19 06:00', failReason:'봇 탐지 차단' },
+      { id:7, kw:'홍대입구역 맛집',rank:8,  prev:10, isRankKw:false, sortOrder:2,
+        rankHistory:[15,14,12,11,10,10,9,8,8,8,8,8,8,8,8], isTopSection:true,  cpcCount:0, inTop5:false, lastChecked:'2026-03-19 06:00' },
+    ],
+    recentReviews:[
+      { stars:4, text:'홍대 맛집 찾아왔는데 정말 만족스럽네요. 분위기도 좋고 음식도 맛있어요!', date:'2026-03-17', author:'홍대탐방***' },
+      { stars:5, text:'홍대에서 이런 가성비 맛집이 있다니! 꼭 다시 올게요.', date:'2026-03-15', author:'마포구민***' },
+    ],
+    crawlLogs:[
+      { ts:'2026-03-19 06:00', status:'warn',  items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:false }, note:'키워드 "마포구 맛집" 봇 탐지 차단 — 재시도 예약' },
+      { ts:'2026-03-18 20:00', status:'ok',    items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true  }, note:'' },
+      { ts:'2026-03-18 14:00', status:'ok',    items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true  }, note:'' },
+    ],
+    photos:[{ type:'음식', count:34 },{ type:'내부', count:15 },{ type:'외부', count:9 }],
+  },
+];
+
+/* ══════ 전역 상태 ══════ */
+let _selId  = PLACES[0].id;
+let _subTab = 'stats'; // stats | keywords | reviews | menu | crawl | ad
+
+/* ══════════════════════════════════════
+   렌더링
+══════════════════════════════════════ */
+function renderPage() {
+  document.getElementById('page-content').innerHTML = buildHTML();
+  bindEvents();
+  drawCharts();
+}
+
+function buildHTML() {
+  const p = PLACES.find(pl => pl.id === _selId) || PLACES[0];
+
+  return `
+<!-- ── 상단 요약 KPI ── -->
+<div class="kpi-grid" style="margin-bottom:20px">
+  ${buildSummaryKPI()}
+</div>
+
+<!-- ── 플레이스 카드 셀렉터 ── -->
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px">
+  ${PLACES.map(pl => buildPlaceCard(pl)).join('')}
+</div>
+
+<!-- ── 상세 패널 ── -->
+<div class="detail-panel">
+  <!-- 패널 헤더 -->
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px">
+    <div>
+      <div style="font-size:17px;font-weight:800;color:var(--text-title)">${p.name}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:3px">${p.category} · ${p.address}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      ${crawlBadge(p.crawlStatus)}
+      <span style="font-size:11px;color:var(--text3)">최근 수집 ${p.crawledAt}</span>
+      <a href="${p.naverUrl}" target="_blank" class="btn btn-sm btn-secondary" style="font-size:11px">네이버 바로가기 ↗</a>
+    </div>
+  </div>
+
+  <!-- 서브탭 -->
+  <div class="detail-tabs">
+    ${[
+      ['stats',    '📊 통계 지표'],
+      ['keywords', '🔑 키워드 현황'],
+      ['reviews',  '💬 리뷰'],
+      ['menu',     '🍽️ 메뉴'],
+      ['crawl',    '🤖 크롤링 이력'],
+      ['ad',       '📢 광고 현황'],
+    ].map(([key, label]) => `
+      <button class="detail-tab${_subTab===key?' active':''}" onclick="switchSubTab('${key}')">${label}</button>
+    `).join('')}
+  </div>
+
+  <!-- 서브탭 콘텐츠 -->
+  <div id="subtab-content">
+    ${buildSubTab(p)}
+  </div>
+</div>
+`;
+}
+
+/* ── 전체 KPI 요약 ── */
+function buildSummaryKPI() {
+  const totalReview   = PLACES.reduce((a,p) => a+p.reviewCount, 0);
+  const totalBlog     = PLACES.reduce((a,p) => a+p.blogReviewCount, 0);
+  const totalSaved    = PLACES.reduce((a,p) => a+p.savedCount, 0);
+  const totalVisitor  = PLACES.reduce((a,p) => a+p.visitorMonthly, 0);
+  const warnPlaces    = PLACES.filter(p => p.crawlStatus !== 'ok').length;
+  const allRankKws    = PLACES.flatMap(p => p.keywords.filter(k => k.isRankKw));
+  const top5RankKws   = allRankKws.filter(k => k.rank && k.rank <= 5);
+
+  return `
+  <div class="kpi-card">
+    <div class="kpi-label">📍 관리 플레이스</div>
+    <div class="kpi-value">${PLACES.length}</div>
+    <div class="kpi-change ${warnPlaces>0?'down':'flat'}">${warnPlaces>0 ? `⚠️ ${warnPlaces}개 수집 이슈` : '✅ 전체 정상'}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">🏆 순위키 TOP5 달성</div>
+    <div class="kpi-value text-yellow">${top5RankKws.length}<span style="font-size:14px;font-weight:500;color:var(--text3)">/${allRankKws.length}</span></div>
+    <div class="kpi-change up">▲ 1위 ${allRankKws.filter(k=>k.rank===1).length}개</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">💬 전체 영수증 리뷰</div>
+    <div class="kpi-value">${totalReview.toLocaleString()}</div>
+    <div class="kpi-change up">▲ ${(totalReview - PLACES.reduce((a,p)=>a+p.reviewCountPrev,0)).toLocaleString()} 지난달 대비</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">🔖 전체 저장 수</div>
+    <div class="kpi-value">${totalSaved.toLocaleString()}</div>
+    <div class="kpi-change up">▲ ${(totalSaved - PLACES.reduce((a,p)=>a+p.savedCountPrev,0)).toLocaleString()} 지난달 대비</div>
+  </div>`;
+}
+
+/* ── 플레이스 카드 ── */
+function buildPlaceCard(p) {
+  const rankKw = p.keywords.find(k => k.isRankKw);
+  const rvDiff = p.reviewCount - p.reviewCountPrev;
+  const svDiff = p.savedCount  - p.savedCountPrev;
+  const spark  = rankKw ? sparkline(rankKw.rankHistory.slice(-7).filter(v=>v!==null)) : '';
+
+  return `
+  <div class="ps-card${p.id===_selId?' selected':''}" style="flex:1;min-width:220px;max-width:300px"
+    onclick="selectPlace(${p.id})">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px">
+      <div>
+        <div class="ps-card-name">${p.name}</div>
+        <div class="ps-card-cat">${p.category}</div>
+      </div>
+      ${crawlBadge(p.crawlStatus)}
+    </div>
+    ${rankKw ? `
+      <div style="background:rgba(var(--cyan-rgb),.06);border:1px solid rgba(var(--cyan-rgb),.2);border-radius:8px;padding:8px 10px;margin-bottom:10px">
+        <div style="font-size:11px;color:var(--text3);margin-bottom:3px">📌 순위키</div>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span style="font-size:13px;font-weight:700;color:var(--text-title)">${rankKw.kw}</span>
+          ${rankBadge(rankKw.rank)}
+        </div>
+        ${spark}
+      </div>` : `<div style="font-size:11px;color:var(--text3);padding:6px 0">순위키 미등록</div>`}
+    <div class="ps-stat-row">
+      <span class="ps-stat-label">영수증 리뷰</span>
+      <span class="ps-stat-val ${rvDiff>0?'up':'flat'}">${p.reviewCount} ${rvDiff>0?'▲'+rvDiff:''}</span>
+    </div>
+    <div class="ps-stat-row" style="margin-bottom:0">
+      <span class="ps-stat-label">저장 수</span>
+      <span class="ps-stat-val ${svDiff>0?'up':'flat'}">${p.savedCount.toLocaleString()} ${svDiff>0?'▲'+svDiff:''}</span>
+    </div>
+  </div>`;
+}
+
+/* ── 서브탭 콘텐츠 ── */
+function buildSubTab(p) {
+  if (_subTab === 'stats')    return buildStats(p);
+  if (_subTab === 'keywords') return buildKeywords(p);
+  if (_subTab === 'reviews')  return buildReviews(p);
+  if (_subTab === 'menu')     return buildMenu(p);
+  if (_subTab === 'crawl')    return buildCrawlLog(p);
+  if (_subTab === 'ad')       return buildAd(p);
+  return '';
+}
+
+/* ── 통계 지표 탭 ── */
+function buildStats(p) {
+  const stats = [
+    { label:'영수증 리뷰', val:p.reviewCount, prev:p.reviewCountPrev, icon:'💬', color:'var(--cyan)' },
+    { label:'평균 별점',   val:p.avgRating,   prev:null,              icon:'⭐', color:'#fbbf24' },
+    { label:'블로그 리뷰', val:p.blogReviewCount, prev:p.blogReviewPrev, icon:'📝', color:'#a78bfa' },
+    { label:'저장 수',     val:p.savedCount,  prev:p.savedCountPrev,  icon:'🔖', color:'var(--green)' },
+    { label:'월 방문자',   val:p.visitorMonthly, prev:p.visitorPrev,  icon:'👣', color:'#fb923c' },
+    { label:'등록 사진',   val:p.photoCount,  prev:null,              icon:'📸', color:'#60a5fa' },
+  ];
+
+  const statBoxes = stats.map(s => {
+    const diff = s.prev ? s.val - s.prev : null;
+    const pct  = s.prev ? ((s.val-s.prev)/s.prev*100).toFixed(1) : null;
+    return `
+    <div class="stat-box">
+      <div class="stat-box-label">${s.icon} ${s.label}</div>
+      <div class="stat-box-val" style="color:${s.color}">${typeof s.val==='number'&&s.val>999?s.val.toLocaleString():s.val}</div>
+      ${diff !== null ? `<div class="stat-box-change ${diff>0?'up':diff<0?'down':'flat'}">${diff>0?'▲':'▼'} ${Math.abs(diff).toLocaleString()} (${pct}%) 지난달 대비</div>` : ''}
+    </div>`;
+  }).join('');
+
+  return `
+  <div class="stats-grid" style="margin-bottom:20px">${statBoxes}</div>
+
+  <!-- 추이 차트 -->
+  <div class="card" style="padding:16px;border:1px solid var(--border);border-radius:12px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">📈 30일 추이 (영수증리뷰 / 블로그 / 저장)</div>
+      <div style="font-size:11px;color:var(--text3)">최근 ${p.trendDates.length}개 구간 기준</div>
+    </div>
+    <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
+  </div>
+
+  <!-- 대표키워드 -->
+  <div style="margin-top:16px">
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">📌 네이버 대표 키워드 (플레이스 등록)</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">
+      ${p.repKeywords.map(k => `
+        <span style="padding:4px 10px;background:rgba(var(--cyan-rgb),.08);border:1px solid rgba(var(--cyan-rgb),.2);border-radius:20px;font-size:12px;font-weight:600;color:var(--cyan)">${k}</span>
+      `).join('')}
+    </div>
+    <div style="background:rgba(250,204,21,.06);border:1px solid rgba(250,204,21,.2);border-radius:8px;padding:10px 14px;font-size:11px;color:var(--text2);line-height:1.8">
+      <strong style="color:#facc15">⚠️ 대표키워드란?</strong>
+      네이버 플레이스에 사업주가 직접 등록한 <strong>공식 업종·서비스 키워드</strong>입니다.
+      nplace.io에서는 수정 불가 — 변경하려면 네이버 플레이스 관리 콘솔을 이용하세요.<br>
+      <span style="color:var(--text3)">
+        📌 <strong>순위키</strong>: 상위 노출을 목표로 추적하는 키워드 (최대 3개) &nbsp;|&nbsp;
+        ⚡ <strong>작업키</strong>: SEO 롱테일 작업 투입 키워드 &nbsp;—&nbsp;
+        두 유형 모두 대표키워드와 별개로 관리됩니다.
+        <a href="places.html" style="color:var(--cyan);margin-left:4px">플레이스 관리에서 확인 →</a>
+      </span>
+    </div>
+  </div>`;
+}
+
+/* ── 키워드 현황 탭 ── */
+function buildKeywords(p) {
+  const rankKws = p.keywords.filter(k => k.isRankKw);
+  const workKws = p.keywords.filter(k => !k.isRankKw).sort((a,b) => a.sortOrder - b.sortOrder);
+
+  const kwRow = (k, type) => {
+    const chg = (k.rank && k.prev) ? k.prev - k.rank : null;
+    const hist = k.rankHistory.filter(v=>v!==null);
+    const sp = hist.length > 0 ? sparkline(hist.slice(-7)) : '<span style="font-size:11px;color:var(--text3)">데이터 없음</span>';
+    return `
+    <tr>
+      <td>
+        <div style="display:flex;align-items:center;gap:6px">
+          ${type==='rank' ? '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(var(--cyan-rgb),.12);color:var(--cyan);font-weight:700;border:1px solid rgba(var(--cyan-rgb),.25)">📌 순위키</span>' :
+                           '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(34,197,94,.1);color:var(--green);font-weight:700;border:1px solid rgba(34,197,94,.25)">⚡ 작업키</span>'}
+          <span style="font-size:13px;font-weight:700;color:var(--text-title)">${k.kw}</span>
+          ${k.failReason ? `<span style="font-size:10px;color:var(--red)">⚠️ ${k.failReason}</span>` : ''}
+        </div>
+      </td>
+      <td>${rankBadge(k.rank)}</td>
+      <td>
+        ${chg !== null
+          ? `<span style="font-weight:700;font-size:13px;color:${chg>0?'var(--green)':chg<0?'var(--red)':'var(--text3)'}">${chg>0?'▲':'▼'} ${Math.abs(chg)}</span>`
+          : '<span style="color:var(--text3);font-size:12px">—</span>'}
+      </td>
+      <td>${sp}</td>
+      <td>
+        ${k.isTopSection ? '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.2)">✅ 플레이스 최상단</span>' : '<span style="font-size:11px;color:var(--text3)">—</span>'}
+      </td>
+      <td>
+        ${k.cpcCount > 0 ? `<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.2)">CPC ${k.cpcCount}개</span>` : '<span style="font-size:11px;color:var(--text3)">없음</span>'}
+      </td>
+      <td><span style="font-size:11px;color:var(--text3)">${k.lastChecked || '—'}</span></td>
+    </tr>`;
+  };
+
+  return `
+  <!-- 순위 키워드 -->
+  <div style="margin-bottom:20px">
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">
+      📌 순위 키워드 ${rankKws.length}/3 <span style="font-size:11px;font-weight:400;color:var(--text3)">— 순위를 올리고 싶은 목표 키워드</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="kw-table">
+        <thead><tr>
+          <th>키워드</th><th>현재순위</th><th>변동</th><th>추이 (15일)</th><th>플레이스 최상단</th><th>CPC 경쟁</th><th>마지막 조회</th>
+        </tr></thead>
+        <tbody>${rankKws.map(k => kwRow(k,'rank')).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">등록된 순위 키워드가 없습니다</td></tr>'}</tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 작업 키워드 -->
+  <div>
+    <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">
+      ⚡ 작업 키워드 ${workKws.length}개 <span style="font-size:11px;font-weight:400;color:var(--text3)">— SEO 작업 투입 롱테일 키워드</span>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="kw-table">
+        <thead><tr>
+          <th>키워드</th><th>현재순위</th><th>변동</th><th>추이 (15일)</th><th>플레이스 최상단</th><th>CPC 경쟁</th><th>마지막 조회</th>
+        </tr></thead>
+        <tbody>${workKws.map(k => kwRow(k,'work')).join('') || '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:16px">등록된 작업 키워드가 없습니다</td></tr>'}</tbody>
+      </table>
+    </div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px">
+      💡 1~5위 키워드만 작업 가능 (✅ 작업가능 조건) · 키워드 관리는 <a href="places.html" style="color:var(--cyan)">플레이스 관리</a>에서
+    </div>
+  </div>`;
+}
+
+/* ── 리뷰 탭 ── */
+function buildReviews(p) {
+  const stars = n => '★'.repeat(n) + '☆'.repeat(5-n);
+  return `
+  <div style="display:flex;gap:20px;margin-bottom:16px;flex-wrap:wrap">
+    <div style="text-align:center;padding:16px 24px;background:rgba(var(--cyan-rgb),.06);border:1px solid rgba(var(--cyan-rgb),.2);border-radius:12px;min-width:120px">
+      <div style="font-size:32px;font-weight:800;color:var(--cyan)">${p.avgRating}</div>
+      <div style="color:#fbbf24;font-size:16px;margin:4px 0">${'★'.repeat(Math.round(p.avgRating))}</div>
+      <div style="font-size:11px;color:var(--text3)">평균 별점</div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:8px;justify-content:center">
+      <div style="font-size:13px;color:var(--text2)">💬 영수증 리뷰 <strong style="color:var(--text-title)">${p.reviewCount}</strong>건</div>
+      <div style="font-size:13px;color:var(--text2)">📝 블로그·카페 리뷰 <strong style="color:var(--text-title)">${p.blogReviewCount}</strong>건</div>
+      <div style="font-size:11px;color:var(--text3)">상세 리뷰 내용은 플레이스 관리 → 리뷰 탭에서 확인</div>
+    </div>
+  </div>
+
+  <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:10px;text-transform:uppercase;letter-spacing:.4px">최근 영수증 리뷰</div>
+  ${p.recentReviews.map(r => `
+    <div class="rev-card">
+      <div class="rev-meta">
+        <span class="rev-stars">${stars(r.stars)}</span>
+        <span class="rev-author">${r.author}</span>
+        <span class="rev-date">${r.date}</span>
+      </div>
+      <div class="rev-text">${r.text}</div>
+    </div>
+  `).join('')}
+  <div style="font-size:11px;color:var(--text3);margin-top:8px">
+    전체 리뷰는 <a href="places.html" style="color:var(--cyan)">플레이스 관리 → 리뷰 탭</a>에서 확인 가능합니다.
+  </div>`;
+}
+
+/* ── 메뉴 탭 ── */
+function buildMenu(p) {
+  return `
+  <div class="menu-grid">
+    ${p.menus.map(m => `
+      <div class="menu-item${m.highlight?' highlight':''}">
+        ${m.highlight ? '<div style="font-size:10px;color:var(--cyan);font-weight:700;margin-bottom:4px">⭐ 대표메뉴</div>' : ''}
+        <div class="menu-name">${m.name}</div>
+        <div class="menu-price">${m.price}</div>
+      </div>
+    `).join('')}
+  </div>
+  <div style="font-size:11px;color:var(--text3);margin-top:12px">메뉴 편집은 네이버 플레이스 관리자에서 직접 수정하세요.</div>`;
+}
+
+/* ── 크롤링 이력 탭 ── */
+function buildCrawlLog(p) {
+  const ITEMS = { basic:'기본정보', hours:'영업시간', menu:'메뉴', review:'리뷰', photos:'사진', keywords:'키워드' };
+  return `
+  <div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">
+    ${crawlBadge(p.crawlStatus)}
+    <span style="font-size:12px;color:var(--text3)">최근 수집: ${p.crawledAt}</span>
+    <span style="font-size:11px;color:var(--text3)">· 자동 수집 월 1회</span>
+  </div>
+  ${p.crawlLogs.map(log => `
+    <div class="crawl-log-row">
+      <div class="crawl-log-dot dot-${log.status}"></div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:12px;font-weight:600;color:var(--text)">${log.ts}</span>
+          ${crawlBadge(log.status)}
+        </div>
+        <div class="crawl-items">
+          ${Object.entries(ITEMS).map(([key, label]) =>
+            `<span class="crawl-item-badge ${log.items[key]?'ci-ok':'ci-fail'}">${log.items[key]?'✅':'❌'} ${label}</span>`
+          ).join('')}
+        </div>
+        ${log.note ? `<div style="font-size:11px;color:#facc15;margin-top:4px">⚠️ ${log.note}</div>` : ''}
+      </div>
+    </div>
+  `).join('')}`;
+}
+
+/* ── 광고 현황 탭 ── */
+function buildAd(p) {
+  return `
+  <div class="ad-row">
+    <span style="font-size:13px;color:var(--text2);font-weight:600">파워링크 광고</span>
+    <span style="font-size:13px;font-weight:700;color:${p.adPowerLink?'var(--green)':'var(--text3)'}">${p.adPowerLink ? '✅ 집행 중' : '❌ 미집행'}</span>
+  </div>
+  <div class="ad-row">
+    <span style="font-size:13px;color:var(--text2);font-weight:600">플레이스 광고</span>
+    <span style="font-size:13px;font-weight:700;color:${p.adPlaceAd?'var(--green)':'var(--text3)'}">${p.adPlaceAd ? '✅ 집행 중' : '❌ 미집행'}</span>
+  </div>
+  ${p.adPowerLinkKeywords.length > 0 ? `
+  <div class="ad-row">
+    <span style="font-size:13px;color:var(--text2);font-weight:600">파워링크 키워드</span>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      ${p.adPowerLinkKeywords.map(k => `<span style="padding:2px 8px;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);border-radius:4px;font-size:11px;font-weight:600;color:var(--red)">CPC ${k}</span>`).join('')}
+    </div>
+  </div>` : ''}
+  <div class="ad-row">
+    <span style="font-size:13px;color:var(--text2);font-weight:600">월 예산 (추정)</span>
+    <span style="font-size:13px;font-weight:700;color:var(--text)">${p.adBudgetMonthly.toLocaleString()}원</span>
+  </div>
+  <div class="ad-row" style="border-bottom:none">
+    <span style="font-size:13px;color:var(--text2);font-weight:600">클릭 추정 (월)</span>
+    <span style="font-size:13px;font-weight:700;color:var(--text)">${p.adClickEstimate.toLocaleString()}회</span>
+  </div>
+  <div style="font-size:11px;color:var(--text3);margin-top:8px">마지막 확인: ${p.adLastChecked} · 추정값이며 실제와 다를 수 있습니다.</div>`;
+}
+
+/* ══════ 헬퍼 ══════ */
+function crawlBadge(status) {
+  if (status === 'ok')    return `<span class="crawl-status-badge crawl-ok">✅ 정상</span>`;
+  if (status === 'warn')  return `<span class="crawl-status-badge crawl-warn">⚠️ 일부실패</span>`;
+  return `<span class="crawl-status-badge crawl-error">❌ 오류</span>`;
+}
+
+function rankBadge(rank) {
+  if (!rank) return `<span style="font-size:11px;color:var(--text3)">미조회</span>`;
+  const color = rank<=3?'#fcd34d':rank<=5?'var(--cyan)':rank<=10?'var(--green)':rank<=30?'#60a5fa':'var(--text3)';
+  return `<span style="font-size:13px;font-weight:800;color:${color}">${rank}위</span>`;
+}
+
+function sparkline(data) {
+  if (!data || data.length === 0) return '';
+  const max = Math.max(...data), min = Math.min(...data);
+  const bars = data.map(v => {
+    const h = max === min ? 50 : Math.max(20, 100 - ((v - min) / (max - min)) * 70);
+    const color = v <= 5 ? 'var(--cyan)' : v <= 10 ? 'var(--green)' : v <= 30 ? '#60a5fa' : 'var(--text3)';
+    return `<div class="spark-bar" style="height:${Math.round(h)}%;background:${color}"></div>`;
+  }).join('');
+  return `<div class="sparkline">${bars}</div>`;
+}
+
+/* ══════ 이벤트 ══════ */
+function bindEvents() {}
+
+function selectPlace(id) {
+  _selId  = id;
+  _subTab = 'stats';
+  renderPage();
+}
+
+function switchSubTab(tab) {
+  _subTab = tab;
+  const p = PLACES.find(pl => pl.id === _selId);
+  // 탭 버튼 active 클래스 갱신
+  document.querySelectorAll('.detail-tab').forEach(btn => {
+    const key = btn.getAttribute('onclick').match(/'(\w+)'/)?.[1];
+    btn.classList.toggle('active', key === tab);
+  });
+  document.getElementById('subtab-content').innerHTML = buildSubTab(p);
+  if (tab === 'stats') drawCharts();
+}
+
+/* ══════ 차트 ══════ */
+let _trendChart = null;
+
+function drawCharts() {
+  const p = PLACES.find(pl => pl.id === _selId);
+  if (!p) return;
+  setTimeout(() => {
+    const el = document.getElementById('trendChart');
+    if (!el) return;
+    if (_trendChart) { _trendChart.destroy(); _trendChart = null; }
+    const cc = (typeof chartColors === 'function') ? chartColors() : {
+      ticks:'#94a3b8', grid:'rgba(255,255,255,.05)',
+      tooltip:{ bg:'#1a1a24', border:'rgba(255,255,255,.1)', title:'#fff', body:'rgba(226,232,240,.7)' }
+    };
+    _trendChart = new Chart(el, {
+      type: 'line',
+      data: {
+        labels: p.trendDates,
+        datasets: [
+          { label:'영수증리뷰', data:p.trendReview, borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.08)', tension:.4, pointRadius:2, fill:false },
+          { label:'블로그리뷰', data:p.trendBlog,   borderColor:'#a78bfa', backgroundColor:'rgba(167,139,250,.08)', tension:.4, pointRadius:2, fill:false },
+          { label:'저장수(÷10)', data:p.trendSaved.map(v=>Math.round(v/10)), borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,.08)', tension:.4, pointRadius:2, fill:false },
+        ]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ labels:{ color:cc.ticks, font:{size:11} } },
+          tooltip:{ backgroundColor:cc.tooltip.bg, borderColor:cc.tooltip.border, borderWidth:1, titleColor:cc.tooltip.title, bodyColor:cc.tooltip.body }
+        },
+        scales:{
+          x:{ ticks:{ color:cc.ticks, font:{size:10}, maxTicksLimit:8 }, grid:{ color:cc.grid } },
+          y:{ ticks:{ color:cc.ticks, font:{size:10} }, grid:{ color:cc.grid } }
+        }
+      }
+    });
+  }, 80);
+}
+
+/* ══════ 시작 ══════ */
+renderPage();
+</script>
+</body>
+</html>
