@@ -184,11 +184,15 @@ def _order_to_detail(order: Order, db: Session) -> OrderDetail:
         id=str(order.id),
         product_id=str(order.product_id) if order.product_id else None,
         product_name=order.product_name,
+        category=order.category.value if order.category else None,
         description=order.description,
         status=order.status.value,
         quantity=order.quantity,
         unit_price=order.unit_price,
         total_amount=order.total_amount,
+        daily_qty=order.daily_qty,
+        start_date=order.start_date,
+        end_date=order.end_date,
         special_requests=order.special_requests,
         place=place_info,
         keywords=keyword_infos,
@@ -443,6 +447,18 @@ async def create_order(
     total_amount = unit_price * data.quantity
 
     # ── 7. Order 생성 ────────────────────────────────────────
+    # category 검증
+    from app.models.order import OrderCategory
+    category_enum = None
+    if data.category:
+        try:
+            category_enum = OrderCategory(data.category)
+        except ValueError:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"유효하지 않은 카테고리: {data.category}. (blog/reward_traffic/reward_save/receipt/sns)",
+            )
+
     new_order = Order(
         id=uuid.uuid4(),
         workspace_id=uuid.UUID(data.workspace_id),
@@ -454,6 +470,10 @@ async def create_order(
         quantity=data.quantity,
         unit_price=unit_price,
         total_amount=total_amount,
+        daily_qty=data.daily_qty,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        category=category_enum,
         special_requests=data.special_requests,
         status=OrderStatus.PENDING,
     )

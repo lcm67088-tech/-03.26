@@ -1,5 +1,5 @@
 """
-Order 및 Payment 모델 (Sprint 5 보완)
+Order 및 Payment 모델 (Sprint 5 보완 + Sprint 12 카테고리/일정 추가)
 
 주문 생성부터 완료까지의 전체 상태 관리.
 Sprint 5에서 추가된 컬럼:
@@ -8,14 +8,35 @@ Sprint 5에서 추가된 컬럼:
   - quantity: 주문 수량
   - unit_price: 단가 (원)
   - special_requests: 특이사항
+Sprint 12에서 추가된 컬럼:
+  - category: 주문 카테고리 (blog/reward_traffic/reward_save/receipt/sns)
+  - daily_qty: 일 수량 (트래픽·저장 등 일별 작업 단위)
+  - start_date: 작업 시작일
+  - end_date: 작업 종료일
 """
 import enum
 
-from sqlalchemy import Column, DateTime, Enum, ForeignKey, Integer, String, Text
+from sqlalchemy import Column, Date, DateTime, Enum, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 
 from app.models.base import BaseModel
+
+
+class OrderCategory(str, enum.Enum):
+    """
+    주문 카테고리 — 프론트 통일 기준
+    blog          : 블로그 리뷰
+    reward_traffic: 리워드 유입 (트래픽)
+    reward_save   : 리워드 저장하기
+    receipt       : 영수증 리뷰
+    sns           : SNS (인스타그램 등)
+    """
+    BLOG           = "blog"
+    REWARD_TRAFFIC = "reward_traffic"
+    REWARD_SAVE    = "reward_save"
+    RECEIPT        = "receipt"
+    SNS            = "sns"
 
 
 class OrderStatus(str, enum.Enum):
@@ -97,6 +118,33 @@ class Order(BaseModel):
         nullable=True,
         default=list,
         comment="선택된 키워드 UUID 목록 (JSONB 배열)",
+    )
+
+    # 주문 카테고리 (Sprint 12 추가)
+    category = Column(
+        Enum(OrderCategory),
+        nullable=True,
+        index=True,
+        comment="주문 카테고리 (blog/reward_traffic/reward_save/receipt/sns)",
+    )
+
+    # 일 수량 (Sprint 12 추가) — 트래픽·저장하기 등 일별 작업 수
+    daily_qty = Column(
+        Integer,
+        nullable=True,
+        comment="일 수량 (예: 저장하기 200/일)",
+    )
+
+    # 작업 기간 (Sprint 12 추가)
+    start_date = Column(
+        Date,
+        nullable=True,
+        comment="작업 시작일",
+    )
+    end_date = Column(
+        Date,
+        nullable=True,
+        comment="작업 종료일",
     )
 
     # 주문 정보

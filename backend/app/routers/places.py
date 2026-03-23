@@ -1,12 +1,13 @@
 """
-장소(Place) 라우터 (Sprint 3 완성)
+장소(Place) 라우터 (Sprint 3 완성 + Sprint 12 주문 목록 추가)
 
-GET    /api/v1/places                  장소 목록 (워크스페이스별)
-POST   /api/v1/places                  장소 등록
-GET    /api/v1/places/dashboard-summary 대시보드 요약
-GET    /api/v1/places/{place_id}        장소 상세
-PUT    /api/v1/places/{place_id}        장소 수정 (alias, is_active)
-DELETE /api/v1/places/{place_id}        장소 소프트 삭제
+GET    /api/v1/places                       장소 목록 (워크스페이스별)
+POST   /api/v1/places                       장소 등록
+GET    /api/v1/places/dashboard-summary     대시보드 요약
+GET    /api/v1/places/{place_id}            장소 상세
+PUT    /api/v1/places/{place_id}            장소 수정 (alias, is_active)
+DELETE /api/v1/places/{place_id}            장소 소프트 삭제
+GET    /api/v1/places/{place_id}/orders     장소별 주문 목록 (캘린더용)
 """
 import uuid
 from datetime import datetime, date, timedelta, timezone
@@ -766,4 +767,90 @@ async def crawl_now(
     return {
         "message": f"크롤링을 시작했습니다 ({len(job_ids)}개 키워드)",
         "job_count": len(job_ids),
+    }
+
+
+# ============================
+# 장소별 주문 목록 (캘린더용)
+# ============================
+
+@router.get(
+    "/{place_id}/orders",
+    summary="장소별 주문 목록 조회 (플레이스 현황 캘린더용)",
+)
+async def get_place_orders(
+    place_id: str,
+    workspace_id: str = Query(..., description="워크스페이스 ID"),
+    status_filter: Optional[str] = Query(None, alias="status", description="상태 필터 (쉼표 구분, 예: in_progress,pending)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    특정 장소의 주문 목록을 반환합니다.
+    플레이스 현황 > 주문 현황 캘린더에서 사용.
+
+    응답 필드:
+        id, product_name, category, status,
+        daily_qty, start_date, end_date,
+        quantity, unit_price, total_amount,
+        keywords (list)
+    """
+    # 권한 검증
+    _verify_workspace_member(workspace_id, current_user, db)
+    place = _verify_place_member(place_id, workspace_id, current_user, db)
+
+    # 주문 쿼리
+    q = db.query(Order).filter(
+        Order.place_id == place.id,
+        Order.workspace_id == uuid.UUID(workspace_id),
+    )
+
+    # 상태 필터
+    if status_filter:
+        status_values = [s.strip() for s in status_filter.split(",")]
+        valid_statuses = []
+        for sv in status_values:
+            try:
+                valid_statuses.append(OrderStatus(sv))
+            except ValueError:
+                pass
+        if valid_statuses:
+            q = q.filter(Order.status.in_(valid_statuses))
+
+    orders = q.order_by(Order.start_date.asc().nullslast(), Order.created_at.desc()).all()
+
+    result = []
+    for o in orders:
+        # 키워드 목록
+        kw_list = []
+        if o.keyword_ids:
+            from app.models.keyword import PlaceKeyword as PK
+            for kw_id in o.keyword_ids:
+                try:
+                    kw = db.query(PK).filter(PK.id == kw_id).first()
+                    if kw:
+                        kw_list.append(kw.keyword)
+                except Exception:
+                    pass
+
+        result.append({
+            "id": str(o.id),
+            "product_name": o.product_name,
+            "category": o.category.value if o.category else None,
+            "status": o.status.value,
+            "daily_qty": o.daily_qty,
+            "start_date": o.start_date.isoformat() if o.start_date else None,
+            "end_date": o.end_date.isoformat() if o.end_date else None,
+            "quantity": o.quantity,
+            "unit_price": o.unit_price,
+            "total_amount": o.total_amount,
+            "keywords": kw_list,
+        })
+
+    return {
+        "place_id": str(place.id),
+        "naver_place_id": place.naver_place_id,
+        "place_name": place.alias or place.name,
+        "total": len(result),
+        "orders": result,
     }

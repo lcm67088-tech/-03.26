@@ -88,16 +88,17 @@
 <div id="modal-bulk" class="modal-overlay"></div>
 
 <script src="js/app.js?v=20260326"></script>
+<script src="js/shared-data.js?v=20260323"></script>
 <script>
 // ══════════════════════════════════════════════════════
 // 상품 카탈로그 (5개 대분류 × 5개 브랜드)
 // ══════════════════════════════════════════════════════
 const CATEGORIES = [
-  { id:'blog',    label:'블로그 리뷰',    emoji:'📝' },
-  { id:'receipt', label:'영수증 리뷰',    emoji:'🧾' },
-  { id:'traffic', label:'리워드 유입',    emoji:'🚀' },
-  { id:'save',    label:'리워드 저장',    emoji:'🔖' },
-  { id:'sns',     label:'SNS',           emoji:'📸' },
+  { id:'blog',           label:'블로그 리뷰',    emoji:'📝' },
+  { id:'receipt',        label:'영수증 리뷰',    emoji:'🧾' },
+  { id:'reward_traffic', label:'리워드 유입',    emoji:'🎯' },
+  { id:'reward_save',    label:'리워드 저장',    emoji:'🔖' },
+  { id:'sns',            label:'SNS',           emoji:'📸' },
 ];
 
 const BRANDS = {
@@ -192,80 +193,47 @@ const MY_PLACES = [
 // orders: 주문 헤더 (브랜드/카테고리/기간/총금액)
 // items:  플레이스별 작업 단위 (수량/키워드/상태/매체사)
 // ══════════════════════════════════════════════════════
-let orders = [
-  {
-    id: 'ORD-0041', brand: '블로그A', brandId: 'b1', category: 'blog',
-    dailyQty: 2, startDate: '2026-03-18', endDate: '2026-03-22',
-    splitUnit: null, unitPrice: 15000,
-    totalQty: 10, totalAmount: 150000,
-    status: 'completed', date: '2026-03-18 14:23',
-    items: [
-      { id:'i001', placeId:'p1', placeName:'맛있는 식당 본점',
-        qty: 10, keywords: ['맛집 강남'], status:'completed', mediaCompany:'리뷰마스터' },
-    ],
-  },
-  {
-    id: 'ORD-0040', brand: 'SNSA', brandId: 'sn1', category: 'sns',
-    dailyQty: null, startDate: '2026-03-17', endDate: '2026-03-17',
-    splitUnit: null, unitPrice: 89000,
-    totalQty: 1, totalAmount: 89000,
-    status: 'in_progress', date: '2026-03-17 09:15',
-    items: [
-      { id:'i002', placeId:'p3', placeName:'행복한 카페',
-        qty: 1, keywords: [], status:'in_progress', mediaCompany:'SNS킹' },
-    ],
-  },
-  {
-    id: 'ORD-0039', brand: '유입A', brandId: 't1', category: 'traffic',
-    dailyQty: 100, startDate: '2026-03-16', endDate: '2026-03-20',
-    splitUnit: 10, unitPrice: 90,
-    totalQty: 800, totalAmount: 72000,
-    status: 'in_progress', date: '2026-03-16 16:40',
-    items: [
-      { id:'i003', placeId:'p2', placeName:'맛있는 식당 강남점',
-        qty: 500, keywords: ['강남 맛집', '강남 한식'], status:'in_progress', mediaCompany:'유입마스터' },
-      { id:'i004', placeId:'p1', placeName:'맛있는 식당 본점',
-        qty: 300, keywords: ['강남 맛집'], status:'pending', mediaCompany: null },
-    ],
-  },
-  {
-    id: 'ORD-0038', brand: '블로그B', brandId: 'b2', category: 'blog',
-    dailyQty: 1, startDate: '2026-03-15', endDate: '2026-03-19',
-    splitUnit: null, unitPrice: 18000,
-    totalQty: 8, totalAmount: 144000,
-    status: 'pending', date: '2026-03-15 11:20',
-    items: [
-      { id:'i005', placeId:'p1', placeName:'맛있는 식당 본점',
-        qty: 5, keywords: ['서울 맛집'], status:'pending', mediaCompany: null },
-      { id:'i006', placeId:'p3', placeName:'행복한 카페',
-        qty: 3, keywords: ['강남 카페'], status:'pending', mediaCompany: null },
-    ],
-  },
-  {
-    id: 'ORD-0037', brand: '영수증A', brandId: 'r1', category: 'receipt',
-    dailyQty: 5, startDate: '2026-03-10', endDate: '2026-03-13',
-    splitUnit: null, unitPrice: 5000,
-    totalQty: 20, totalAmount: 100000,
-    status: 'refund_requested', date: '2026-03-10 08:00',
-    items: [
-      { id:'i007', placeId:'p1', placeName:'맛있는 식당 본점',
-        qty: 20, keywords: [], status:'refund_requested', mediaCompany:'리뷰프로' },
-    ],
-  },
-  {
-    id: 'ORD-0036', brand: '저장A', brandId: 's1', category: 'save',
-    dailyQty: 200, startDate: '2026-03-08', endDate: '2026-03-12',
-    splitUnit: 25, unitPrice: 90,
-    totalQty: 1500, totalAmount: 135000,
-    status: 'cancelled', date: '2026-03-08 13:45',
-    items: [
-      { id:'i008', placeId:'p3', placeName:'행복한 카페',
-        qty: 800, keywords: ['강남 카페', '강남역 카페'], status:'cancelled', mediaCompany: null },
-      { id:'i009', placeId:'p2', placeName:'맛있는 식당 강남점',
-        qty: 700, keywords: ['강남 한식'], status:'cancelled', mediaCompany: null },
-    ],
-  },
-];
+// ══════════════════════════════════════════════════════
+// 주문 Mock 데이터 — shared-data.js의 SHARED_ORDERS 사용
+// orders.html 형식(brand/brandId/items)으로 어댑터 변환
+// ══════════════════════════════════════════════════════
+function _ordersFromShared() {
+  // SHARED_ORDERS가 아직 로드 안 됐을 경우 폴백
+  if (typeof SHARED_ORDERS === 'undefined') return [];
+  return SHARED_ORDERS.map((o, idx) => {
+    const place = (typeof SHARED_PLACES !== 'undefined')
+      ? SHARED_PLACES.find(p => p.id === o.placeId)
+      : null;
+    const placeName = place ? place.name : o.placeId;
+    return {
+      id:          o.id,
+      brand:       o.product,
+      brandId:     o.id.toLowerCase().replace(/-/g, '_'),
+      category:    o.category,           // blog|reward_traffic|reward_save|receipt|sns
+      dailyQty:    o.dailyQty,
+      startDate:   o.startDate,
+      endDate:     o.endDate,
+      splitUnit:   null,
+      unitPrice:   o.unitPrice,
+      totalQty:    o.quantity,
+      totalAmount: o.totalAmount,
+      status:      o.status,
+      date:        o.startDate + ' 09:00',
+      items: [
+        {
+          id:          'i_' + o.id,
+          placeId:     o.placeId,
+          placeName:   placeName,
+          qty:         o.quantity,
+          keywords:    o.keywords || [],
+          status:      o.status,
+          mediaCompany: null,
+        },
+      ],
+    };
+  });
+}
+let orders = _ordersFromShared();
 
 // ══════════════════════════════════════════════════════
 // 어드민 설정 Mock 데이터 (admin-media.html과 동기화)
@@ -538,7 +506,7 @@ function renderPage() {
                 <td>
                   <div style="font-size:12px;font-weight:600">${o.brand}</div>
                   <div style="font-size:10px;color:var(--text3)">${CATEGORIES.find(c=>c.id===o.category)?.label}</div>
-                  ${(o.category==='traffic'||o.category==='save') && o.items[0]?.keywords?.length
+                  ${(o.category==='reward_traffic'||o.category==='reward_save') && o.items[0]?.keywords?.length
                     ? `<div style="font-size:10px;color:var(--cyan)">🔑 ${o.items.flatMap(i=>i.keywords).filter((v,i,a)=>a.indexOf(v)===i).slice(0,2).join(', ')}${o.items.flatMap(i=>i.keywords).filter((v,i,a)=>a.indexOf(v)===i).length>2?'…':''}</div>` : ''}
                 </td>
                 <td style="font-size:12px">${(o.totalQty||o.qty||0).toLocaleString()}</td>
@@ -654,7 +622,7 @@ function showDetail(id) {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
               <span style="font-size:12px;font-weight:600;color:#fff">📍 ${item.placeName}</span>
               <div style="display:flex;align-items:center;gap:6px">
-                <span style="font-size:11px;color:var(--cyan)">${(item.qty||0).toLocaleString()}${o.category==='traffic'||o.category==='save'?'회':'개'}</span>
+                <span style="font-size:11px;color:var(--cyan)">${(item.qty||0).toLocaleString()}${o.category==='reward_traffic'||o.category==='reward_save'?'회':'개'}</span>
                 ${orderBadge(item.status)}
               </div>
             </div>
@@ -848,7 +816,7 @@ function renderWizard() {
       ${wizard.cartItems.map((item, idx) => {
         const brand = Object.values(BRANDS).flat().find(b => b.id === item.brandId);
         const today = new Date().toISOString().split('T')[0];
-        const isReward = item.category === 'traffic' || item.category === 'save';
+        const isReward = item.category === 'reward_traffic' || item.category === 'reward_save';
         const placeItems = item.placeItems || [];
         const totalQty = placeItems.reduce((s, pi) => s + (pi.qty||0), 0);
         const filter = kwTableFilter[idx] || {};
@@ -1300,7 +1268,7 @@ function goStep2() {
       if (!pi.qty || pi.qty < 1) { toast(`[${pi.placeName}] 수량을 입력해 주세요`, 'error'); return; }
     }
     // 리워드 키워드 선택 검증
-    const isReward = item.category === 'traffic' || item.category === 'save';
+    const isReward = item.category === 'reward_traffic' || item.category === 'reward_save';
     if (isReward) {
       for (const pi of item.placeItems) {
         if (!pi.selectedKwIds || pi.selectedKwIds.length === 0) {
@@ -1458,7 +1426,7 @@ function placeOrder() {
 
   wizard.cartItems.forEach((item, i) => {
     const brand = Object.values(BRANDS).flat().find(b => b.id === item.brandId);
-    const isReward = item.category === 'traffic' || item.category === 'save';
+    const isReward = item.category === 'reward_traffic' || item.category === 'reward_save';
     const placeItems = item.placeItems || [];
     const totalQty = placeItems.reduce((s, pi) => s + (pi.qty||0), 0);
     const newId = 'ORD-' + String(orders.length + newOrders.length + 42).padStart(4, '0');
@@ -1608,8 +1576,10 @@ function mapCategory(str) {
   const m = {
     '블로그':'blog','블로그리뷰':'blog','blog':'blog',
     '영수증':'receipt','영수증리뷰':'receipt','receipt':'receipt',
-    '트래픽':'traffic','리워드유입':'traffic','유입':'traffic','traffic':'traffic',
-    '저장':'save','리워드저장':'save','save':'save',
+    '트래픽':'reward_traffic','리워드유입':'reward_traffic','유입':'reward_traffic',
+    'traffic':'reward_traffic','reward_traffic':'reward_traffic',
+    '저장':'reward_save','리워드저장':'reward_save','save':'reward_save',
+    'reward_save':'reward_save',
     'sns':'sns','SNS':'sns','인스타':'sns','소셜':'sns',
   };
   return m[str.replace(/\s/g,'')] || 'blog';

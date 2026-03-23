@@ -1,5 +1,5 @@
 """
-주문(Order) 관련 Pydantic 스키마 (Sprint 5 완성)
+주문(Order) 관련 Pydantic 스키마 (Sprint 5 완성 + Sprint 12 카테고리/일정 추가)
 
 ProductTypeWithProducts  상품 목록 응답 (유형별 그룹)
 ProductResponse          단일 상품 응답
@@ -10,7 +10,7 @@ OrderDetail              주문 상세 응답
 PaymentCompleteRequest   Mock 결제 완료 요청
 RefundRequestBody        환불 요청 Body
 """
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -61,6 +61,13 @@ class OrderCreateRequest(BaseModel):
     place_id: Optional[str] = None
     keyword_ids: Optional[List[str]] = []
     quantity: int = Field(ge=1, description="주문 수량 (최소 1)")
+    daily_qty: Optional[int] = Field(None, ge=1, description="일 수량 (트래픽·저장 등)")
+    start_date: Optional[date] = Field(None, description="작업 시작일 (YYYY-MM-DD)")
+    end_date: Optional[date] = Field(None, description="작업 종료일 (YYYY-MM-DD)")
+    category: Optional[str] = Field(
+        None,
+        description="주문 카테고리 (blog/reward_traffic/reward_save/receipt/sns)",
+    )
     payment_method: str = Field(
         description="결제 수단 (kakaopay | naverpay | card)"
     )
@@ -94,11 +101,16 @@ class OrderListItem(BaseModel):
     """주문 목록 아이템"""
     id: str
     product_name: str
+    category: Optional[str] = None
     status: str
     total_amount: int
     quantity: int
     unit_price: int
-    place_name: Optional[str] = None      # place.alias or place.name
+    daily_qty: Optional[int] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    place_name: Optional[str] = None
+    place_naver_id: Optional[str] = None  # 네이버 MID
     ordered_at: Optional[datetime] = None
     created_at: datetime
 
@@ -129,11 +141,15 @@ class OrderDetail(BaseModel):
     id: str
     product_id: Optional[str] = None
     product_name: str
+    category: Optional[str] = None
     description: Optional[str] = None
     status: str
     quantity: int
     unit_price: int
     total_amount: int
+    daily_qty: Optional[int] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
     special_requests: Optional[str] = None
     # 장소 정보
     place: Optional[Dict[str, Any]] = None    # { id, name, alias, naver_place_id }
