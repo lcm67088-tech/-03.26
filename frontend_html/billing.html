@@ -585,7 +585,7 @@ function renderPage() {
   </div>
   `;
 
-  document.getElementById('main-content').innerHTML = html;
+  document.getElementById('page-content').innerHTML = html;
   renderHistoryTable();
   insertBalanceBar();
 }
@@ -717,7 +717,7 @@ function confirmCancel() {
 
 // ── 잔액 헤더바 삽입 ─────────────────────────────────────────
 function insertBalanceBar() {
-  const mc = document.getElementById('main-content');
+  const mc = document.getElementById('page-content');
   if (!mc || document.getElementById('balance-bar')) return;
   const bar = document.createElement('div');
   bar.id = 'balance-bar';

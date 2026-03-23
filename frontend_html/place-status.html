@@ -353,7 +353,7 @@ function buildSummaryKPI() {
   const totalReview   = PLACES.reduce((a,p) => a+p.reviewCount, 0);
   const totalBlog     = PLACES.reduce((a,p) => a+p.blogReviewCount, 0);
   const totalSaved    = PLACES.reduce((a,p) => a+p.savedCount, 0);
-  const totalVisitor  = PLACES.reduce((a,p) => a+p.visitorMonthly, 0);
+
   const warnPlaces    = PLACES.filter(p => p.crawlStatus !== 'ok').length;
   const allRankKws    = PLACES.flatMap(p => p.keywords.filter(k => k.isRankKw));
   const top5RankKws   = allRankKws.filter(k => k.rank && k.rank <= 5);
@@ -431,13 +431,12 @@ function buildSubTab(p) {
 
 /* ── 통계 지표 탭 ── */
 function buildStats(p) {
+  // 파서로 직접 확인 가능한 수치만 표시 (추정치 제거)
   const stats = [
-    { label:'영수증 리뷰', val:p.reviewCount, prev:p.reviewCountPrev, icon:'💬', color:'var(--cyan)' },
-    { label:'평균 별점',   val:p.avgRating,   prev:null,              icon:'⭐', color:'#fbbf24' },
-    { label:'블로그 리뷰', val:p.blogReviewCount, prev:p.blogReviewPrev, icon:'📝', color:'#a78bfa' },
-    { label:'저장 수',     val:p.savedCount,  prev:p.savedCountPrev,  icon:'🔖', color:'var(--green)' },
-    { label:'월 방문자',   val:p.visitorMonthly, prev:p.visitorPrev,  icon:'👣', color:'#fb923c' },
-    { label:'등록 사진',   val:p.photoCount,  prev:null,              icon:'📸', color:'#60a5fa' },
+    { label:'영수증 리뷰', val:p.reviewCount,     prev:p.reviewCountPrev,  icon:'💬', color:'var(--cyan)' },
+    { label:'평균 별점',   val:p.avgRating,       prev:null,               icon:'⭐', color:'#fbbf24' },
+    { label:'블로그 리뷰', val:p.blogReviewCount, prev:p.blogReviewPrev,   icon:'📝', color:'#a78bfa' },
+    { label:'저장 수',     val:p.savedCount,      prev:p.savedCountPrev,   icon:'🔖', color:'var(--green)' },
   ];
 
   const statBoxes = stats.map(s => {
@@ -457,8 +456,8 @@ function buildStats(p) {
   <!-- 추이 차트 -->
   <div class="card" style="padding:16px;border:1px solid var(--border);border-radius:12px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-wrap:wrap;gap:8px">
-      <div style="font-size:13px;font-weight:700;color:var(--text)">📈 30일 추이 (영수증리뷰 / 블로그 / 저장)</div>
-      <div style="font-size:11px;color:var(--text3)">최근 ${p.trendDates.length}개 구간 기준</div>
+      <div style="font-size:13px;font-weight:700;color:var(--text)">📈 수집 추이 (영수증리뷰 / 블로그 / 저장)</div>
+      <div style="font-size:11px;color:var(--text3)">${p.trendDates.length ? `최근 ${p.trendDates.length}개 구간 · 크롤링 수집 기준` : '크롤링 수집 후 표시됩니다'}</div>
     </div>
     <div class="trend-chart-wrap"><canvas id="trendChart"></canvas></div>
   </div>
@@ -645,39 +644,137 @@ function buildOrders(p) {
   const orders = p.orders || [];
   if (!orders.length) return `<div style="padding:32px;text-align:center;color:var(--text3);font-size:13px">등록된 주문이 없습니다.</div>`;
 
-  const TYPE_LABEL = { reward:'리워드 유입', save:'저장하기', blog:'블로그 리뷰', rank:'순위 관리', etc:'기타' };
   const STATUS_BADGE = {
     active:  `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green)">진행중</span>`,
     pending: `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.25);color:#facc15">대기중</span>`,
     done:    `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.2);color:var(--text3)">완료</span>`,
     cancel:  `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red)">취소</span>`,
   };
+  const STATUS_COLOR = { active:'#22c55e', pending:'#facc15', done:'#64748b', cancel:'#ef4444' };
+  const TYPE_ICON = { reward:'🎯', save:'🔖', blog:'📝', rank:'📌', etc:'📦' };
 
-  return orders.map(o => {
-    const isReward = o.type === 'reward';
-    const kwSection = isReward && o.rewardKeywords?.length
+  /* ── 간트차트 캘린더 ── */
+  // 전체 주문에서 날짜 범위 산출
+  const allDates = orders.flatMap(o => [new Date(o.startDate), new Date(o.endDate)]);
+  const minDate  = new Date(Math.min(...allDates));
+  const maxDate  = new Date(Math.max(...allDates));
+  // 월 단위 컬럼: minDate 달 첫날 ~ maxDate 달 마지막날
+  const startMonth = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+  const endMonth   = new Date(maxDate.getFullYear(), maxDate.getMonth() + 1, 0);
+  const totalDays  = Math.ceil((endMonth - startMonth) / 86400000) + 1;
+
+  // 월 헤더 생성
+  const months = [];
+  let cur = new Date(startMonth);
+  while (cur <= endMonth) {
+    const y = cur.getFullYear(), m = cur.getMonth();
+    const mStart  = new Date(y, m, 1);
+    const mEnd    = new Date(y, m + 1, 0);
+    const colFrom = Math.max(0, Math.ceil((mStart - startMonth) / 86400000));
+    const colDays = Math.min(mEnd, endMonth) - Math.max(mStart, startMonth);
+    const colSpan = Math.ceil(colDays / 86400000) + 1;
+    months.push({ label: `${y}.${String(m+1).padStart(2,'0')}`, colFrom, colSpan });
+    cur = new Date(y, m + 1, 1);
+  }
+
+  // 오늘 위치 (0~totalDays)
+  const today     = new Date(); today.setHours(0,0,0,0);
+  const todayOff  = Math.floor((today - startMonth) / 86400000);
+  const todayPct  = Math.max(0, Math.min(100, (todayOff / totalDays) * 100)).toFixed(2);
+  const showToday = todayOff >= 0 && todayOff <= totalDays;
+
+  // 월 헤더 HTML
+  const monthHeaders = months.map(m =>
+    `<div style="flex:${m.colSpan};min-width:0;text-align:center;font-size:11px;font-weight:700;
+      color:var(--text3);padding:4px 0;border-right:1px solid var(--border)">${m.label}</div>`
+  ).join('');
+
+  // 간트 바 행 HTML
+  const ganttRows = orders.map(o => {
+    const s    = new Date(o.startDate); s.setHours(0,0,0,0);
+    const e    = new Date(o.endDate);   e.setHours(0,0,0,0);
+    const off  = Math.floor((s - startMonth) / 86400000);
+    const dur  = Math.floor((e - s) / 86400000) + 1;
+    const left = ((off / totalDays) * 100).toFixed(2);
+    const wid  = ((dur / totalDays) * 100).toFixed(2);
+    const col  = STATUS_COLOR[o.status] || '#64748b';
+    const icon = TYPE_ICON[o.type] || '📦';
+
+    const kwTip = o.rewardKeywords?.length
+      ? ` · ${o.rewardKeywords.join(', ')}`
+      : '';
+
+    return `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <div style="width:160px;flex-shrink:0;font-size:11px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis"
+           title="${o.product}${kwTip}">
+        ${icon} ${o.product}
+      </div>
+      <div style="flex:1;position:relative;height:22px">
+        <!-- 배경 그리드 -->
+        <div style="position:absolute;inset:0;display:flex">
+          ${months.map(m=>`<div style="flex:${m.colSpan};border-right:1px solid var(--border);opacity:.4"></div>`).join('')}
+        </div>
+        <!-- 간트 바 -->
+        <div style="position:absolute;top:2px;height:18px;border-radius:4px;
+          left:${left}%;width:${wid}%;
+          background:${o.status==='done'?'rgba(100,116,139,.35)':`${col}22`};
+          border:1px solid ${col}55;
+          display:flex;align-items:center;justify-content:center;overflow:hidden"
+          title="${o.startDate} ~ ${o.endDate}${kwTip}">
+          <span style="font-size:10px;font-weight:700;color:${col};white-space:nowrap;padding:0 4px">${o.daysLeft > 0 ? `잔여 ${o.daysLeft}일` : ''}</span>
+        </div>
+      </div>
+      <div style="width:44px;flex-shrink:0;text-align:right">${STATUS_BADGE[o.status]||''}</div>
+    </div>`;
+  }).join('');
+
+  const ganttChart = `
+  <div style="margin-bottom:18px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)">
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">📅 주문 일정 현황</div>
+    <!-- 월 헤더 -->
+    <div style="display:flex;margin-left:170px;margin-bottom:4px;border-bottom:1px solid var(--border)">
+      ${monthHeaders}
+    </div>
+    <!-- 간트 행 -->
+    <div style="position:relative">
+      ${ganttRows}
+      <!-- 오늘 선 -->
+      ${showToday ? `<div style="position:absolute;top:0;bottom:0;left:calc(170px + ${todayPct}%);width:1.5px;background:rgba(251,191,36,.7);pointer-events:none">
+        <span style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:9px;color:#fbbf24;white-space:nowrap;font-weight:700">TODAY</span>
+      </div>` : ''}
+    </div>
+  </div>`;
+
+  /* ── 주문 카드 목록 ── */
+  const orderCards = orders.map(o => {
+    const icon = TYPE_ICON[o.type] || '📦';
+    const kwSection = o.type === 'reward' && o.rewardKeywords?.length
       ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
-           <span style="font-size:11px;color:var(--text3);margin-right:2px">작업 키워드</span>
+           <span style="font-size:11px;color:var(--text3)">작업 키워드</span>
            ${o.rewardKeywords.map(kw =>
-             `<span style="padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--cyan)">${kw}</span>`
+             `<span style="padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;
+               background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--cyan)">${kw}</span>`
            ).join('')}
          </div>`
       : '';
 
     return `
-    <div style="padding:14px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:var(--bg-card)">
+    <div style="padding:12px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px;background:var(--bg-card)">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
-        <span style="font-size:13px;font-weight:700;color:var(--text)">${o.product}</span>
+        <span style="font-size:13px;font-weight:700;color:var(--text)">${icon} ${o.product}</span>
         ${STATUS_BADGE[o.status] || ''}
         <span style="font-size:11px;color:var(--text3);margin-left:auto">${o.id}</span>
       </div>
-      <div style="font-size:11px;color:var(--text3);display:flex;gap:12px;flex-wrap:wrap">
-        <span>📅 ${o.startDate} ~ ${o.endDate}</span>
-        ${o.status === 'active' ? `<span style="color:var(--cyan)">잔여 ${o.daysLeft}일</span>` : ''}
+      <div style="font-size:11px;color:var(--text3)">
+        ${o.startDate} ~ ${o.endDate}
+        ${o.status === 'active' && o.daysLeft > 0 ? `<span style="color:var(--cyan);margin-left:8px">잔여 ${o.daysLeft}일</span>` : ''}
       </div>
       ${kwSection}
     </div>`;
   }).join('');
+
+  return ganttChart + orderCards;
 }
 
 /* ══════ 헬퍼 ══════ */
