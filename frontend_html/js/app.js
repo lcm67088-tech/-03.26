@@ -1,6 +1,7 @@
 /**
- * nplace.io — 공통 JavaScript (v3.0)
+ * nplace.io — 공통 JavaScript (v3.1)
  * 인증·라우팅·사이드바·헤더·테마·토스트·모달·유틸
+ * updated: 2026-03-25 (cache-bust) — place-status 메뉴 포함
  */
 
 /* ═══════════════════════════════════════════════

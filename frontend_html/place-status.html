@@ -146,7 +146,7 @@
 <body>
 <div id="app"></div>
 <div id="toast-container"></div>
-<script src="js/app.js?v=20260324"></script>
+<script src="js/app.js?v=20260326"></script>
 <script>
 renderLayout({ title: '플레이스 현황', activePage: 'place-status.html' });
 
@@ -180,13 +180,13 @@ const PLACES = [
     /* 주문 */
     orders:[
       { id:'ORD-1024', product:'리워드 유입 — 프리미엄', type:'reward', status:'active',
-        startDate:'2026-03-01', endDate:'2026-03-31', daysLeft:8,
+        startDate:'2026-03-10', endDate:'2026-04-05', daysLeft:13,
         rewardKeywords:['강남 맛집','테헤란로 맛집','강남역 한식'] },
       { id:'ORD-1018', product:'저장하기 패키지', type:'save', status:'active',
-        startDate:'2026-03-10', endDate:'2026-03-31', daysLeft:8,
+        startDate:'2026-03-15', endDate:'2026-04-05', daysLeft:13,
         rewardKeywords:[] },
       { id:'ORD-0991', product:'리워드 유입 — 스탠다드', type:'reward', status:'done',
-        startDate:'2026-02-01', endDate:'2026-02-28', daysLeft:0,
+        startDate:'2026-03-01', endDate:'2026-03-16', daysLeft:0,
         rewardKeywords:['강남 점심','역삼동 맛집'] },
     ],
     /* 메뉴 */
@@ -255,7 +255,7 @@ const PLACES = [
     trendBlog:   [50,52,54,56,57,58,59,61,63,64],
     orders:[
       { id:'ORD-1025', product:'리워드 유입 — 스탠다드', type:'reward', status:'active',
-        startDate:'2026-03-05', endDate:'2026-04-04', daysLeft:12,
+        startDate:'2026-03-12', endDate:'2026-04-08', daysLeft:16,
         rewardKeywords:['홍대 맛집','홍대입구역 맛집'] },
       { id:'ORD-0998', product:'블로그 리뷰 작성', type:'blog', status:'pending',
         startDate:'2026-03-25', endDate:'2026-04-10', daysLeft:18,
@@ -291,6 +291,66 @@ const PLACES = [
         rankHistory:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
       { name:'합정맛있는집', rank:3, reviewCount:210, blogReviewCount:88,
         rankHistory:[4,4,3,3,3,3,3,3,3,3,3,3,3,3,3] },
+    ],
+  },
+  /* ── 업체 C (청담) ── */
+  {
+    id:'p3', name:'업체 C (청담)', category:'헤어·뷰티',
+    naverUrl:'https://map.naver.com/v5/entry/place/12345678',
+    address:'서울 강남구 청담동 118-3',
+    crawlStatus:'ok', crawledAt:'2026-03-23 06:00',
+    reviewCount:95, reviewCountPrev:88,
+    avgRating:4.8,
+    blogReviewCount:42, blogReviewCountPrev:35,
+    monthlyVisitor:1450, monthlyVisitorPrev:1320,
+    photoCount:38,
+    trendDates:['03/01','03/03','03/05','03/07','03/09','03/11','03/13','03/15','03/17','03/23'],
+    trendReview: [72,75,78,80,82,84,86,88,91,95],
+    trendVisitor:[1200,1250,1280,1310,1330,1360,1390,1410,1430,1450],
+    trendBlog:   [28,30,32,34,35,36,37,39,41,42],
+    orders:[
+      { id:'ORD-1030', product:'블로그 리뷰 — 프리미엄', type:'blog', status:'active',
+        startDate:'2026-03-18', endDate:'2026-04-12', daysLeft:20,
+        rewardKeywords:[] },
+      { id:'ORD-1029', product:'리워드 유입 — 스탠다드', type:'reward', status:'active',
+        startDate:'2026-03-20', endDate:'2026-04-08', daysLeft:16,
+        rewardKeywords:['청담 헤어샵','청담동 미용실'] },
+      { id:'ORD-1010', product:'저장하기 패키지', type:'save', status:'done',
+        startDate:'2026-03-01', endDate:'2026-03-20', daysLeft:0,
+        rewardKeywords:[] },
+    ],
+    menus:[
+      { name:'베이직 커트',  price:'35,000원',  highlight:true  },
+      { name:'펌',           price:'80,000원~', highlight:true  },
+      { name:'염색',         price:'70,000원~', highlight:false },
+      { name:'트리트먼트',   price:'40,000원',  highlight:false },
+    ],
+    keywords:[
+      { id:8,  kw:'청담 헤어샵',   rank:4,  prev:7,  isRankKw:true,  sortOrder:0,
+        rankHistory:[12,11,10,9,8,7,6,5,5,4,4,4,4,4,4], isTopSection:true,  cpcCount:2, inTop5:true,  lastChecked:'2026-03-23 06:00' },
+      { id:9,  kw:'청담동 미용실', rank:8,  prev:6,  isRankKw:true,  sortOrder:1,
+        rankHistory:[5,5,5,5,6,6,6,6,7,7,8,8,8,8,8],   isTopSection:true,  cpcCount:3, inTop5:false, lastChecked:'2026-03-23 06:00' },
+      { id:10, kw:'강남 헤어샵',   rank:15, prev:13, isRankKw:false, sortOrder:2,
+        rankHistory:[18,17,16,16,15,15,14,14,13,13,13,14,14,15,15], isTopSection:false, cpcCount:4, inTop5:false, lastChecked:'2026-03-23 06:00' },
+    ],
+    recentReviews:[
+      { stars:5, text:'청담에서 이런 가성비 헤어샵이 있다니! 원장님 실력이 정말 뛰어나요.', date:'2026-03-22', author:'청담로***' },
+      { stars:5, text:'염색 결과가 너무 만족스러워요. 예약도 잘 잡히고 친절해요!', date:'2026-03-20', author:'강남미인***' },
+      { stars:4, text:'펌 퀄리티는 좋은데 가격이 살짝 아쉬워요.', date:'2026-03-18', author:'헤어마니아***' },
+    ],
+    crawlLogs:[
+      { ts:'2026-03-23 06:00', status:'ok', items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
+      { ts:'2026-03-22 20:00', status:'ok', items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
+      { ts:'2026-03-22 06:00', status:'ok', items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
+    ],
+    photos:[{ type:'내부', count:22 },{ type:'작업', count:12 },{ type:'외부', count:4 }],
+    competitors:[
+      { name:'청담프리미엄헤어', rank:1, reviewCount:320, blogReviewCount:140,
+        rankHistory:[1,1,1,1,1,1,1,1,1,1,1,1,1,1,1] },
+      { name:'강남루카헤어',     rank:2, reviewCount:180, blogReviewCount:95,
+        rankHistory:[3,3,3,2,2,2,2,2,2,2,2,2,2,2,2] },
+      { name:'청담스타일헤어',   rank:3, reviewCount:150, blogReviewCount:72,
+        rankHistory:[4,4,4,3,3,3,3,3,3,3,3,3,3,3,3] },
     ],
   },
 ];
@@ -880,134 +940,259 @@ function buildRanking(p) {
 
 function buildOrders(p) {
   const orders = p.orders || [];
-  if (!orders.length) return `<div style="padding:32px;text-align:center;color:var(--text3);font-size:13px">등록된 주문이 없습니다.</div>`;
+  if (!orders.length) return `<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">등록된 주문이 없습니다.</div>`;
 
-  const STATUS_BADGE = {
-    active:  `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(34,197,94,.12);border:1px solid rgba(34,197,94,.25);color:var(--green)">진행중</span>`,
-    pending: `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(250,204,21,.1);border:1px solid rgba(250,204,21,.25);color:#facc15">대기중</span>`,
-    done:    `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(100,116,139,.12);border:1px solid rgba(100,116,139,.2);color:var(--text3)">완료</span>`,
-    cancel:  `<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);color:var(--red)">취소</span>`,
-  };
-  const STATUS_COLOR = { active:'#22c55e', pending:'#facc15', done:'#64748b', cancel:'#ef4444' };
-  const TYPE_ICON = { reward:'🎯', save:'🔖', blog:'📝', rank:'📌', etc:'📦' };
+  const STATUS_COLOR = { active:'#22c55e', pending:'#facc15', done:'#94a3b8', cancel:'#ef4444' };
+  const STATUS_LABEL = { active:'진행중', pending:'대기중', done:'완료', cancel:'취소' };
+  const TYPE_ICON    = { reward:'🎯', save:'🔖', blog:'📝', rank:'📌' };
 
-  /* ══ 일별 간트차트 ══ */
-  const allDates  = orders.flatMap(o => [new Date(o.startDate), new Date(o.endDate)]);
-  const rangeStart = new Date(Math.min(...allDates)); rangeStart.setHours(0,0,0,0);
-  const rangeEnd   = new Date(Math.max(...allDates)); rangeEnd.setHours(0,0,0,0);
-  const totalDays  = Math.floor((rangeEnd - rangeStart) / 86400000) + 1;
+  /* ── 날짜 범위: 주문의 실제 기간만 사용 ── */
+  const allDates = orders.flatMap(o => [new Date(o.startDate), new Date(o.endDate)]);
+  const minDate  = new Date(Math.min(...allDates));
+  const maxDate  = new Date(Math.max(...allDates));
+  minDate.setHours(0,0,0,0);
+  maxDate.setHours(0,0,0,0);
 
-  // 오늘 위치
-  const today    = new Date(); today.setHours(0,0,0,0);
-  const todayOff = Math.floor((today - rangeStart) / 86400000);
-  const todayPct = ((todayOff / totalDays) * 100).toFixed(2);
-  const showToday = todayOff >= 0 && todayOff <= totalDays;
+  const today = new Date(); today.setHours(0,0,0,0);
 
-  // 일별 눈금 헤더: 5일 간격으로 날짜 표시
-  const dayTicks = [];
-  for (let d = 0; d < totalDays; d += 5) {
-    const dt  = new Date(rangeStart.getTime() + d * 86400000);
-    const pct = ((d / totalDays) * 100).toFixed(2);
-    dayTicks.push(`<div style="position:absolute;left:${pct}%;top:0;font-size:9px;color:var(--text3);transform:translateX(-50%);white-space:nowrap">
-      ${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}
-    </div>`);
+  /* ── 날짜 배열 생성 ── */
+  const days = [];
+  for (let d = new Date(minDate); d <= maxDate; d.setDate(d.getDate()+1)) {
+    days.push(new Date(d));
   }
-  // 마지막 날도 표시
-  const lastPct = (((totalDays-1)/totalDays)*100).toFixed(2);
-  dayTicks.push(`<div style="position:absolute;left:${lastPct}%;top:0;font-size:9px;color:var(--text3);transform:translateX(-50%);white-space:nowrap">
-    ${String(rangeEnd.getMonth()+1).padStart(2,'0')}/${String(rangeEnd.getDate()).padStart(2,'0')}
-  </div>`);
+  const totalDays = days.length;
 
-  // 주문 행
-  const ganttRows = orders.map(o => {
-    const s   = new Date(o.startDate); s.setHours(0,0,0,0);
-    const e   = new Date(o.endDate);   e.setHours(0,0,0,0);
-    const off = Math.floor((s - rangeStart) / 86400000);
-    const dur = Math.floor((e - s) / 86400000) + 1;
-    const lft = ((off / totalDays) * 100).toFixed(2);
-    const wid = ((dur / totalDays) * 100).toFixed(2);
-    const col = STATUS_COLOR[o.status] || '#64748b';
-    const ico = TYPE_ICON[o.type] || '📦';
-    const kwTip = o.rewardKeywords?.length ? ` | ${o.rewardKeywords.join(', ')}` : '';
+  /* ── 고정 셀 너비 (항상 36px, 찌그러짐 없음) ── */
+  const CELL_W = 36;
+  const LEFT_W = 180;
+  const totalGridW = LEFT_W + totalDays * CELL_W;
 
-    return `
-    <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
-      <div style="width:150px;flex-shrink:0;font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-           title="${o.product}${kwTip}">${ico} ${o.product}</div>
-      <div style="flex:1;position:relative;height:20px">
-        <!-- 일별 그리드 구분선: 7일마다 약한 선 -->
-        <div style="position:absolute;inset:0">
-          ${Array.from({length:Math.ceil(totalDays/7)}, (_,i) => {
-            const p = ((i*7/totalDays)*100).toFixed(2);
-            return `<div style="position:absolute;left:${p}%;top:0;bottom:0;width:1px;background:var(--border);opacity:.5"></div>`;
-          }).join('')}
-        </div>
-        <!-- 간트 바 -->
-        <div style="position:absolute;top:1px;height:18px;border-radius:4px;
-          left:${lft}%;width:${wid}%;min-width:2px;
-          background:${o.status==='done'?'rgba(100,116,139,.3)':`${col}25`};
-          border:1px solid ${col}66;"
-          title="${o.startDate} ~ ${o.endDate}${kwTip}">
-          <div style="height:100%;border-radius:3px;background:${o.status==='done'?'rgba(100,116,139,.4)':`${col}55`};
-            display:flex;align-items:center;justify-content:center;overflow:hidden">
-            <span style="font-size:9px;font-weight:700;color:${o.status==='done'?'#94a3b8':col};padding:0 4px;white-space:nowrap">
-              ${o.daysLeft > 0 ? `잔여 ${o.daysLeft}일` : (o.status==='done'?'완료':'')}
-            </span>
-          </div>
-        </div>
-        <!-- 오늘선 -->
-        ${showToday ? `<div style="position:absolute;top:0;bottom:0;left:${todayPct}%;width:1.5px;background:rgba(251,191,36,.8);z-index:2"></div>` : ''}
-      </div>
-      <div style="width:40px;flex-shrink:0">${STATUS_BADGE[o.status]||''}</div>
-    </div>`;
+  /* ── TODAY 인덱스 ── */
+  const todayIdx = days.findIndex(d =>
+    d.getFullYear()===today.getFullYear() && d.getMonth()===today.getMonth() && d.getDate()===today.getDate()
+  );
+
+  /* ── 월별 그룹핑 (헤더 colspan용) ── */
+  const monthGroups = [];
+  let curM = -1, curCnt = 0, curSt = 0;
+  days.forEach((d, i) => {
+    const m = d.getMonth();
+    if (m !== curM) {
+      if (curM !== -1) monthGroups.push({ label: `${d.getFullYear()}년 ${curM+1}월`, start:curSt, count:curCnt });
+      curM = m; curSt = i; curCnt = 0;
+    }
+    curCnt++;
+  });
+  if (curCnt > 0) monthGroups.push({ label: `${days[days.length-1].getFullYear()}년 ${curM+1}월`, start:curSt, count:curCnt });
+
+  /* ── 월 헤더 셀 ── */
+  const monthHeaderCells = monthGroups.map(mg => `
+    <th colspan="${mg.count}" style="
+      padding:6px 0;font-size:11px;font-weight:700;
+      color:var(--text2);text-align:center;
+      border-right:2px solid rgba(255,255,255,.12);
+      border-bottom:1px solid var(--border);
+      background:var(--bg-hover2);
+      min-width:${mg.count * CELL_W}px;
+    ">${mg.label}</th>
+  `).join('');
+
+  /* ── 일 헤더 셀 ── */
+  const dayHeaderCells = days.map((d, i) => {
+    const isToday = i === todayIdx;
+    const isSun   = d.getDay() === 0;
+    const isSat   = d.getDay() === 6;
+    const isFirst = d.getDate() === 1;
+    return `<td style="
+      width:${CELL_W}px;min-width:${CELL_W}px;max-width:${CELL_W}px;
+      padding:4px 0;text-align:center;font-size:10px;font-weight:${isToday?'800':'400'};
+      color:${isToday?'#fbbf24':isSun?'#f87171':isSat?'#93c5fd':'var(--text3)'};
+      background:${isToday?'rgba(251,191,36,.1)':'transparent'};
+      border-right:1px solid ${isFirst?'rgba(255,255,255,.2)':'var(--border)'};
+      border-bottom:2px solid var(--border);
+      white-space:nowrap;overflow:hidden;
+    ">${d.getDate()}</td>`;
   }).join('');
 
-  const ganttChart = `
-  <div style="margin-bottom:16px;padding:14px 16px;border:1px solid var(--border);border-radius:12px;background:var(--bg-card)">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
-      <span style="font-size:12px;font-weight:700;color:var(--text)">📅 주문 일정 (일별)</span>
-      <span style="font-size:10px;color:var(--text3)">${String(rangeStart.getMonth()+1).padStart(2,'0')}/${String(rangeStart.getDate()).padStart(2,'0')} ~ ${String(rangeEnd.getMonth()+1).padStart(2,'0')}/${String(rangeEnd.getDate()).padStart(2,'0')} · 총 ${totalDays}일</span>
-    </div>
-    <!-- 날짜 눈금 헤더 -->
-    <div style="position:relative;height:16px;margin-left:158px;margin-bottom:4px">${dayTicks.join('')}</div>
-    <!-- 간트 행 -->
-    <div style="position:relative">${ganttRows}</div>
-    <!-- TODAY 레이블 -->
-    ${showToday ? `<div style="position:relative;height:14px;margin-left:158px">
-      <div style="position:absolute;left:${todayPct}%;transform:translateX(-50%);font-size:9px;color:#fbbf24;font-weight:700;white-space:nowrap">TODAY</div>
-    </div>` : ''}
-  </div>`;
+  /* ── 주문 행 ── */
+  const orderRows = orders.map(o => {
+    const sDate = new Date(o.startDate); sDate.setHours(0,0,0,0);
+    const eDate = new Date(o.endDate);   eDate.setHours(0,0,0,0);
+    const col   = STATUS_COLOR[o.status] || '#94a3b8';
+    const ico   = TYPE_ICON[o.type] || '📦';
 
-  /* ── 주문 카드 목록 ── */
+    const cells = days.map((d, i) => {
+      const inRange = d >= sDate && d <= eDate;
+      const isToday = i === todayIdx;
+      const isFirst = d.getDate() === 1;
+
+      const todayLine = isToday
+        ? `<div style="position:absolute;top:0;bottom:0;left:50%;width:2px;
+            background:rgba(251,191,36,.8);z-index:4;transform:translateX(-50%);pointer-events:none;"></div>`
+        : '';
+
+      if (!inRange) {
+        return `<td style="
+          width:${CELL_W}px;min-width:${CELL_W}px;max-width:${CELL_W}px;
+          background:${isToday?'rgba(251,191,36,.05)':'transparent'};
+          border-right:1px solid ${isFirst?'rgba(255,255,255,.15)':'var(--border)'};
+          position:relative;
+        ">${todayLine}</td>`;
+      }
+
+      /* 바의 좌우 모서리 처리 */
+      const isBarFirst = d.getTime() === sDate.getTime() || i === 0;
+      const isBarLast  = d.getTime() === eDate.getTime() || i === days.length-1;
+      const rLeft  = isBarFirst ? '6px' : '0';
+      const rRight = isBarLast  ? '6px' : '0';
+
+      return `<td style="
+        width:${CELL_W}px;min-width:${CELL_W}px;max-width:${CELL_W}px;
+        padding:6px 0;
+        background:${isToday?'rgba(251,191,36,.05)':'transparent'};
+        border-right:1px solid ${isFirst?'rgba(255,255,255,.12)':'transparent'};
+        position:relative;
+      ">
+        ${todayLine}
+        <div style="
+          height:24px;
+          background:${o.status==='done'?'rgba(148,163,184,.2)':`${col}28`};
+          border-top:2.5px solid ${col};
+          border-bottom:2.5px solid ${col};
+          ${isBarFirst?`border-left:2.5px solid ${col};`:''}
+          ${isBarLast?`border-right:2.5px solid ${col};`:''}
+          border-radius:${rLeft} ${rRight} ${rRight} ${rLeft};
+          position:relative;z-index:1;
+          display:flex;align-items:center;
+        ">
+          ${isBarFirst ? `<span style="font-size:10px;padding-left:5px;white-space:nowrap;overflow:hidden;color:${col};font-weight:700;">${ico}</span>` : ''}
+        </div>
+      </td>`;
+    }).join('');
+
+    return `<tr style="height:38px">
+      <td style="
+        width:${LEFT_W}px;min-width:${LEFT_W}px;
+        padding:4px 12px;
+        border-right:2px solid var(--border);
+        border-bottom:1px solid var(--border);
+        background:var(--bg2);
+        position:sticky;left:0;z-index:5;
+      ">
+        <div style="font-size:11px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:${LEFT_W-24}px">${ico} ${o.product}</div>
+        <div style="display:flex;align-items:center;gap:5px;margin-top:2px">
+          <span style="padding:1px 5px;border-radius:3px;font-size:9px;font-weight:700;
+            background:${col}22;color:${col};border:1px solid ${col}44">${STATUS_LABEL[o.status]||''}</span>
+          ${o.status==='active'&&o.daysLeft>0?`<span style="font-size:9px;color:var(--text3)">잔여 ${o.daysLeft}일</span>`:''}
+        </div>
+      </td>
+      ${cells}
+    </tr>`;
+  });
+
+  /* ── TODAY 라벨 행 ── */
+  const todayLabelRow = todayIdx >= 0 ? `
+  <tr style="height:16px">
+    <td style="position:sticky;left:0;z-index:5;background:var(--bg2);border-right:2px solid var(--border);"></td>
+    ${days.map((d,i) => `<td style="
+      width:${CELL_W}px;min-width:${CELL_W}px;
+      position:relative;
+      background:${i===todayIdx?'rgba(251,191,36,.04)':'transparent'};
+    ">
+      ${i===todayIdx ? `<div style="position:absolute;left:50%;transform:translateX(-50%);font-size:9px;font-weight:800;color:#fbbf24;white-space:nowrap;top:2px">▲ TODAY</div>` : ''}
+    </td>`).join('')}
+  </tr>` : '';
+
+  /* ── 주문 카드 목록 (하단) ── */
   const orderCards = orders.map(o => {
-    const ico = TYPE_ICON[o.type] || '📦';
-    const kwSection = o.type === 'reward' && o.rewardKeywords?.length
-      ? `<div style="margin-top:7px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
-           <span style="font-size:11px;color:var(--text3)">작업 키워드</span>
-           ${o.rewardKeywords.map(kw =>
-             `<span style="padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--cyan)">${kw}</span>`
-           ).join('')}
-         </div>`
-      : '';
-    return `
-    <div style="padding:11px 14px;border:1px solid var(--border);border-radius:10px;margin-bottom:7px;background:var(--bg-card)">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:3px">
-        <span style="font-size:13px;font-weight:700;color:var(--text)">${ico} ${o.product}</span>
-        ${STATUS_BADGE[o.status]||''}
+    const col = STATUS_COLOR[o.status]||'#94a3b8';
+    const ico = TYPE_ICON[o.type]||'📦';
+    const kwSection = o.type==='reward' && o.rewardKeywords?.length
+      ? `<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:5px;align-items:center">
+           <span style="font-size:10px;color:var(--text3)">작업키워드</span>
+           ${o.rewardKeywords.map(kw=>`<span style="padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;
+             background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.25);color:var(--cyan)">${kw}</span>`).join('')}
+         </div>` : '';
+    return `<div style="padding:10px 14px;border:1px solid var(--border);border-left:3px solid ${col};
+      border-radius:8px;margin-bottom:6px;background:var(--bg-card)">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:700;color:var(--text)">${ico} ${o.product}</span>
+        <span style="padding:1px 7px;border-radius:20px;font-size:10px;font-weight:700;
+          background:${col}22;color:${col};border:1px solid ${col}44">${STATUS_LABEL[o.status]||''}</span>
         <span style="font-size:11px;color:var(--text3);margin-left:auto">${o.id}</span>
       </div>
-      <div style="font-size:11px;color:var(--text3)">
-        ${o.startDate} ~ ${o.endDate}
-        ${o.status==='active'&&o.daysLeft>0 ? `<span style="color:var(--cyan);margin-left:8px">잔여 ${o.daysLeft}일</span>` : ''}
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">
+        📅 ${o.startDate} ~ ${o.endDate}
+        ${o.status==='active'&&o.daysLeft>0?`<span style="color:var(--cyan);margin-left:8px">잔여 ${o.daysLeft}일</span>`:''}
       </div>
       ${kwSection}
     </div>`;
   }).join('');
 
-  return ganttChart + orderCards;
+  return `
+  <div style="margin-bottom:20px">
+    <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">📅 주문 일정 (캘린더형 간트차트)</div>
+
+    <!-- 스크롤 가능한 간트차트 컨테이너 -->
+    <div style="
+      overflow-x:auto;
+      border:1px solid var(--border);
+      border-radius:12px;
+      -webkit-overflow-scrolling:touch;
+    ">
+      <table style="
+        border-collapse:collapse;
+        width:${totalGridW}px;
+        min-width:${totalGridW}px;
+        table-layout:fixed;
+      ">
+        <thead>
+          <!-- 월 헤더 -->
+          <tr>
+            <th style="
+              width:${LEFT_W}px;min-width:${LEFT_W}px;
+              background:var(--bg-hover2);
+              border-right:2px solid var(--border);
+              border-bottom:1px solid var(--border);
+              position:sticky;left:0;z-index:10;
+              padding:6px 12px;font-size:11px;
+              color:var(--text3);text-align:left;font-weight:600;
+            ">주문 상품</th>
+            ${monthHeaderCells}
+          </tr>
+          <!-- 일 헤더 -->
+          <tr>
+            <td style="
+              width:${LEFT_W}px;min-width:${LEFT_W}px;
+              position:sticky;left:0;z-index:10;
+              background:var(--bg-hover2);
+              border-right:2px solid var(--border);
+            "></td>
+            ${dayHeaderCells}
+          </tr>
+        </thead>
+        <tbody>
+          ${orderRows.join('')}
+          ${todayLabelRow}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 범례 -->
+    <div style="font-size:10px;color:var(--text3);margin-top:8px;display:flex;gap:14px;flex-wrap:wrap;padding:0 2px">
+      <span>🎯 리워드유입</span>
+      <span>🔖 저장하기</span>
+      <span>📝 블로그리뷰</span>
+      <span>📌 순위작업</span>
+      <span style="color:#fbbf24">│ TODAY</span>
+    </div>
+  </div>
+
+  <!-- 주문 상세 카드 -->
+  <div style="font-size:12px;font-weight:700;color:var(--text3);margin-bottom:8px;text-transform:uppercase;letter-spacing:.4px">📋 주문 상세</div>
+  ${orderCards}`;
 }
 
-/* ══════ 헬퍼 ══════ */
 function crawlBadge(status) {
   if (status === 'ok')    return `<span class="crawl-status-badge crawl-ok">✅ 정상</span>`;
   if (status === 'warn')  return `<span class="crawl-status-badge crawl-warn">⚠️ 일부실패</span>`;
