@@ -426,22 +426,28 @@
 </div>
 
 <script>
-// ── 잔액 & 거래내역 Mock ──────────────────────────────────
-let BALANCE = 52000;
-const TX_HISTORY = [
-  { id:'TX-0012', date:'2026-03-19 14:30', type:'in',  desc:'충전 (신한은행)', amount: 100000, status:'completed' },
-  { id:'TX-0011', date:'2026-03-18 10:12', type:'out', desc:'블로그A 주문 (ORD-0041)', amount:-15000, status:'completed' },
-  { id:'TX-0010', date:'2026-03-17 09:20', type:'out', desc:'SNSA 주문 (ORD-0040)', amount:-89000, status:'completed' },
-  { id:'TX-0009', date:'2026-03-15 16:00', type:'in',  desc:'충전 (신한은행)', amount: 200000, status:'completed' },
-  { id:'TX-0008', date:'2026-03-12 11:30', type:'out', desc:'유입A 주문 (ORD-0039)', amount:-45000, status:'completed' },
-  { id:'TX-0007', date:'2026-03-10 08:00', type:'out', desc:'영수증A 주문 (ORD-0037)', amount:-100000, status:'completed' },
-  { id:'TX-0006', date:'2026-03-05 13:00', type:'in',  desc:'충전 (신한은행)', amount: 300000, status:'completed' },
-  { id:'TX-0005', date:'2026-02-28 09:00', type:'out', desc:'Pro 플랜 구독 결제', amount:-79000, status:'completed' },
-  { id:'TX-0004', date:'2026-02-20 15:00', type:'in',  desc:'충전 (신한은행)', amount: 100000, status:'completed' },
-  { id:'TX-0003', date:'2026-02-10 10:00', type:'out', desc:'블로그B 주문', amount:-90000, status:'completed' },
-];
+// ── API 데이터 ──────────────────────────────────────────────
+let BALANCE = 0;
+let TX_HISTORY = [];
 let currentTxTab = 'all';
 let taxSettings = { enabled:false, bizNo:'', company:'', ceo:'', email:'' };
+
+async function initBillingPage() {
+  const wsId = localStorage.getItem('nplace-ws-id');
+  if (!wsId) { renderPage(); return; }
+  try {
+    const pd = await apiCall(`/api/v1/billing/summary?workspace_id=${wsId}`);
+    BALANCE = pd.balance || 0;
+    TX_HISTORY = (pd.transactions||[]).map(t => ({
+      id: t.id, date: (t.created_at||'').replace('T',' ').slice(0,16),
+      type: t.amount > 0 ? 'in' : 'out',
+      desc: t.description || t.desc || '',
+      amount: t.amount || 0, status: t.status || 'completed',
+    }));
+    if (pd.subscription) Object.assign(SUBSCRIPTION, pd.subscription);
+  } catch(e) { console.warn('billing API 오류:', e); }
+  renderPage();
+}
 
 // ── Mock 데이터 ──────────────────────────────────────────────
 const SUBSCRIPTION = {
@@ -859,7 +865,8 @@ function renderTxTable() {
 
 // ── 초기화 ─────────────────────────────────────────────────────
 renderLayout({ title: '구독·결제', activePage: 'billing.html' });
-renderPage();
+const _bl = getCurrentUser();
+if (_bl?.fromAPI) { initBillingPage(); } else { renderPage(); }
 </script>
 </body>
 </html>

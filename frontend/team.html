@@ -47,14 +47,35 @@
 <script>
 renderLayout({ title: '팀원 관리', activePage: 'team.html' });
 
-/* ── Mock 데이터 ── */
-const MEMBERS = [
-  { id:1, name:'김대표', email:'admin@nplace.io', role:'owner', joined:'2025-12-01', lastActive:'방금 전' },
-  { id:2, name:'이매니저', email:'manager@nplace.io', role:'admin', joined:'2026-01-05', lastActive:'1시간 전' },
-  { id:3, name:'박직원', email:'staff@nplace.io', role:'member', joined:'2026-02-10', lastActive:'어제' },
-];
-
+/* ── API 데이터 ── */
+let MEMBERS = [];
 const PLAN_LIMIT = 5;
+
+async function initTeamPage() {
+  const wsId = localStorage.getItem('nplace-ws-id');
+  if (!wsId) { renderPage(); return; }
+  try {
+    const pd = await apiCall(`/api/v1/workspace-members?workspace_id=${wsId}`);
+    MEMBERS = (pd.members||pd.items||pd||[]).map(m => ({
+      id: m.id||m.user_id, name: m.name||m.user?.name||'',
+      email: m.email||m.user?.email||'',
+      role: m.role||'member',
+      joined: (m.joined_at||m.created_at||'').slice(0,10),
+      lastActive: m.last_active_at ? timeAgo(m.last_active_at) : '-',
+    }));
+  } catch(e) { console.warn('members API 오류:', e); MEMBERS = []; }
+  renderPage();
+}
+
+function timeAgo(str) {
+  try {
+    const diff = Math.floor((Date.now() - new Date(str)) / 1000);
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return Math.floor(diff/60) + '분 전';
+    if (diff < 86400) return Math.floor(diff/3600) + '시간 전';
+    return Math.floor(diff/86400) + '일 전';
+  } catch { return '-'; }
+}
 
 /* ── 모달 빌드 ── */
 document.getElementById('modal-invite').innerHTML = `
@@ -173,7 +194,8 @@ function removeMember(id) {
   toast('팀원이 제거되었습니다', 'success');
 }
 
-renderPage();
+const _tm = getCurrentUser();
+if (_tm?.fromAPI) { initTeamPage(); } else { renderPage(); }
 </script>
 </body>
 </html>

@@ -186,8 +186,8 @@
 
 <script src="js/app.js?v=20260326"></script>
 <script>
-// ── Mock 알림 데이터 ─────────────────────────────────────────
-const ALL_NOTIFICATIONS = [
+// ── API 알림 데이터 ──────────────────────────────────────────
+let ALL_NOTIFICATIONS = [];  // API에서 채워짐
   { id:1,  type:'order',   category:'주문', is_read:false, title:'주문 확정',         message:'ORD-0042 주문이 확정되었습니다. 맛있는 식당 본점 · 블로그 리뷰 10개', time:'방금 전',    emoji:'🛒' },
   { id:2,  type:'rank',    category:'순위', is_read:false, title:'순위 급상승',       message:'"맛집 추천" 키워드가 8위 → 2위로 상승했습니다 🎉', time:'5분 전',    emoji:'📈' },
   { id:3,  type:'payment', category:'결제', is_read:false, title:'결제 완료',         message:'Pro 플랜 ₩79,000 결제가 완료되었습니다.', time:'1시간 전',  emoji:'💳' },
@@ -219,10 +219,38 @@ const SETTINGS = {
 const PAGE_SIZE = 10;
 let currentTab   = 'all';
 let currentPage  = 1;
-let notifications = [...ALL_NOTIFICATIONS];
+let notifications = [];
 
-// ── 유틸 ──────────────────────────────────────────────────────
-function timeAgo(str) { return str; } // Mock: 이미 한국어 상대시간
+function timeAgo(str) {
+  if (!str) return '';
+  try {
+    const d = new Date(str);
+    const diff = Math.floor((Date.now() - d) / 1000);
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return Math.floor(diff/60) + '분 전';
+    if (diff < 86400) return Math.floor(diff/3600) + '시간 전';
+    if (diff < 604800) return Math.floor(diff/86400) + '일 전';
+    return d.toLocaleDateString('ko-KR');
+  } catch { return str; }
+}
+
+async function initNotificationsPage() {
+  const wsId = localStorage.getItem('nplace-ws-id');
+  if (!wsId) { renderPage(); return; }
+  try {
+    const pd = await apiCall(`/api/v1/notifications?workspace_id=${wsId}&skip=0&limit=100`);
+    ALL_NOTIFICATIONS = (pd.items||pd||[]).map(n => ({
+      id: n.id, type: n.type||'system',
+      category: { order:'주문', rank:'순위', system:'시스템', payment:'결제', member:'팀원' }[n.type]||'시스템',
+      is_read: n.is_read||false,
+      title: n.title||'', message: n.message||n.body||'',
+      time: timeAgo(n.created_at),
+      emoji: { order:'🛒', rank:'📈', system:'🔔', payment:'💳', member:'👋' }[n.type]||'📢',
+    }));
+    notifications = [...ALL_NOTIFICATIONS];
+  } catch(e) { console.warn('notifications API 오류:', e); notifications = []; }
+  renderPage();
+}
 
 const TYPE_CLASS = {
   order:'nt-order', rank:'nt-rank', system:'nt-system', payment:'nt-payment', member:'nt-member',
@@ -422,7 +450,8 @@ document.addEventListener('click', e => {
 
 // ── 초기화 ───────────────────────────────────────────────────
 renderLayout({ title: '알림 센터', activePage: 'notifications.html' });
-renderPage();
+const _ns = getCurrentUser();
+if (_ns?.fromAPI) { initNotificationsPage(); } else { renderPage(); }
 </script>
 </body>
 </html>

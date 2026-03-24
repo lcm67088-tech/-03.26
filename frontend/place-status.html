@@ -290,13 +290,46 @@
 renderLayout({ title: '플레이스 현황', activePage: 'place-status.html' });
 
 /* ═══════════════════════════════════════
-   Mock 데이터 (places.html 구조와 동일)
+   API 데이터 (런타임 로드)
 ═══════════════════════════════════════ */
-/* ═══════════════════════════════════════
-   PLACES: shared-data.js의 SHARED_PLACES + 상세 데이터 merge
-   공통 필드(id, naverMid, name, category, address, crawlStatus 등)는
-   SHARED_PLACES에서 가져오고, 여기서는 상세 전용 필드만 보관
-═══════════════════════════════════════ */
+let PLACES = [];
+let _selId  = null;
+let _subTab = 'stats';
+
+async function initPlaceStatusPage() {
+  const wsId = localStorage.getItem('nplace-ws-id');
+  if (!wsId) { renderPage(); return; }
+  try {
+    const pd = await apiCall(`/api/v1/places?workspace_id=${wsId}&skip=0&limit=200`);
+    PLACES = (pd.items||[]).map(p => ({
+      id: p.id,
+      name: p.alias || p.name,
+      category: p.category || '',
+      address: p.address || '',
+      naverUrl: p.naver_id ? `https://map.naver.com/p/entry/place/${p.naver_id}` : '',
+      naverPlaceId: p.naver_id || '',
+      phone: p.phone || '',
+      homepage: p.homepage || '',
+      crawlStatus: p.crawl_status || 'unknown',
+      crawledAt: p.crawled_at || '',
+      status: p.is_active ? 'active' : 'inactive',
+      menus: (p.menus || []).map(m => ({ name: m.name, price: m.price||'', highlight: m.highlight||false })),
+      keywords: (p.keywords || []).map(k => ({
+        id: k.id, kw: k.keyword, rank: k.latest_rank||null,
+        prev: k.previous_rank||null, isRankKw: k.is_primary||false,
+        sortOrder: k.sort_order||0, rankHistory: k.rank_history||[],
+        isTopSection: k.is_top_section||false, cpcCount: k.cpc_count||0,
+        inTop5: (k.latest_rank||99)<=5, lastChecked: k.last_checked||'',
+      })),
+      recentReviews: [], crawlLogs: [], photos: [], competitors: [], orders: [],
+      trendDates: [], trendReview: [], trendVisitor: [], trendBlog: [],
+    }));
+  } catch(e) { console.warn('places API 오류:', e); PLACES = []; }
+  if (PLACES.length > 0) _selId = PLACES[0].id;
+  renderPage();
+}
+
+// 하위 호환 더미
 const PLACE_DETAILS = {
   'p1': {
     phone:'02-1234-5678', homepage:'https://example-a.kr',
@@ -402,28 +435,7 @@ const PLACE_DETAILS = {
   },
 };
 
-/* SHARED_PLACES + PLACE_DETAILS + SHARED_ORDERS 를 merge하여 PLACES 구성 */
-const PLACES = SHARED_PLACES.map(sp => ({
-  ...sp,
-  ...(PLACE_DETAILS[sp.id] || {}),
-  status: 'active',
-  naverUrl: sp.naverUrl,
-  orders: getOrdersByPlace(sp.id).map(o => ({
-    id:        o.id,
-    product:   o.product,
-    type:      o.category,   // place-status 내부에서 type으로 참조
-    category:  o.category,
-    status:    o.status,
-    dailyQty:  o.dailyQty,
-    startDate: o.startDate,
-    endDate:   o.endDate,
-    quantity:  o.quantity,
-    keywords:  o.keywords,
-  })),
-}));
-
-let _selId  = PLACES[0].id;
-let _subTab = 'stats'; // stats | keywords | reviews | menu | crawl | orders | ranking
+// (PLACES, _selId, _subTab 은 위에서 선언됨)
 
 /* ══════════════════════════════════════
    렌더링
@@ -1458,7 +1470,12 @@ async function runParseCrawl(placeId) {
 }
 
 /* ══════ 시작 ══════ */
-renderPage();
+const _sess = getCurrentUser();
+if (_sess && _sess.fromAPI) {
+  initPlaceStatusPage();
+} else {
+  renderPage();
+}
 </script>
 </body>
 </html>

@@ -269,183 +269,29 @@
    Mock 데이터
 ════════════════════════════════════════════════ */
 
-// 매체사 목록
-let MEDIA_LIST = [
-  {
-    id: 1, name: '미디어코리아', contact: 'media@korea.com', phone: '02-1234-5678',
-    bank: '국민은행 123-456-789012', isActive: true,
-    orders: 24, pending: 3, total: 2100000, rating: 4.8,
-    commissionRate: 70,
-    rewardSettings: {
-      traffic: {
-        t1: { minQty: 100, dailyOnly: true  },
-        t2: { minQty: 100, dailyOnly: true  },
-        t3: { minQty: 200, dailyOnly: true  },
-        t4: { minQty: 100, dailyOnly: false },
-        t5: { minQty: 500, dailyOnly: true  },
-      },
-      save: {
-        s1: { minQty: 100, dailyOnly: true  },
-        s2: { minQty: 100, dailyOnly: true  },
-        s3: { minQty: 200, dailyOnly: true  },
-        s4: { minQty: 100, dailyOnly: false },
-        s5: { minQty: 500, dailyOnly: true  },
-      },
-    },
-    blogSettings: [
-      {
-        id: 'bs1', brandId: 'b1', brandName: '블로그A',
-        minChars: 500, maxChars: 1500,
-        minPhotos: 5, maxPhotos: 15,
-        photoCrawl: true,
-        refs: [
-          { id:'r1', title:'강남역 맛집 리뷰 레퍼런스', url:'https://blog.naver.com/sample1', desc:'스타일 참고용', expanded: false },
-          { id:'r2', title:'메뉴 사진 촬영 가이드', url:'https://blog.naver.com/sample2', desc:'사진 각도 및 구도 참고', expanded: false },
-        ]
-      },
-      {
-        id: 'bs2', brandId: 'b2', brandName: '블로그B',
-        minChars: 700, maxChars: 2000,
-        minPhotos: 8, maxPhotos: 20,
-        photoCrawl: false,
-        refs: [
-          { id:'r3', title:'파워블로거 작성 가이드', url:'https://blog.naver.com/guide', desc:'필수 문구 및 해시태그 포함', expanded: false },
-        ]
-      },
-      {
-        id: 'bs3', brandId: 'b3', brandName: '블로그C',
-        minChars: 600, maxChars: 1800,
-        minPhotos: 6, maxPhotos: 12,
-        photoCrawl: true,
-        refs: []
-      },
-    ],
-    receiptSettings: [
-      {
-        id: 'rs1', brandId: 'r1', brandName: '영수증A',
-        hasPhoto: true,
-        allowWeekend: false,
-        blockedDates: ['2026-04-05', '2026-04-06', '2026-05-05'],
-        draft: '영수증 리뷰 작성 시 반드시 실제 방문 후 작성해 주세요.\n음식 사진을 최소 1장 이상 첨부하고, 전체적인 방문 경험을 솔직하게 작성 부탁드립니다.\n해시태그: #강남맛집 #네이버리뷰 #영수증리뷰',
-      },
-      {
-        id: 'rs2', brandId: 'r2', brandName: '영수증B',
-        hasPhoto: false,
-        allowWeekend: true,
-        blockedDates: [],
-        draft: '방문 영수증을 첨부하여 리뷰를 작성해 주세요.\n별점 5점 기준으로 각 항목별 솔직한 평가 부탁드립니다.',
-      },
-    ],
-  },
-  {
-    id: 2, name: '광고닷컴', contact: 'ad@dotcom.kr', phone: '02-9876-5432',
-    bank: '신한은행 110-234-567890', isActive: true,
-    orders: 18, pending: 1, total: 1540000, rating: 4.5,
-    commissionRate: 65,
-    rewardSettings: {
-      traffic: {
-        t1: { minQty: 200, dailyOnly: true  },
-        t2: { minQty: 200, dailyOnly: true  },
-        t3: { minQty: 300, dailyOnly: true  },
-        t4: { minQty: 200, dailyOnly: false },
-        t5: { minQty: 500, dailyOnly: true  },
-      },
-      save: {
-        s1: { minQty: 200, dailyOnly: true  },
-        s2: { minQty: 200, dailyOnly: true  },
-        s3: { minQty: 300, dailyOnly: true  },
-        s4: { minQty: 200, dailyOnly: false },
-        s5: { minQty: 500, dailyOnly: true  },
-      },
-    },
-    blogSettings: [
-      {
-        id: 'bs4', brandId: 'b1', brandName: '블로그A',
-        minChars: 400, maxChars: 1200,
-        minPhotos: 4, maxPhotos: 10,
-        photoCrawl: false,
-        refs: []
-      },
-    ],
-    receiptSettings: [],
-  },
-  {
-    id: 3, name: '블로그팩토리', contact: 'blog@factory.com', phone: '031-555-7777',
-    bank: '우리은행 1002-345-678901', isActive: true,
-    orders: 12, pending: 2, total: 980000, rating: 4.2,
-    commissionRate: 72,
-    rewardSettings: {
-      traffic: {
-        t1: { minQty: 50,  dailyOnly: false },
-        t2: { minQty: 50,  dailyOnly: false },
-        t3: { minQty: 100, dailyOnly: false },
-        t4: { minQty: 50,  dailyOnly: false },
-        t5: { minQty: 200, dailyOnly: false },
-      },
-      save: {
-        s1: { minQty: 50,  dailyOnly: false },
-        s2: { minQty: 50,  dailyOnly: false },
-        s3: { minQty: 100, dailyOnly: false },
-        s4: { minQty: 50,  dailyOnly: false },
-        s5: { minQty: 200, dailyOnly: false },
-      },
-    },
-    blogSettings: [],
-    receiptSettings: [],
-  },
-  {
-    id: 4, name: 'SNS마스터', contact: 'sns@master.io', phone: '070-1234-5678',
-    bank: '카카오뱅크 333-12-3456789', isActive: false,
-    orders: 9, pending: 0, total: 720000, rating: 4.6,
-    commissionRate: 68,
-    rewardSettings: {
-      traffic: {
-        t1: { minQty: 100, dailyOnly: true  },
-        t2: { minQty: 100, dailyOnly: true  },
-        t3: { minQty: 100, dailyOnly: true  },
-        t4: { minQty: 100, dailyOnly: false },
-        t5: { minQty: 300, dailyOnly: true  },
-      },
-      save: {
-        s1: { minQty: 100, dailyOnly: true  },
-        s2: { minQty: 100, dailyOnly: true  },
-        s3: { minQty: 100, dailyOnly: true  },
-        s4: { minQty: 100, dailyOnly: false },
-        s5: { minQty: 300, dailyOnly: true  },
-      },
-    },
-    blogSettings: [],
-    receiptSettings: [],
-  },
-];
+// 매체사 목록 (API 로드)
+let MEDIA_LIST = [];
 
-// 카테고리 레이블 맵
-const CAT_LABELS = {
-  blog: '블로그 리뷰', receipt: '영수증 리뷰',
-  traffic: '리워드 유입', save: '리워드 저장', sns: 'SNS'
-};
+async function initAdminMediaPage() {
+  try {
+    const pd = await apiCall('/api/v1/admin/media-companies');
+    MEDIA_LIST = (pd.items||pd||[]).map(m => ({
+      id: m.id, name: m.name||'', contact: m.email||m.contact||'',
+      phone: m.phone||'', bank: m.bank_account||'',
+      isActive: m.is_active !== false,
+      orders: m.total_orders||0, pending: m.pending_orders||0,
+      total: m.total_revenue||0, rating: m.rating||0,
+      commissionRate: m.commission_rate||70,
+      rewardSettings: m.reward_settings||{},
+      blogSettings: m.blog_settings||{},
+      receiptSettings: m.receipt_settings||{},
+    }));
+  } catch(e) { console.warn('media-companies API 오류:', e); MEDIA_LIST = []; }
+  selectedMediaId = MEDIA_LIST.length > 0 ? MEDIA_LIST[0].id : null;
+  renderPage();
+}
 
-// 브랜드 카탈로그 (orders.html과 동기화)
-const BRAND_CATALOG = {
-  blog:    ['블로그A','블로그B','블로그C','블로그D','블로그E'],
-  receipt: ['영수증A','영수증B','영수증C','영수증D','영수증E'],
-  traffic: ['유입A','유입B','유입C','유입D','유입E'],
-  save:    ['저장A','저장B','저장C','저장D','저장E'],
-  sns:     ['SNSA','SNSB','SNSC','SNSD','SNSE'],
-};
-
-const BRAND_IDS = {
-  blog:    ['b1','b2','b3','b4','b5'],
-  receipt: ['r1','r2','r3','r4','r5'],
-  traffic: ['t1','t2','t3','t4','t5'],
-  save:    ['s1','s2','s3','s4','s5'],
-  sns:     ['sn1','sn2','sn3','sn4','sn5'],
-};
-
-/* ════════════════════════════════════════════════
-   페이지 상태
-════════════════════════════════════════════════ */
-let selectedMediaId = MEDIA_LIST[0].id;
+let selectedMediaId = null;
 let currentPageTab  = 'list';        // 'list' | 'detail'
 let currentDetailTab = 'reward';     // 'reward' | 'blog' | 'receipt' | 'info'
 
@@ -1606,7 +1452,8 @@ function exportCSV() {
    초기화
 ════════════════════════════════════════════════ */
 renderLayout({ title: '매체사 관리', activePage: 'admin-media.html', isAdmin: true });
-renderPage();
+const _am = getCurrentUser();
+if (_am?.fromAPI) { initAdminMediaPage(); } else { renderPage(); }
 </script>
 </body>
 </html>

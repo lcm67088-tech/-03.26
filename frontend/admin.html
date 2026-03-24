@@ -200,60 +200,46 @@
 
 <script src="js/app.js?v=20260326"></script>
 <script>
-// ── Mock 데이터 ──────────────────────────────────────────────
-
-// KPI
-const KPI = {
-  revenue:   { val: 4820000, prev: 3950000 },
-  orders:    { val: 47,      prev: 38 },
-  workspaces:{ val: 312,     prev: 298 },
-  avg_order: { val: 102553,  prev: 103947 },
-};
-
-// 월별 매출 (6개월)
-const REVENUE_MONTHS = ['10월','11월','12월','1월','2월','3월'];
-const REVENUE_DATA   = [2100000, 2850000, 3200000, 3700000, 3950000, 4820000];
-
-// 주문 상태 도넛
-const ORDER_STATUS_COUNTS = {
-  pending: 5, confirmed: 8, in_progress: 12,
-  completed: 18, cancelled: 3, refund_requested: 1,
-};
-
-// 플랜 분포
-const PLAN_DIST = { free:178, starter:89, pro:38, enterprise:7 };
-const PLAN_TOTAL = Object.values(PLAN_DIST).reduce((a,b)=>a+b,0);
-
-// 최근 주문 목록
-const RECENT_ORDERS = [
-  { id:'ORD-0047', workspace:'핵인싸 마케팅', place:'강남역 스시오마카세', product:'블로그 리뷰 10개',      amount:150000, status:'in_progress',      media:'미디어코리아', created:'2026-03-19', startDate:'2026-03-19', endDate:'2026-03-23' },
-  { id:'ORD-0046', workspace:'맛있는 식당',   place:'맛있는 식당 본점',    product:'인스타 홍보 패키지',   amount:89000,  status:'confirmed',          media:'—',            created:'2026-03-17', startDate:'2026-03-18', endDate:'2026-03-18' },
-  { id:'ORD-0045', workspace:'행복한 카페',   place:'행복한 카페 합정점',  product:'트래픽 유입 500',      amount:45000,  status:'pending',            media:'—',            created:'2026-03-16', startDate:'2026-03-17', endDate:'2026-03-21' },
-  { id:'ORD-0044', workspace:'서울 뷰티샵',   place:'청담 네일아트',       product:'블로그 리뷰 5개',      amount:75000,  status:'completed',          media:'광고닷컴',     created:'2026-03-12', startDate:'2026-03-13', endDate:'2026-03-17' },
-  { id:'ORD-0043', workspace:'IT 스타트업',   place:'판교 IT 카페',        product:'바이럴 마케팅 패키지', amount:299000, status:'refund_requested',   media:'미디어코리아', created:'2026-03-10', startDate:'2026-03-11', endDate:'2026-03-20' },
-  { id:'ORD-0042', workspace:'맛있는 식당',   place:'맛있는 식당 강남점',  product:'트래픽 유입 1000',     amount:88000,  status:'cancelled',          media:'—',            created:'2026-03-08', startDate:'2026-03-09', endDate:'2026-03-13' },
-];
-
-// 매체사 목록
-const MEDIA_COMPANIES = [
-  { id:1, name:'미디어코리아',  orders:24, pending:3, total:2100000, rating:4.8 },
-  { id:2, name:'광고닷컴',      orders:18, pending:1, total:1540000, rating:4.5 },
-  { id:3, name:'블로그팩토리',  orders:12, pending:2, total:980000,  rating:4.2 },
-  { id:4, name:'SNS마스터',     orders:9,  pending:0, total:720000,  rating:4.6 },
-];
-
-// 최근 활동
-const ACTIVITIES = [
-  { color:'#00d4ff', text:'ORD-0047 주문에 미디어코리아 배정',       time:'방금 전' },
-  { color:'#4ade80', text:'ORD-0044 블로그 리뷰 5개 완료 처리',      time:'5분 전' },
-  { color:'#f87171', text:'ORD-0043 환불 요청 접수',                  time:'22분 전' },
-  { color:'#a78bfa', text:'새 워크스페이스 "IT 스타트업" 등록',       time:'1시간 전' },
-  { color:'#fbbf24', text:'핵인싸 마케팅 → Pro 플랜 업그레이드',      time:'2시간 전' },
-  { color:'#00d4ff', text:'ORD-0040 인스타 홍보 패키지 완료',         time:'어제' },
-];
-
+// ── API 데이터 ──────────────────────────────────────────────
+let KPI = { revenue:{val:0,prev:0}, orders:{val:0,prev:0}, workspaces:{val:0,prev:0}, avg_order:{val:0,prev:0} };
+let REVENUE_MONTHS = [];
+let REVENUE_DATA   = [];
+let ORDER_STATUS_COUNTS = {};
+let PLAN_DIST = {};
+let PLAN_TOTAL = 0;
+let RECENT_ORDERS = [];
+let MEDIA_COMPANIES = [];
+let ACTIVITIES = [];
 let orderFilter = 'all';
 let charts = {};
+
+async function initAdminPage() {
+  try {
+    const pd = await apiCall('/api/v1/admin/stats');
+    KPI = {
+      revenue:    { val: pd.this_month_revenue||0,  prev: pd.last_month_revenue||0 },
+      orders:     { val: pd.this_month_orders||0,   prev: pd.last_month_orders||0 },
+      workspaces: { val: pd.total_workspaces||0,    prev: pd.prev_workspaces||0 },
+      avg_order:  { val: pd.avg_order_amount||0,    prev: pd.prev_avg_order||0 },
+    };
+    REVENUE_MONTHS = pd.revenue_months || [];
+    REVENUE_DATA   = pd.revenue_data   || [];
+    ORDER_STATUS_COUNTS = pd.order_status_counts || {};
+    PLAN_DIST  = pd.plan_distribution || {};
+    PLAN_TOTAL = Object.values(PLAN_DIST).reduce((a,b)=>a+b,0);
+    RECENT_ORDERS = (pd.recent_orders||[]).map(o => ({
+      id: o.id, workspace: o.workspace_name||'', place: o.place_name||'',
+      product: o.product_name||'', amount: o.total_amount||0,
+      status: o.status||'', media: o.media_company||'—',
+      created: (o.created_at||'').slice(0,10),
+      startDate: o.start_date||'', endDate: o.end_date||'',
+    }));
+    ACTIVITIES = (pd.recent_activities||[]).map(a => ({
+      color: '#00d4ff', text: a.message||a.text||'', time: a.time||'',
+    }));
+  } catch(e) { console.warn('admin stats API 오류:', e); }
+  renderPage();
+}
 
 // ── 유틸 ──────────────────────────────────────────────────────
 function formatKRW(n) {
@@ -655,7 +641,8 @@ function closeModal(id) {
 
 // ── 초기화 ────────────────────────────────────────────────────
 renderLayout({ title: '어드민 대시보드', activePage: 'admin.html', isAdmin: true });
-renderPage();
+const _ad = getCurrentUser();
+if (_ad?.fromAPI) { initAdminPage(); } else { renderPage(); }
 </script>
 </body>
 </html>
