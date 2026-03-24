@@ -137,178 +137,63 @@ renderLayout({ title: '플레이스 관리', activePage: 'places.html' });
 /* ═══════════════════════════════════════
    Mock 데이터 – 네이버 플레이스 크롤링 수집 정보
 ═══════════════════════════════════════ */
-let places = [
-  {
-    id:1,
-    name:'업체 A (강남)',
-    category:'한식·백반',
-    naverUrl:'https://map.naver.com/v5/entry/place/1005166855',
-    naverPlaceId:'1005166855',
-    status:'active',
-    /* ── 기본 정보 (크롤링 수집) ── */
-    crawledAt:'2026-03-19 06:00',
-    crawlStatus:'ok', // ok | warn | error
-    address:'서울특별시 강남구 테헤란로 123 1층',
-    phone:'02-1234-5678',
-    homepage:'https://example-a.kr',
-    /* ── 대표 키워드 (네이버 플레이스 등록 5개) ── */
-    repKeywords: ['강남 맛집', '강남 한식', '테헤란로 맛집', '서초 점심', '강남 한정식'],
-    /* ── 영업시간 ── */
-    hours:[
-      { day:'월', time:'11:00 ~ 22:00', isToday:false },
-      { day:'화', time:'11:00 ~ 22:00', isToday:false },
-      { day:'수', time:'11:00 ~ 22:00', isToday:false },
-      { day:'목', time:'11:00 ~ 22:00', isToday:false },
-      { day:'금', time:'11:00 ~ 22:00', isToday:false },
-      { day:'토', time:'12:00 ~ 21:00', isToday:false },
-      { day:'일', time:'12:00 ~ 20:00', isToday:true },
-    ],
-    breakTime:'15:00 ~ 17:00',
-    lastOrderTime:'21:30',
-    /* ── 통계 지표 (크롤링 수집) ── */
-    reviewCount:342,
-    reviewCountPrev:315,
-    avgRating:4.6,
-    blogReviewCount:128,
-    blogReviewPrev:115,
-    savedCount:1240,
-    savedCountPrev:1180,
-    visitorMonthly:4200,
-    visitorPrev:3900,
-    photoCount:87,
-    /* ── 추이 데이터 (30일) ── */
-    trendDates:['03/01','03/03','03/05','03/07','03/09','03/11','03/13','03/15','03/17','03/19'],
-    trendReview:[290,298,305,310,315,320,325,330,338,342],
-    trendSaved: [1050,1080,1100,1130,1150,1175,1195,1210,1225,1240],
-    trendVisitor:[3400,3500,3600,3700,3800,3900,3950,4050,4150,4200],
-    trendBlog:   [100,105,108,112,115,118,120,123,126,128],
-    /* ── 광고 노출 ── */
-    adPowerLink:true,
-    adPlaceAd:false,
-    adPowerLinkKeywords:['강남 맛집','테헤란로 맛집'],
-    adBudgetMonthly: 150000,
-    adClickEstimate: 320,
-    adLastChecked:'2026-03-19 06:00',
-    /* ── 메뉴 ── */
-    menus:[
-      { name:'김치찌개', price:'8,000원', highlight:true },
-      { name:'된장찌개', price:'8,000원', highlight:false },
-      { name:'불고기 백반', price:'12,000원', highlight:true },
-      { name:'삼겹살', price:'15,000원/인', highlight:false },
-      { name:'냉면', price:'9,000원', highlight:false },
-    ],
-    /* ── 키워드 목록 (isRankKw:true = 순위키, false = 작업키) ── */
-    keywords:[
-      { id:1, kw:'강남 맛집',    rank:3,  prev:5,  isRankKw:true,  sortOrder:0, rankHistory:[10,9,8,7,6,5,5,4,4,3,3,3,3,3,3],
-        isTopSection:true,  cpcCount:3, inTop5:true,  lastChecked:'2026-03-19 06:00' },
-      { id:2, kw:'강남 한식 맛집', rank:7, prev:9,  isRankKw:false, sortOrder:0, rankHistory:[15,14,12,10,9,9,8,7,7,7,8,7,7,7,7],
-        isTopSection:true,  cpcCount:1, inTop5:false, lastChecked:'2026-03-19 06:00' },
-      { id:3, kw:'테헤란로 점심',   rank:null, prev:null, isRankKw:false, sortOrder:1, rankHistory:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
-        isTopSection:false, cpcCount:0, inTop5:false, lastChecked:'2026-03-19 06:00' },
-      { id:4, kw:'강남역 맛집',   rank:12, prev:15, isRankKw:false, sortOrder:2, rankHistory:[22,20,18,16,14,14,13,13,12,12,11,12,12,12,12],
-        isTopSection:true,  cpcCount:5, inTop5:false, lastChecked:'2026-03-19 06:00' },
-      { id:5, kw:'점심 특선',   rank:6, prev:8, isRankKw:false, sortOrder:3, rankHistory:[14,12,10,9,8,7,7,6,6,6,6,6,6,6,6],
-        isTopSection:false, cpcCount:0, inTop5:true,  lastChecked:'2026-03-19 06:00' },
-    ],
-    /* ── 최근 리뷰 ── */
-    recentReviews:[
-      { stars:5, text:'음식이 정말 맛있어요! 가성비도 최고입니다. 다음에 또 방문할게요.', date:'2026-03-18', author:'맛집탐방***' },
-      { stars:4, text:'친절하고 맛도 좋았어요. 주차가 조금 불편한게 아쉽네요.', date:'2026-03-16', author:'동네주민***' },
-      { stars:5, text:'블로그에서 보고 왔는데 기대 이상이었어요!', date:'2026-03-14', author:'음식사진가***' },
-    ],
-    /* ── 크롤링 이력 ── */
-    crawlLogs:[
-      { ts:'2026-03-19 06:00', status:'ok',   items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
-      { ts:'2026-03-18 20:00', status:'ok',   items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
-      { ts:'2026-03-18 14:00', status:'warn', items:{ basic:true, hours:true, menu:false, review:true, photos:false, keywords:true }, note:'메뉴 섹션 로드 실패 (재시도 예정)' },
-      { ts:'2026-03-18 06:00', status:'ok',   items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
-      { ts:'2026-03-17 20:00', status:'ok',   items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
-    ],
-    /* ── 대표 사진 ── */
-    photos:[
-      { type:'음식', count:52 },
-      { type:'내부', count:21 },
-      { type:'외부', count:14 },
-    ],
-  },
-  {
-    id:2,
-    name:'업체 B (홍대)',
-    category:'한식·분식',
-    naverUrl:'https://map.naver.com/v5/entry/place/19797085',
-    naverPlaceId:'19797085',
-    status:'active',
-    crawledAt:'2026-03-19 06:00',
-    crawlStatus:'ok',
-    address:'서울특별시 마포구 홍대입구로 78 2층',
-    phone:'02-2345-6789',
-    homepage:'',
-    /* ── 대표 키워드 (네이버 플레이스 등록 5개) ── */
-    repKeywords: ['홍대 맛집', '홍대 한식', '마포구 맛집', '홍대입구역 맛집', '홍대 점심'],
-    hours:[
-      { day:'월', time:'11:30 ~ 21:30', isToday:false },
-      { day:'화', time:'11:30 ~ 21:30', isToday:false },
-      { day:'수', time:'11:30 ~ 21:30', isToday:false },
-      { day:'목', time:'11:30 ~ 21:30', isToday:false },
-      { day:'금', time:'11:30 ~ 21:30', isToday:false },
-      { day:'토', time:'12:00 ~ 20:00', isToday:false },
-      { day:'일', time:'휴무', isToday:true },
-    ],
-    breakTime:'15:30 ~ 17:00',
-    lastOrderTime:'21:00',
-    reviewCount:187,
-    reviewCountPrev:172,
-    avgRating:4.3,
-    blogReviewCount:64,
-    blogReviewPrev:58,
-    savedCount:720,
-    savedCountPrev:680,
-    visitorMonthly:2100,
-    visitorPrev:1980,
-    photoCount:45,
-    trendDates:['03/01','03/03','03/05','03/07','03/09','03/11','03/13','03/15','03/17','03/19'],
-    trendReview:[150,155,160,163,167,170,172,175,180,187],
-    trendSaved: [620,635,645,655,665,675,685,695,710,720],
-    trendVisitor:[1800,1850,1880,1920,1950,1970,1980,1990,2050,2100],
-    trendBlog:   [50,52,54,56,57,58,59,61,63,64],
-    adPowerLink:false,
-    adPlaceAd:true,
-    adPowerLinkKeywords:[],
-    adBudgetMonthly: 80000,
-    adClickEstimate: 180,
-    adLastChecked:'2026-03-19 06:00',
-    menus:[
-      { name:'비빔밥', price:'9,000원', highlight:true },
-      { name:'갈비탕', price:'13,000원', highlight:false },
-      { name:'부대찌개', price:'9,500원', highlight:true },
-    ],
-    keywords:[
-      { id:4, kw:'홍대 맛집',  rank:2, prev:3,  isRankKw:true,  sortOrder:0, rankHistory:[6,5,4,3,3,3,2,2,2,2,2,2,2,2,2],
-        isTopSection:true,  cpcCount:2, inTop5:true,  lastChecked:'2026-03-19 06:00' },
-      { id:5, kw:'홍대 카페',  rank:5, prev:5,  isRankKw:false, sortOrder:0, rankHistory:[8,7,6,5,5,5,5,5,5,5,5,5,5,5,5],
-        isTopSection:true,  cpcCount:0, inTop5:true,  lastChecked:'2026-03-19 06:00' },
-      { id:6, kw:'마포구 맛집', rank:null, prev:null, isRankKw:false, sortOrder:1, rankHistory:[null,null,null,null,null,null,null,null,null,null,null,null,null,null,null],
-        isTopSection:false, cpcCount:1, inTop5:false, lastChecked:'2026-03-19 06:00', failReason:'봇 탐지 차단 (재시도 예정)' },
-      { id:7, kw:'홍대입구역 맛집', rank:8, prev:10, isRankKw:false, sortOrder:2, rankHistory:[15,14,12,11,10,10,9,8,8,8,8,8,8,8,8],
-        isTopSection:true,  cpcCount:0, inTop5:false, lastChecked:'2026-03-19 06:00' },
-    ],
-    recentReviews:[
-      { stars:4, text:'홍대 맛집 찾아왔는데 정말 만족스럽네요. 분위기도 좋고 음식도 맛있어요!', date:'2026-03-17', author:'홍대탐방***' },
-      { stars:5, text:'홍대에서 이런 가성비 맛집이 있다니! 꼭 다시 올게요.', date:'2026-03-15', author:'마포구민***' },
-    ],
-    crawlLogs:[
-      { ts:'2026-03-19 06:00', status:'warn',  items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:false }, note:'키워드 "마포구 맛집" 봇 탐지 차단 — 재시도 예약' },
-      { ts:'2026-03-18 20:00', status:'ok',    items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
-      { ts:'2026-03-18 14:00', status:'ok',    items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
-      { ts:'2026-03-18 06:00', status:'ok',    items:{ basic:true, hours:true, menu:true, review:true, photos:true, keywords:true }, note:'' },
-    ],
-    photos:[
-      { type:'음식', count:34 },
-      { type:'내부', count:15 },
-      { type:'외부', count:9 },
-    ],
-  },
-];
+let places = [];          // API에서 로드됨
+let _placesLoaded = false;
+
+/** API → places 배열 변환 (백엔드 PlaceListItem → 프론트 형식) */
+function _mapAPIPlace(p) {
+  return {
+    id: p.id,
+    name: p.name,
+    alias: p.alias || '',
+    category: p.category || '',
+    naverUrl: p.naver_place_url,
+    naverPlaceId: p.naver_place_id,
+    status: p.is_active ? 'active' : 'inactive',
+    crawledAt: p.crawled_at || null,
+    crawlStatus: p.crawl_status || 'ok',
+    address: p.address || '',
+    phone: p.phone || '',
+    homepage: p.homepage || '',
+    repKeywords: [],
+    hours: [],
+    keywords: (p.latest_rankings || []).map(r => ({
+      id: r.keyword_id || r.id || '',
+      kw: r.keyword,
+      rank: r.rank,
+      prev: r.prev_rank,
+      isRankKw: r.is_rank_kw || false,
+      group: r.group_name || '',
+    })),
+    reviewCount: p.review_count || 0,
+    savedCount: p.saved_count || 0,
+    visitorMonthly: p.visitor_monthly || 0,
+    blogReviewCount: p.blog_review_count || 0,
+    rating: p.rating || 0,
+    crawlLogs: [],
+    photos: [],
+    menus: [],
+    _fromAPI: true,
+  };
+}
+
+/** 플레이스 목록 API 로드 */
+async function loadPlacesFromAPI() {
+  const wsId = getWorkspaceId();
+  if (!wsId) {
+    console.warn('[places] workspace_id 없음 — 데모 데이터로 폴백');
+    return false;
+  }
+  try {
+    const data = await apiCall(`/api/v1/places?workspace_id=${wsId}&limit=100`);
+    places = (data.items || []).map(_mapAPIPlace);
+    _placesLoaded = true;
+    return true;
+  } catch(e) {
+    console.error('[places] API 로드 실패:', e.message);
+    return false;
+  }
+}
 
 let selectedId = 1;
 let activeTab = 'overview'; // overview | keywords | reviews | menu | hours | photos
@@ -1826,6 +1711,14 @@ async function startCrawl(id) {
 
 function deletePlace(id) {
   if (!confirm('플레이스를 삭제하시겠습니까?')) return;
+
+  const wsId = getWorkspaceId();
+  if (wsId && getToken()) {
+    // API 삭제
+    apiCall(`/api/v1/places/${id}`, { method: 'DELETE' })
+      .catch(e => console.warn('[deletePlace] API 오류:', e.message));
+  }
+
   places = places.filter(p => p.id !== id);
   if (selectedId === id) selectedId = places[0]?.id || null;
   activeTab = 'overview';
@@ -2028,8 +1921,31 @@ async function addPlace() {
   if (!parsed) return toast('인식할 수 없는 URL입니다. 네이버 플레이스 URL을 확인해 주세요.', 'error');
 
   const preview = _parserPreviewData;
-  const newId   = Math.max(...places.map(p => p.id), 0) + 1;
   const now     = new Date().toISOString().slice(0,16).replace('T',' ');
+
+  // ── API 저장 시도 ──
+  const wsId = getWorkspaceId();
+  let newId;
+  if (wsId && getToken()) {
+    try {
+      const body = {
+        workspace_id: wsId,
+        naver_place_id: parsed.id,
+        naver_place_url: rawUrl,
+        name: (preview?.name) || alias || parsed.id,
+        alias: alias || null,
+        category: preview?.category || null,
+        address: preview?.address || null,
+      };
+      const created = await apiCall('/api/v1/places', { method: 'POST', body: JSON.stringify(body) });
+      newId = created.id;
+    } catch(e) {
+      toast('API 저장 실패: ' + e.message, 'error');
+      return;
+    }
+  } else {
+    newId = Math.max(...places.map(p => typeof p.id === 'number' ? p.id : 0), 0) + 1;
+  }
 
   const newPlace = _buildNewPlace(newId, rawUrl, parsed, preview, now);
   if (alias && !preview) newPlace.name = alias;
@@ -2344,9 +2260,29 @@ async function addBulkPlaces() {
   const now = new Date().toISOString().slice(0,16).replace('T',' ');
   const newIds = [];
   let totalKwAdded = 0;
+  const wsId = getWorkspaceId();
 
   for (const { url, parsed, keywords } of toAdd) {
-    const newId    = Math.max(...places.map(p => p.id), 0) + 1;
+    let newId;
+    // API 저장 시도
+    if (wsId && getToken()) {
+      try {
+        const body = {
+          workspace_id: wsId,
+          naver_place_id: parsed.id,
+          naver_place_url: url,
+          name: parsed.id,
+          alias: null,
+        };
+        const created = await apiCall('/api/v1/places', { method: 'POST', body: JSON.stringify(body) });
+        newId = created.id;
+      } catch(e) {
+        console.warn('[bulk] API 저장 실패:', e.message);
+        newId = 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+      }
+    } else {
+      newId = 'local_' + Date.now() + '_' + Math.random().toString(36).slice(2);
+    }
     const newPlace = _buildNewPlace(newId, url, parsed, null, now);
     // 키워드 등록
     keywords.forEach(kw => {
@@ -2574,6 +2510,28 @@ async function _runFullParse(placeId, url, naverId) {
 
     renderPage();
     toast(`"${p.name}" 전체 정보 수집 완료 ✅ (메뉴 ${p.menus.length}개, 리뷰 ${p.recentReviews.length}건, 사진 ${p.photos.length}장)`, 'success');
+
+    // ── 크롤링 결과 API 저장 ──
+    if (getToken() && p._fromAPI !== false) {
+      const wsId = getWorkspaceId();
+      const updateBody = {
+        name: p.name,
+        category: p.category || null,
+        address: p.address || null,
+        extra_data: {
+          crawled_at: p.crawledAt,
+          crawl_status: p.crawlStatus,
+          review_count: p.reviewCount,
+          blog_review_count: p.blogReviewCount,
+          saved_count: p.savedCount,
+          rating: p.rating,
+        },
+      };
+      apiCall(`/api/v1/places/${placeId}`, {
+        method: 'PUT',
+        body: JSON.stringify(updateBody),
+      }).catch(e => console.warn('[crawl save] API PUT 실패:', e.message));
+    }
 
   } catch(e) {
     console.warn('전체 파싱 실패:', e);
@@ -3199,7 +3157,16 @@ function setReviewSubTab(placeId, subTab) {
 
 /* ── 초기화 ── */
 buildModals();
-renderPage();
+
+// API 로드 후 렌더링 (workspace_id 있으면 API, 없으면 빈 화면)
+(async () => {
+  const loaded = await loadPlacesFromAPI();
+  if (!loaded && places.length === 0) {
+    // workspace 없음 → 빈 상태로 렌더
+    console.warn('[places] API 미연결 — 빈 목록으로 시작');
+  }
+  renderPage();
+})();
 </script>
 </body>
 </html>

@@ -144,18 +144,18 @@ function doLoginForm() {
   btn.textContent = '로그인 중...';
   btn.disabled = true;
 
-  setTimeout(() => {
-    const user = doLogin(email, pw);
-    if (!user) {
+  doLoginAPI(email, pw)
+    .then(user => {
+      toast(`${user.name}님, 환영합니다! 🎉`, 'success');
+      setTimeout(() => {
+        location.href = user.isAdmin ? 'admin.html' : 'dashboard.html';
+      }, 700);
+    })
+    .catch(err => {
       btn.innerHTML = '🚀 로그인';
       btn.disabled = false;
-      return toast('이메일 또는 비밀번호가 올바르지 않습니다', 'error');
-    }
-    toast(`${user.name}님, 환영합니다! 🎉`, 'success');
-    setTimeout(() => {
-      location.href = user.isAdmin ? 'admin.html' : 'dashboard.html';
-    }, 700);
-  }, 500);
+      toast(err.message || '이메일 또는 비밀번호가 올바르지 않습니다', 'error');
+    });
 }
 
 // 테마 토글 오버라이드 (로그인 페이지용)

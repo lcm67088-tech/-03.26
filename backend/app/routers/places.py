@@ -577,6 +577,13 @@ async def update_place(
         place.alias = data.alias
     if data.is_active is not None:
         place.is_active = data.is_active
+    if data.name is not None:
+        place.name = data.name
+    if data.category is not None:
+        place.category = data.category
+    if data.address is not None:
+        place.address = data.address
+    # extra_data는 무시 (DB 컬럼 없음)
 
     db.commit()
     db.refresh(place)

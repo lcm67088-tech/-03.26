@@ -43,9 +43,15 @@ class PlaceCreate(BaseModel):
 
 
 class PlaceUpdate(BaseModel):
-    """장소 수정 요청 (alias, is_active만 수정 가능)"""
+    """장소 수정 요청"""
     alias: Optional[str] = None
     is_active: Optional[bool] = None
+    name: Optional[str] = None
+    category: Optional[str] = None
+    address: Optional[str] = None
+    phone: Optional[str] = None
+    homepage: Optional[str] = None
+    extra_data: Optional[dict] = None   # 크롤링 결과 등 자유 형식 데이터
 
     @field_validator("alias")
     @classmethod

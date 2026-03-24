@@ -13,7 +13,46 @@
 })();
 
 /* ═══════════════════════════════════════════════
-   2. 인증 데이터 (데모용)
+   2. 백엔드 API 설정
+═══════════════════════════════════════════════ */
+const BACKEND_API = (() => {
+  const h = location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1') return 'http://localhost:8001';
+  // 샌드박스 환경: 3000-xxxx.e2b.dev → 8001-xxxx.e2b.dev
+  if (h.match(/^\d+-/)) return location.protocol + '//' + h.replace(/^\d+-/, '8001-');
+  return 'http://localhost:8001';
+})();
+
+/** JWT + workspace_id 저장/조회 */
+function getToken()       { return localStorage.getItem('nplace-token'); }
+function getWorkspaceId() { return localStorage.getItem('nplace-ws-id'); }
+function saveToken(token, wsId) {
+  localStorage.setItem('nplace-token', token);
+  if (wsId) localStorage.setItem('nplace-ws-id', wsId);
+}
+function clearToken() {
+  localStorage.removeItem('nplace-token');
+  localStorage.removeItem('nplace-ws-id');
+}
+
+/**
+ * 공통 API 호출 헬퍼
+ * @param {string} path  - /api/v1/...
+ * @param {object} opts  - fetch options override
+ */
+async function apiCall(path, opts = {}) {
+  const token = getToken();
+  const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${BACKEND_API}${path}`, { ...opts, headers });
+  if (res.status === 401) { doLogout(); throw new Error('인증이 만료되었습니다'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.detail || `API 오류 (${res.status})`);
+  return data;
+}
+
+/* ═══════════════════════════════════════════════
+   2-B. 인증 데이터 (데모용 폴백)
 ═══════════════════════════════════════════════ */
 const DEMO_USERS = [
   {
@@ -413,6 +452,42 @@ function toggleTheme() {
 /* ═══════════════════════════════════════════════
    13. 인증
 ═══════════════════════════════════════════════ */
+
+/** 실제 API 로그인 (JWT 발급) */
+async function doLoginAPI(email, password) {
+  const data = await apiCall('/api/v1/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+  // access_token + workspace_id 저장 (로그인 응답에 workspace 객체 포함)
+  const wsId = data.workspace?.id || data.workspace_id || data.user?.workspace_id || null;
+  saveToken(data.access_token, wsId);
+
+  // workspace_id가 없으면 /workspaces/me 로 조회
+  if (!wsId) {
+    try {
+      const wsArr = await apiCall('/api/v1/workspaces/me');
+      const firstWs = Array.isArray(wsArr) ? wsArr[0] : wsArr?.items?.[0];
+      if (firstWs) localStorage.setItem('nplace-ws-id', firstWs.id);
+    } catch(_) {}
+  }
+
+  const session = {
+    email: data.user?.email || email,
+    name: data.user?.name || email,
+    plan: data.workspace?.plan || data.user?.plan || 'pro',
+    isAdmin: data.user?.role === 'admin' || data.user?.role === 'superadmin',
+    workspace: data.workspace?.name || data.user?.workspace_name || '내 워크스페이스',
+    wsPlan: data.workspace?.plan || 'pro',
+    balance: 0,
+    fromAPI: true,
+  };
+  saveSession(session);
+  CURRENT_USER = session;
+  return session;
+}
+
+/** 데모 로그인 (폴백) */
 function doLogin(email, password) {
   const u = DEMO_USERS.find(u => u.email === email && u.password === password);
   if (!u) return null;
@@ -423,6 +498,7 @@ function doLogin(email, password) {
   return session;
 }
 function doLogout() {
+  clearToken();
   clearSession();
   CURRENT_USER = null;
   toast('로그아웃 되었습니다', 'info');

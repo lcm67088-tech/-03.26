@@ -50,8 +50,8 @@ app = FastAPI(
 # CORS 미들웨어 설정
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
-    allow_credentials=True,
+    allow_origins=["*"],   # 개발 환경 전체 허용 (프론트 3000 ↔ 백엔드 8001)
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
