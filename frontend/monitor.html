@@ -200,46 +200,62 @@ const STEPS = [
   { id:'save',     icon:'💾', label:'DB 저장',               desc:'KeywordRanking 레코드 INSERT' },
 ];
 
-// Mock 큐 데이터 — 실제 네이버 플레이스 MID 기반
-// MID 1005166855: 서울 강남 업체 A  |  MID 19797085: 서울 마포 업체 B
-let crawlQueue = [
-  { id:'job-001', place:'업체 A (MID:1005166855)', keyword:'강남 맛집',        status:'done',    rank:3,  elapsed:'4.1s',  ts:'06:00:05', cpc:3, top:true,  mid:'1005166855' },
-  { id:'job-002', place:'업체 A (MID:1005166855)', keyword:'강남 한식 맛집',   status:'done',    rank:7,  elapsed:'5.3s',  ts:'06:00:11', cpc:1, top:true,  mid:'1005166855' },
-  { id:'job-003', place:'업체 A (MID:1005166855)', keyword:'테헤란로 점심',    status:'done',    rank:null,elapsed:'4.9s', ts:'06:00:18', cpc:0, top:false, mid:'1005166855' },
-  { id:'job-004', place:'업체 A (MID:1005166855)', keyword:'강남역 맛집',      status:'done',    rank:12, elapsed:'6.2s',  ts:'06:00:25', cpc:5, top:true,  mid:'1005166855' },
-  { id:'job-005', place:'업체 B (MID:19797085)',   keyword:'홍대 맛집',        status:'done',    rank:2,  elapsed:'3.8s',  ts:'06:00:31', cpc:2, top:true,  mid:'19797085' },
-  { id:'job-006', place:'업체 B (MID:19797085)',   keyword:'홍대 카페',        status:'done',    rank:5,  elapsed:'4.7s',  ts:'06:00:38', cpc:0, top:true,  mid:'19797085' },
-  { id:'job-007', place:'업체 B (MID:19797085)',   keyword:'마포구 맛집',      status:'failed',  rank:null,elapsed:'30.0s',ts:'06:00:44', cpc:1, top:false, mid:'19797085' },
-  { id:'job-008', place:'업체 B (MID:19797085)',   keyword:'홍대입구역 맛집',  status:'queued',  rank:null,elapsed:'–',    ts:'–',        cpc:null, top:null, mid:'19797085' },
-];
-
-// 현재 진행 중인 세션 상태
+// 크롤 큐 (API 또는 로컬 생성)
+let crawlQueue = [];
 let currentSession = {
-  jobId: 'job-008',
-  place: '업체 B (MID:19797085)',
-  keyword: '홍대입구역 맛집',
-  mid: '19797085',
-  stepIdx: -1,
-  stepStates: {},  // { stepId: 'active'|'done'|'warn'|'error'|'idle' }
-  checkCount: 8,
-  sessionRestarts: 0,
-  botBlocked: false,
+  jobId: '', place: '', keyword: '', mid: '',
+  stepIdx: -1, stepStates: {},
+  checkCount: 0, sessionRestarts: 0, botBlocked: false,
 };
+
+// places API에서 큐 로드
+async function loadCrawlQueue() {
+  const wsId = localStorage.getItem('nplace-ws-id');
+  if (!wsId) { _buildDemoQueue(); return; }
+  try {
+    const pd = await apiCall(`/api/v1/places?workspace_id=${wsId}&skip=0&limit=200`);
+    const items = pd.items || [];
+    crawlQueue = [];
+    let jobIdx = 1;
+    for (const place of items) {
+      for (const kw of (place.keywords || [])) {
+        crawlQueue.push({
+          id: `job-${String(jobIdx++).padStart(3,'0')}`,
+          place: place.alias || place.name,
+          keyword: kw.keyword || kw.kw || '',
+          status: 'queued', rank: null, elapsed: '–', ts: '–',
+          cpc: null, top: null,
+          mid: place.naver_id || '',
+        });
+      }
+    }
+    if (crawlQueue.length === 0) _buildDemoQueue();
+  } catch(e) { console.warn('큐 로드 오류:', e); _buildDemoQueue(); }
+}
+
+function _buildDemoQueue() {
+  crawlQueue = [
+    { id:'job-001', place:'(플레이스 없음)', keyword:'–', status:'queued', rank:null, elapsed:'–', ts:'–', cpc:null, top:null, mid:'' },
+  ];
+}
 
 // 실시간 로그 버퍼
 let logs = [];
 const MAX_LOG = 500;
 
-// 누적 통계
+// 누적 통계 (큐 로드 후 동적 계산)
 let stats = {
-  totalJobs: 8,
-  doneJobs: 6,
-  failedJobs: 1,
-  queuedJobs: 1,
-  avgElapsed: 4.67,
-  botBlocks: 0,
-  sessionRestarts: 0,
+  totalJobs: 0, doneJobs: 0, failedJobs: 0, queuedJobs: 0,
+  avgElapsed: 0, botBlocks: 0, sessionRestarts: 0,
 };
+function recalcStats() {
+  stats.totalJobs   = crawlQueue.length;
+  stats.doneJobs    = crawlQueue.filter(j=>j.status==='done').length;
+  stats.failedJobs  = crawlQueue.filter(j=>j.status==='failed').length;
+  stats.queuedJobs  = crawlQueue.filter(j=>j.status==='queued'||j.status==='running').length;
+  const elapsed = crawlQueue.filter(j=>j.elapsed&&j.elapsed!=='–').map(j=>parseFloat(j.elapsed));
+  stats.avgElapsed  = elapsed.length ? (elapsed.reduce((a,b)=>a+b,0)/elapsed.length) : 0;
+}
 
 /* ═══════════════════════════════════════════════════════════
    로그 유틸
@@ -537,6 +553,7 @@ function startCrawl() {
   currentSession.stepIdx = -1;
   currentSession.stepStates = {};
   STEPS.forEach(s => currentSession.stepStates[s.id] = 'idle');
+  recalcStats();
 
   // 큐에서 대기 잡 찾기
   const nextJob = crawlQueue.find(j => j.status === 'queued');
@@ -773,12 +790,16 @@ function exportLogs() {
 ═══════════════════════════════════════════════════════════ */
 renderPage();
 
-// 초기 로그 — 실제 두 MID 기반 (MID:1005166855, MID:19797085)
-setTimeout(() => {
+// 초기화: API 큐 로드 후 로그 출력
+const _ms = getCurrentUser();
+(async () => {
+  if (_ms?.fromAPI) await loadCrawlQueue();
+  renderPage();
+  setTimeout(() => {
   addLog('INFO', `=== nplace.io Crawler Worker 시작 (${new Date().toLocaleDateString('ko-KR')}) ===`);
   addLog('INFO', `Beat 스케줄 로드 완료  큐: \`crawling\`  동시실행: \`2\`  RESET_EVERY=\`20\``);
-  addLog('INFO', `Redis 브로커 연결: \`redis://localhost:6379/0\`  PING: \`PONG\`  ✓`);
-  addLog('INFO', `등록 플레이스: \`2\`개  (MID 1005166855, MID 19797085)`);
+  const placeCount = [...new Set(crawlQueue.map(j=>j.place))].length;
+  addLog('INFO', `등록 플레이스: \`${placeCount}\`개  키워드: \`${crawlQueue.length}\`개`);
   addLog('INFO', `등록 키워드: \`8\`개  총 잡: \`8\`개 큐 등록`);
   addLog('OK',   `03:00 refresh_all_place_info — m.place.naver.com 정보 갱신 완료 (2개)`);
   addLog('INFO', `06:00 daily_rank_check 시작 → 잡 8개 큐 등록 (\`crawling\` 큐)`);
@@ -805,8 +826,21 @@ setTimeout(() => {
   addLog('BOT',  `  consecutive_blocks=\`1\`  (MAX=3)  → 30분 쿨다운 큐 등록`);
   addLog('ERROR',`job-007 [마포구 맛집]    → 봇 탐지 차단  재시도 예약: +30분`);
   addLog('WARN', `consecutive_blocks=\`1\`  BotDetectedError — 재시도 큐에 추가됨`);
-  addLog('INFO', `job-008 [홍대입구역 맛집] → 대기 중  (▶ 버튼으로 시뮬레이션 실행)`);
+  // 큐 로드 후 첫 번째 queued 잡 정보로 세션 초기화
+  const firstQ = crawlQueue.find(j=>j.status==='queued');
+  if (firstQ) {
+    currentSession.jobId = firstQ.id;
+    currentSession.place = firstQ.place;
+    currentSession.keyword = firstQ.keyword;
+    currentSession.mid = firstQ.mid;
+    addLog('INFO', `${firstQ.id} [${firstQ.keyword}] → 대기 중  (▶ 버튼으로 시뮬레이션 실행)`);
+  } else {
+    addLog('INFO', '등록된 플레이스/키워드가 없습니다. places.html에서 먼저 등록하세요.');
+  }
+  recalcStats();
+  renderPage();
 }, 100);
+})();
 </script>
 </body>
 </html>
