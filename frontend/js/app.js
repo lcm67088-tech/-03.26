@@ -169,15 +169,16 @@ const iconFileText   = () => svg('<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 
 const USER_MENU = [
   {
     group: '메인', items: [
-      { href: 'dashboard.html',     icon: iconDashboard(),  label: '대시보드' },
-      { href: 'places.html',        icon: iconMapPin(),     label: '플레이스 관리' },
-      { href: 'orders.html',        icon: iconCart(),       label: '주문 관리' },
-      { href: 'place-status.html',  icon: iconChart(),      label: '플레이스 현황' },
+      { href: 'dashboard.html',      icon: iconDashboard(),  label: '대시보드' },
+      { href: 'places.html',         icon: iconMapPin(),     label: '플레이스 관리' },
+      { href: 'orders.html',         icon: iconCart(),       label: '주문 관리' },
+      { href: 'place-status.html',   icon: iconChart(),      label: '플레이스 현황' },
     ]
   },
   {
     group: '분석', items: [
-      { href: 'notifications.html', icon: iconBell(),       label: '알림', badgeKey: 'unread' },
+      { href: 'keyword-finder.html', icon: iconTag(),        label: '작업 키워드 찾기' },
+      { href: 'notifications.html',  icon: iconBell(),       label: '알림', badgeKey: 'unread' },
     ]
   },
   {

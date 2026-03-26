@@ -1,5 +1,5 @@
 """
-nplace.io 파서 API 서버 v3.0
+nplace.io 파서 API 서버 v3.1
 ================================
 naver_place_parser.py v5.0을 REST API로 노출.
 asyncio 병렬 파싱, GraphQL 페이지네이션, 모든 탭(영수증리뷰/블로그리뷰/영업시간/편의시설/사진) 지원.
@@ -10,6 +10,7 @@ GET  /                         헬스체크
 POST /api/parse                URL/ID 파싱 → 전체 정보 반환
 GET  /api/parse/{place_id}     place_id 직접 파싱 (category 쿼리파라미터)
 POST /api/parse/preview        빠른 미리보기 (홈 탭만, 기본정보+리뷰수)
+POST /api/search-rank          키워드 순위 실측 (작업 키워드 찾기 전용)
 """
 
 import sys
@@ -283,6 +284,155 @@ async def parse_preview(req: PreviewRequest):
     except Exception as e:
         import traceback
         raise HTTPException(502, f"미리보기 파싱 실패: {e}\n{traceback.format_exc()[:500]}")
+
+
+# ─────────────────────────────────────────────
+# 작업 키워드 찾기 — 순위 실측 엔드포인트
+# ─────────────────────────────────────────────
+
+class SearchRankRequest(BaseModel):
+    keyword: str
+    place_id: Optional[str] = None   # 네이버 플레이스 ID (숫자)
+    max_rank: int = 5                 # 판정 기준 순위 (기본 5위)
+    category: str = "restaurant"
+
+
+@app.post("/api/search-rank")
+async def search_rank(req: SearchRankRequest):
+    """
+    네이버 모바일 검색에서 키워드 순위를 실측합니다.
+    
+    반환값:
+      - has_section : 플레이스 섹션 존재 여부
+      - rank        : 플레이스 섹션 내 순위 (없으면 null)
+      - is_top      : 플레이스 섹션이 검색 최상단 여부
+      - has_cpc     : CPC 광고 존재 여부
+      - is_single   : 업체 수 == 1 and rank == 1 (단일 키워드)
+    """
+    keyword_encoded = req.keyword.replace(" ", "+")
+    search_url = f"https://m.search.naver.com/search.naver?query={keyword_encoded}&where=m"
+
+    try:
+        async with _httpx.AsyncClient(
+            headers={**_HEADERS, "Referer": "https://m.search.naver.com/"},
+            follow_redirects=True,
+            timeout=15.0,
+        ) as client:
+            resp = await client.get(search_url)
+            resp.raise_for_status()
+            html = resp.text
+
+        result = _parse_search_rank(html, req.place_id, req.max_rank)
+        return {"success": True, "keyword": req.keyword, **result}
+
+    except Exception as e:
+        # 파싱 실패 시 기본값 반환 (탈락 처리)
+        return {
+            "success": False,
+            "keyword": req.keyword,
+            "error": str(e),
+            "has_section": False,
+            "rank": None,
+            "is_top": False,
+            "has_cpc": False,
+            "is_single": False,
+        }
+
+
+def _parse_search_rank(html: str, place_id: Optional[str], max_rank: int) -> dict:
+    """
+    네이버 모바일 검색 HTML에서 플레이스 섹션 정보를 파싱합니다.
+    
+    판정 기준:
+      1. 플레이스 섹션 존재 여부 (has_section)
+      2. 순위 (rank): place_id 기반 위치 탐색, 없으면 null
+      3. 최상단 여부 (is_top): 플레이스 섹션 위치가 검색 결과 상단
+      4. CPC 여부 (has_cpc): 광고 배지 탐색
+      5. 단일 여부 (is_single): 업체수 1 and rank 1
+    """
+    import re as _re
+
+    # ── 1. 플레이스 섹션 존재 여부 ──
+    # 네이버 모바일 검색에서 플레이스 섹션은 class에 'place_area' 또는 data-nclick에 'plc' 포함
+    section_patterns = [
+        r'class="[^"]*place_area[^"]*"',
+        r'data-nclick="[^"]*plc\.[^"]*"',
+        r'id="place-main-section"',
+        r'"type":"place"',
+        r'class="[^"]*ct_local[^"]*"',   # 로컬 탭 내 플레이스
+        r'spf=1.*?place',
+        r'class="[^"]*_PlaceSection[^"]*"',
+        r'place\.naver\.com',             # 플레이스 링크 존재
+    ]
+    has_section = any(_re.search(p, html, _re.IGNORECASE) for p in section_patterns)
+
+    if not has_section:
+        return {"has_section": False, "rank": None, "is_top": False, "has_cpc": False, "is_single": False}
+
+    # ── 2. CPC 여부 ──
+    cpc_patterns = [
+        r'class="[^"]*ad_area[^"]*"',
+        r'class="[^"]*_cpc[^"]*"',
+        r'"isAd"\s*:\s*true',
+        r'광고</span>',
+        r'class="[^"]*place_ad[^"]*"',
+        r'ad_marker',
+    ]
+    has_cpc = any(_re.search(p, html, _re.IGNORECASE) for p in cpc_patterns)
+
+    # ── 3. 최상단 여부 ──
+    # 검색 결과 HTML에서 플레이스 섹션이 VIEW/웹 섹션 이전에 나오는지 확인
+    place_pos = -1
+    view_pos  = -1
+    for p in [r'place_area', r'_PlaceSection', r'ct_local', r'place\.naver\.com/']:
+        m = _re.search(p, html, _re.IGNORECASE)
+        if m and (place_pos == -1 or m.start() < place_pos):
+            place_pos = m.start()
+
+    view_patterns = [r'class="[^"]*view_area[^"]*"', r'class="[^"]*blog_area[^"]*"', r'class="[^"]*web_area[^"]*"']
+    for p in view_patterns:
+        m = _re.search(p, html, _re.IGNORECASE)
+        if m and (view_pos == -1 or m.start() < view_pos):
+            view_pos = m.start()
+
+    # 플레이스가 먼저 나오거나 view 섹션이 없으면 최상단
+    is_top = (place_pos != -1) and (view_pos == -1 or place_pos < view_pos)
+
+    # ── 4. 순위 및 단일 여부 ──
+    rank = None
+    is_single = False
+
+    if place_id:
+        # place_id로 플레이스 링크 위치 탐색
+        place_links = _re.findall(
+            r'place\.naver\.com/[^/]+/(\d+)',
+            html, _re.IGNORECASE
+        )
+        # 중복 제거 (순서 유지)
+        seen = []
+        for pid in place_links:
+            if pid not in seen:
+                seen.append(pid)
+        place_links_unique = seen
+
+        if place_id in place_links_unique:
+            rank = place_links_unique.index(place_id) + 1
+            total_places = len(place_links_unique)
+            is_single = (rank == 1 and total_places == 1)
+        # place_id 없어도 섹션은 있음 → rank = null
+    else:
+        # place_id 미제공 시 섹션 내 첫 번째 순위 수집만
+        all_links = _re.findall(r'place\.naver\.com/[^/]+/(\d+)', html)
+        if all_links:
+            rank = 1  # 최소 1개 이상 있으면 섹션 내 업체 존재
+
+    return {
+        "has_section": has_section,
+        "rank":        rank,
+        "is_top":      is_top,
+        "has_cpc":     has_cpc,
+        "is_single":   is_single,
+    }
 
 
 if __name__ == "__main__":

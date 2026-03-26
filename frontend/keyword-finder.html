@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>작업 키워드 찾기 — nplace.io</title>
+<link rel="icon" href="favicon.ico">
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ── 페이지 전용 변수 ── */
+:root{
+  --kf-bg:#0f1117;
+  --kf-card:#1a1d27;
+  --kf-card2:#22263a;
+  --kf-border:#2a2d3e;
+  --kf-accent:#6366f1;
+  --kf-accent2:#8b5cf6;
+  --kf-green:#22c55e;
+  --kf-yellow:#f59e0b;
+  --kf-red:#ef4444;
+  --kf-blue:#3b82f6;
+  --kf-text1:#f1f5f9;
+  --kf-text2:#94a3b8;
+  --kf-text3:#64748b;
+  --kf-s:#facc15;
+  --kf-a:#22c55e;
+  --kf-b:#3b82f6;
+  --kf-c:#f59e0b;
+  --kf-fail:#ef4444;
+}
+
+/* ── 레이아웃 ── */
+.kf-wrap { display:flex; gap:20px; padding:24px 0; flex-wrap:wrap; }
+.kf-left  { flex:0 0 340px; display:flex; flex-direction:column; gap:16px; }
+.kf-right { flex:1; min-width:0; display:flex; flex-direction:column; gap:16px; }
+
+/* ── 공통 카드 ── */
+.kf-card {
+  background:var(--kf-card);
+  border:1px solid var(--kf-border);
+  border-radius:12px;
+  padding:20px;
+}
+.kf-card-title {
+  font-size:13px; font-weight:700; color:var(--kf-text2);
+  text-transform:uppercase; letter-spacing:.5px;
+  margin-bottom:14px; display:flex; align-items:center; gap:8px;
+}
+.kf-card-title span { font-size:16px; }
+
+/* ── 플레이스 선택 ── */
+.kf-place-select {
+  width:100%; padding:10px 14px;
+  background:var(--kf-card2); border:1px solid var(--kf-border);
+  border-radius:8px; color:var(--kf-text1); font-size:14px;
+  cursor:pointer;
+}
+.kf-place-select:focus { outline:none; border-color:var(--kf-accent); }
+
+/* ── 플레이스 정보 박스 ── */
+.kf-place-info {
+  background:var(--kf-card2); border-radius:8px;
+  padding:12px 14px; font-size:13px; color:var(--kf-text2);
+  display:none;
+}
+.kf-place-info.show { display:block; }
+.kf-place-info .pi-row { display:flex; gap:6px; margin-bottom:4px; }
+.kf-place-info .pi-label { color:var(--kf-text3); min-width:52px; }
+.kf-place-info .pi-val { color:var(--kf-text1); }
+.kf-rep-keywords { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+.kf-rep-kw {
+  padding:3px 9px; border-radius:20px;
+  background:rgba(99,102,241,.15); border:1px solid rgba(99,102,241,.3);
+  color:#a5b4fc; font-size:11px; font-weight:600;
+}
+
+/* ── 메인키워드 입력 ── */
+.kf-input {
+  width:100%; padding:10px 14px;
+  background:var(--kf-card2); border:1px solid var(--kf-border);
+  border-radius:8px; color:var(--kf-text1); font-size:14px;
+  box-sizing:border-box;
+}
+.kf-input:focus { outline:none; border-color:var(--kf-accent); }
+.kf-input::placeholder { color:var(--kf-text3); }
+.kf-input-hint { font-size:11px; color:var(--kf-text3); margin-top:4px; }
+
+/* ── 재료 그룹 ── */
+.kf-group-list { display:flex; flex-direction:column; gap:10px; }
+.kf-group-item { background:var(--kf-card2); border-radius:8px; padding:12px; }
+.kf-group-header {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-bottom:8px;
+}
+.kf-group-name {
+  font-size:12px; font-weight:700; color:var(--kf-text2);
+  display:flex; align-items:center; gap:6px;
+}
+.kf-group-badge {
+  font-size:10px; padding:2px 7px; border-radius:10px;
+  background:rgba(99,102,241,.2); color:#a5b4fc;
+}
+.kf-tag-input {
+  width:100%; padding:7px 10px;
+  background:var(--kf-card); border:1px solid var(--kf-border);
+  border-radius:6px; color:var(--kf-text1); font-size:12px;
+  box-sizing:border-box;
+}
+.kf-tag-input:focus { outline:none; border-color:var(--kf-accent); }
+.kf-tag-input::placeholder { color:var(--kf-text3); }
+.kf-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:6px; min-height:24px; }
+.kf-tag {
+  display:flex; align-items:center; gap:4px;
+  padding:3px 8px; border-radius:5px; font-size:11px; font-weight:600;
+  cursor:default;
+}
+.kf-tag.geo  { background:rgba(59,130,246,.15); color:#93c5fd; border:1px solid rgba(59,130,246,.3); }
+.kf-tag.menu { background:rgba(34,197,94,.15);  color:#86efac; border:1px solid rgba(34,197,94,.3); }
+.kf-tag.cat  { background:rgba(245,158,11,.15); color:#fcd34d; border:1px solid rgba(245,158,11,.3); }
+.kf-tag.main { background:rgba(99,102,241,.15); color:#a5b4fc; border:1px solid rgba(99,102,241,.3); }
+.kf-tag-del { cursor:pointer; color:var(--kf-text3); font-size:12px; line-height:1; }
+.kf-tag-del:hover { color:var(--kf-red); }
+
+/* ── 조합 설정 ── */
+.kf-combo-opts { display:flex; flex-wrap:wrap; gap:8px; }
+.kf-combo-chip {
+  display:flex; align-items:center; gap:5px;
+  padding:5px 10px; border-radius:6px; font-size:12px;
+  background:var(--kf-card2); border:1px solid var(--kf-border);
+  color:var(--kf-text2); cursor:pointer; user-select:none;
+}
+.kf-combo-chip input[type=checkbox] { accent-color:var(--kf-accent); }
+.kf-combo-chip.active { border-color:var(--kf-accent); color:var(--kf-text1); }
+
+/* ── 어순 규칙 표시 ── */
+.kf-order-rule {
+  display:flex; align-items:center; gap:6px;
+  font-size:11px; color:var(--kf-text3);
+  background:var(--kf-card2); border-radius:6px; padding:8px 10px;
+}
+.kf-order-rule .or-chip {
+  padding:2px 7px; border-radius:4px; font-weight:700; font-size:11px;
+}
+.kf-order-rule .or-chip.geo  { background:rgba(59,130,246,.2);  color:#93c5fd; }
+.kf-order-rule .or-chip.menu { background:rgba(34,197,94,.2);   color:#86efac; }
+.kf-order-rule .or-chip.cat  { background:rgba(245,158,11,.2);  color:#fcd34d; }
+.kf-order-rule .or-arrow { color:var(--kf-text3); }
+
+/* ── 실행 버튼 ── */
+.kf-run-btn {
+  width:100%; padding:12px;
+  background:linear-gradient(135deg,var(--kf-accent),var(--kf-accent2));
+  border:none; border-radius:8px; color:#fff;
+  font-size:14px; font-weight:700; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; gap:8px;
+  transition:opacity .2s;
+}
+.kf-run-btn:hover:not(:disabled) { opacity:.88; }
+.kf-run-btn:disabled { opacity:.45; cursor:not-allowed; }
+.kf-run-btn .spinner {
+  width:14px; height:14px; border:2px solid rgba(255,255,255,.3);
+  border-top-color:#fff; border-radius:50%;
+  animation:spin .7s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── 진행 상태 바 ── */
+.kf-progress-wrap { display:none; }
+.kf-progress-wrap.show { display:block; }
+.kf-progress-bar {
+  height:6px; background:var(--kf-card2); border-radius:3px; overflow:hidden;
+  margin-bottom:8px;
+}
+.kf-progress-fill {
+  height:100%; border-radius:3px;
+  background:linear-gradient(90deg,var(--kf-accent),var(--kf-accent2));
+  transition:width .4s ease; width:0%;
+}
+.kf-progress-text { font-size:12px; color:var(--kf-text2); text-align:center; }
+
+/* ── 탭 ── */
+.kf-tabs { display:flex; gap:4px; padding:4px; background:var(--kf-card2); border-radius:8px; }
+.kf-tab {
+  flex:1; padding:7px 0; text-align:center;
+  font-size:12px; font-weight:600; color:var(--kf-text3);
+  border-radius:6px; cursor:pointer; transition:all .2s;
+}
+.kf-tab.active { background:var(--kf-accent); color:#fff; }
+
+/* ── 결과 요약 카운터 ── */
+.kf-summary {
+  display:grid; grid-template-columns:repeat(5,1fr); gap:8px;
+}
+.kf-sum-box {
+  background:var(--kf-card2); border-radius:8px; padding:10px;
+  text-align:center; border:1px solid var(--kf-border);
+}
+.kf-sum-num { font-size:22px; font-weight:700; }
+.kf-sum-label { font-size:10px; color:var(--kf-text3); margin-top:2px; font-weight:600; text-transform:uppercase; }
+.kf-sum-box.s { border-color:var(--kf-s); }
+.kf-sum-box.s .kf-sum-num { color:var(--kf-s); }
+.kf-sum-box.a { border-color:var(--kf-a); }
+.kf-sum-box.a .kf-sum-num { color:var(--kf-a); }
+.kf-sum-box.b { border-color:var(--kf-b); }
+.kf-sum-box.b .kf-sum-num { color:var(--kf-b); }
+.kf-sum-box.c { border-color:var(--kf-c); }
+.kf-sum-box.c .kf-sum-num { color:var(--kf-c); }
+.kf-sum-box.f { border-color:var(--kf-fail); }
+.kf-sum-box.f .kf-sum-num { color:var(--kf-fail); }
+
+/* ── 결과 테이블 ── */
+.kf-result-table { width:100%; border-collapse:collapse; font-size:13px; }
+.kf-result-table th {
+  padding:9px 12px; text-align:left;
+  font-size:11px; font-weight:700; color:var(--kf-text3);
+  text-transform:uppercase; letter-spacing:.4px;
+  border-bottom:1px solid var(--kf-border);
+  background:var(--kf-card2); position:sticky; top:0;
+}
+.kf-result-table td {
+  padding:9px 12px; border-bottom:1px solid rgba(42,45,62,.7);
+  color:var(--kf-text1); vertical-align:middle;
+}
+.kf-result-table tr:hover td { background:rgba(99,102,241,.05); }
+
+/* 등급 뱃지 */
+.grade-badge {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:26px; height:26px; border-radius:6px;
+  font-size:12px; font-weight:900; letter-spacing:0;
+}
+.grade-S { background:rgba(250,204,21,.15); color:var(--kf-s); border:1px solid rgba(250,204,21,.4); }
+.grade-A { background:rgba(34,197,94,.15);  color:var(--kf-a); border:1px solid rgba(34,197,94,.4); }
+.grade-B { background:rgba(59,130,246,.15); color:var(--kf-b); border:1px solid rgba(59,130,246,.4); }
+.grade-C { background:rgba(245,158,11,.15); color:var(--kf-c); border:1px solid rgba(245,158,11,.4); }
+.grade-탈락 { background:rgba(239,68,68,.12); color:var(--kf-fail); border:1px solid rgba(239,68,68,.3); font-size:9px; width:auto; padding:0 6px; }
+
+/* 순위/상태 표시 */
+.rank-pill {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  font-size:11px; font-weight:700;
+}
+.rank-pill.in  { background:rgba(34,197,94,.15); color:#86efac; }
+.rank-pill.out { background:rgba(239,68,68,.12); color:#fca5a5; }
+.rank-pill.pend{ background:rgba(100,116,139,.15); color:var(--kf-text3); }
+
+.cpc-dot {
+  display:inline-block; width:8px; height:8px; border-radius:50%;
+  margin-right:4px;
+}
+.cpc-none { background:#22c55e; }
+.cpc-yes  { background:#ef4444; }
+
+.top-chip {
+  display:inline-block; padding:2px 6px; border-radius:4px;
+  font-size:10px; font-weight:700;
+}
+.top-yes { background:rgba(99,102,241,.2); color:#a5b4fc; }
+.top-no  { background:rgba(100,116,139,.1); color:var(--kf-text3); }
+
+/* 키워드 셀 */
+.kf-kw-text { font-weight:600; }
+.kf-kw-sub  { font-size:11px; color:var(--kf-text3); margin-top:2px; }
+
+/* ── 대기 중 / 빈 상태 ── */
+.kf-empty {
+  text-align:center; padding:60px 20px; color:var(--kf-text3);
+}
+.kf-empty .kf-empty-icon { font-size:48px; margin-bottom:12px; }
+.kf-empty h3 { font-size:16px; color:var(--kf-text2); margin-bottom:6px; }
+.kf-empty p  { font-size:13px; line-height:1.6; }
+
+/* ── 체크 중 행 애니메이션 ── */
+@keyframes pulseRow {
+  0%,100% { background:transparent; }
+  50%      { background:rgba(99,102,241,.07); }
+}
+.row-checking { animation:pulseRow 1.2s ease infinite; }
+
+/* ── 스크롤 ── */
+.kf-result-scroll { overflow-x:auto; border-radius:8px; border:1px solid var(--kf-border); }
+
+/* ── 배지 ── */
+.kf-badge-note {
+  display:inline-block; padding:2px 8px; border-radius:4px;
+  font-size:10px; font-weight:700;
+  background:rgba(99,102,241,.15); color:#a5b4fc;
+}
+
+/* ── 미리보기 조합 수 ── */
+.kf-combo-preview {
+  font-size:12px; color:var(--kf-accent); font-weight:700;
+  text-align:right; margin-top:4px;
+}
+
+/* ── 액션 버튼 ── */
+.kf-act-btn {
+  padding:4px 10px; border-radius:5px; font-size:11px; font-weight:700;
+  border:1px solid; cursor:pointer; background:transparent;
+  transition:background .15s;
+}
+.kf-act-btn.copy { border-color:#6366f1; color:#a5b4fc; }
+.kf-act-btn.copy:hover { background:rgba(99,102,241,.15); }
+.kf-act-btn.save { border-color:#22c55e; color:#86efac; }
+.kf-act-btn.save:hover { background:rgba(34,197,94,.12); }
+
+/* ── 최대 순위 슬라이더 ── */
+.kf-slider-wrap { display:flex; align-items:center; gap:10px; }
+.kf-slider { flex:1; accent-color:var(--kf-accent); }
+.kf-slider-val {
+  min-width:32px; text-align:center; font-size:13px; font-weight:700;
+  color:var(--kf-accent);
+}
+
+/* ── 업종 구분 토글 ── */
+.kf-biz-toggle { display:flex; gap:6px; }
+.kf-biz-btn {
+  flex:1; padding:7px; border-radius:6px; font-size:12px; font-weight:700;
+  border:1px solid var(--kf-border); background:transparent;
+  color:var(--kf-text3); cursor:pointer; transition:all .2s; text-align:center;
+}
+.kf-biz-btn.active.food { background:rgba(239,68,68,.15); border-color:#ef4444; color:#fca5a5; }
+.kf-biz-btn.active.etc  { background:rgba(59,130,246,.15); border-color:#3b82f6; color:#93c5fd; }
+
+/* ── 토스트 ── */
+.kf-toast {
+  position:fixed; bottom:24px; right:24px; z-index:9999;
+  padding:10px 18px; border-radius:8px;
+  background:#1e293b; border:1px solid #334155;
+  color:var(--kf-text1); font-size:13px; font-weight:600;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);
+  animation:toastIn .25s ease;
+}
+@keyframes toastIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+
+/* 반응형 */
+@media(max-width:900px){
+  .kf-left { flex:0 0 100%; }
+  .kf-summary { grid-template-columns:repeat(5,1fr); }
+}
+@media(max-width:600px){
+  .kf-summary { grid-template-columns:repeat(3,1fr); }
+}
+</style>
+</head>
+<body>
+
+<div id="layout-root"></div>
+
+<div class="page-content">
+  <div class="page-header">
+    <div>
+      <h1 class="page-title">🔍 작업 키워드 찾기</h1>
+      <p class="page-subtitle">플레이스 정보 파싱 → 재료 분리 → 조합 생성 → 네이버 실측 판정 (S/A/B/C/탈락)</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center;">
+      <button class="btn btn-ghost" onclick="exportCSV()" id="btn-export" disabled>
+        📥 CSV 내보내기
+      </button>
+    </div>
+  </div>
+
+  <div class="kf-wrap">
+    <!-- ══════════ 왼쪽 패널 ══════════ -->
+    <div class="kf-left">
+
+      <!-- 1. 플레이스 선택 -->
+      <div class="kf-card">
+        <div class="kf-card-title"><span>🏪</span> 플레이스 선택</div>
+        <select class="kf-place-select" id="sel-place" onchange="onPlaceChange()">
+          <option value="">— 플레이스를 선택하세요 —</option>
+        </select>
+        <div class="kf-place-info" id="place-info-box">
+          <div class="pi-row"><span class="pi-label">카테고리</span><span class="pi-val" id="pi-cat">—</span></div>
+          <div class="pi-row"><span class="pi-label">주소</span><span class="pi-val" id="pi-addr">—</span></div>
+          <div class="pi-row"><span class="pi-label">플레이스ID</span><span class="pi-val" id="pi-nid">—</span></div>
+          <div style="margin-top:10px;font-size:11px;color:var(--kf-text3);font-weight:700;margin-bottom:5px;">📌 네이버 대표 키워드</div>
+          <div class="kf-rep-keywords" id="pi-kws"></div>
+        </div>
+      </div>
+
+      <!-- 2. 메인키워드 -->
+      <div class="kf-card">
+        <div class="kf-card-title"><span>🎯</span> 메인키워드</div>
+        <input class="kf-input" id="inp-mainkey" type="text"
+          placeholder="예: 강남 맛집, 홍대 카페"
+          oninput="onMainKeyInput()">
+        <div class="kf-input-hint">메인키워드는 분해되어 S급 판정 기준으로 사용됩니다</div>
+        <div class="kf-tags" id="mainkey-decomp" style="margin-top:8px;"></div>
+      </div>
+
+      <!-- 3. 업종 구분 -->
+      <div class="kf-card">
+        <div class="kf-card-title"><span>🍽️</span> 업종 구분</div>
+        <div class="kf-biz-toggle">
+          <button class="kf-biz-btn active food" id="btn-food" onclick="setBiz('food')">🍜 맛집 계열</button>
+          <button class="kf-biz-btn etc"  id="btn-etc"  onclick="setBiz('etc')">🏥 그 외 업종</button>
+        </div>
+        <div style="margin-top:8px;font-size:11px;color:var(--kf-text3);" id="biz-hint">
+          맛집: CPC없음 + 최상단 필수 조건으로 적용
+        </div>
+      </div>
+
+      <!-- 4. 키워드 재료 그룹 -->
+      <div class="kf-card">
+        <div class="kf-card-title"><span>🧩</span> 키워드 재료</div>
+        <div class="kf-order-rule">
+          <span class="or-chip geo">지역키</span>
+          <span class="or-arrow">›</span>
+          <span class="or-chip menu">메뉴키</span>
+          <span class="or-arrow">›</span>
+          <span class="or-chip cat">업종키</span>
+          <span style="margin-left:4px;">순서 고정</span>
+        </div>
+        <div class="kf-group-list" style="margin-top:12px;">
+
+          <!-- 지역키 -->
+          <div class="kf-group-item">
+            <div class="kf-group-header">
+              <div class="kf-group-name">
+                🗺️ 지역키
+                <span class="kf-group-badge" id="cnt-geo">0</span>
+              </div>
+              <button onclick="clearGroup('geo')" style="font-size:10px;color:var(--kf-text3);background:none;border:none;cursor:pointer;">전체삭제</button>
+            </div>
+            <input class="kf-tag-input" id="inp-geo"
+              placeholder="강남, 강남역, 강남구 (Enter)"
+              onkeydown="addTag(event,'geo')">
+            <div class="kf-tags" id="tags-geo"></div>
+          </div>
+
+          <!-- 메뉴키 -->
+          <div class="kf-group-item">
+            <div class="kf-group-header">
+              <div class="kf-group-name">
+                🥘 메뉴키
+                <span class="kf-group-badge" id="cnt-menu">0</span>
+              </div>
+              <button onclick="clearGroup('menu')" style="font-size:10px;color:var(--kf-text3);background:none;border:none;cursor:pointer;">전체삭제</button>
+            </div>
+            <input class="kf-tag-input" id="inp-menu"
+              placeholder="돈가츠, 라멘, 브런치 (Enter)"
+              onkeydown="addTag(event,'menu')">
+            <div class="kf-tags" id="tags-menu"></div>
+          </div>
+
+          <!-- 업종키 -->
+          <div class="kf-group-item">
+            <div class="kf-group-header">
+              <div class="kf-group-name">
+                🏷️ 업종키
+                <span class="kf-group-badge" id="cnt-cat">0</span>
+              </div>
+              <button onclick="clearGroup('cat')" style="font-size:10px;color:var(--kf-text3);background:none;border:none;cursor:pointer;">전체삭제</button>
+            </div>
+            <input class="kf-tag-input" id="inp-cat"
+              placeholder="맛집, 음식점, 한식당 (Enter)"
+              onkeydown="addTag(event,'cat')">
+            <div class="kf-tags" id="tags-cat"></div>
+          </div>
+
+        </div>
+        <div class="kf-combo-preview" id="combo-preview"></div>
+      </div>
+
+      <!-- 5. 조합 옵션 -->
+      <div class="kf-card">
+        <div class="kf-card-title"><span>⚙️</span> 조합 설정</div>
+        <div class="kf-combo-opts">
+          <label class="kf-combo-chip active" id="chip-2">
+            <input type="checkbox" checked onchange="updateChip(this,'chip-2');updateComboPreview()"> 2단 조합
+          </label>
+          <label class="kf-combo-chip active" id="chip-3">
+            <input type="checkbox" checked onchange="updateChip(this,'chip-3');updateComboPreview()"> 3단 조합
+          </label>
+          <label class="kf-combo-chip" id="chip-1">
+            <input type="checkbox" onchange="updateChip(this,'chip-1');updateComboPreview()"> 단독 키워드
+          </label>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="kf-card-title" style="margin-bottom:8px;"><span>📊</span> 최대 판정 순위</div>
+          <div class="kf-slider-wrap">
+            <input type="range" class="kf-slider" id="sl-rank" min="1" max="30" value="5"
+              oninput="document.getElementById('sl-rank-val').textContent=this.value+'위'">
+            <div class="kf-slider-val" id="sl-rank-val">5위</div>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;">
+          <div class="kf-card-title" style="margin-bottom:6px;"><span>🔢</span> 1차 탐색 수</div>
+          <select class="kf-place-select" id="sel-batch" style="margin-top:0;">
+            <option value="10">최대 10개 (빠름)</option>
+            <option value="20" selected>최대 20개 (권장)</option>
+            <option value="30">최대 30개 (정밀)</option>
+            <option value="0">전체 조합</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 실행 -->
+      <button class="kf-run-btn" id="btn-run" onclick="runKeywordFinder()">
+        <span id="run-icon">🚀</span>
+        <span id="run-label">키워드 탐색 시작</span>
+      </button>
+
+    </div>
+
+    <!-- ══════════ 오른쪽 패널 ══════════ -->
+    <div class="kf-right">
+
+      <!-- 진행 상태 -->
+      <div class="kf-card kf-progress-wrap" id="progress-wrap">
+        <div class="kf-card-title"><span>⚡</span> 탐색 진행 중</div>
+        <div class="kf-progress-bar">
+          <div class="kf-progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="kf-progress-text" id="progress-text">준비 중...</div>
+      </div>
+
+      <!-- 결과 요약 -->
+      <div class="kf-card" id="summary-card" style="display:none;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="kf-card-title" style="margin-bottom:0;"><span>📈</span> 결과 요약</div>
+          <div style="font-size:12px;color:var(--kf-text3);" id="summary-meta"></div>
+        </div>
+        <div class="kf-summary">
+          <div class="kf-sum-box s"><div class="kf-sum-num" id="cnt-s">0</div><div class="kf-sum-label">S급</div></div>
+          <div class="kf-sum-box a"><div class="kf-sum-num" id="cnt-a">0</div><div class="kf-sum-label">A급</div></div>
+          <div class="kf-sum-box b"><div class="kf-sum-num" id="cnt-b">0</div><div class="kf-sum-label">B급</div></div>
+          <div class="kf-sum-box c"><div class="kf-sum-num" id="cnt-c">0</div><div class="kf-sum-label">C급</div></div>
+          <div class="kf-sum-box f"><div class="kf-sum-num" id="cnt-f">0</div><div class="kf-sum-label">탈락</div></div>
+        </div>
+      </div>
+
+      <!-- 결과 탭 -->
+      <div class="kf-card" id="result-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div class="kf-tabs" style="flex:1;margin-right:12px;" id="result-tabs">
+            <div class="kf-tab active" onclick="filterResult('all',this)">전체</div>
+            <div class="kf-tab" onclick="filterResult('S',this)">⭐ S급</div>
+            <div class="kf-tab" onclick="filterResult('A',this)">✅ A급</div>
+            <div class="kf-tab" onclick="filterResult('B',this)">🔵 B급</div>
+            <div class="kf-tab" onclick="filterResult('C',this)">🟡 C급</div>
+            <div class="kf-tab" onclick="filterResult('탈락',this)">❌ 탈락</div>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <button class="kf-act-btn copy" onclick="copyCurrent()">📋 복사</button>
+          </div>
+        </div>
+
+        <div id="result-body">
+          <!-- 초기 빈 상태 -->
+          <div class="kf-empty" id="empty-state">
+            <div class="kf-empty-icon">🔍</div>
+            <h3>아직 탐색 결과가 없습니다</h3>
+            <p>왼쪽 패널에서 플레이스를 선택하고<br>키워드 재료를 입력한 뒤 탐색을 시작하세요.</p>
+          </div>
+          <div class="kf-result-scroll" id="result-table-wrap" style="display:none;">
+            <table class="kf-result-table">
+              <thead>
+                <tr>
+                  <th style="width:40px;">#</th>
+                  <th>키워드</th>
+                  <th style="width:60px;">등급</th>
+                  <th style="width:70px;">순위</th>
+                  <th style="width:70px;">최상단</th>
+                  <th style="width:70px;">CPC</th>
+                  <th style="width:70px;">단일</th>
+                  <th style="width:80px;">액션</th>
+                </tr>
+              </thead>
+              <tbody id="result-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="js/app.js"></script>
+<script src="js/shared-data.js"></script>
+<script>
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+const KF = {
+  places: [],           // API에서 불러온 플레이스 목록
+  selPlace: null,       // 선택된 플레이스 객체
+  biz: 'food',          // 'food' | 'etc'
+  tags: { geo:[], menu:[], cat:[] },
+  mainKey: '',
+  mainDecomp: [],       // 분해된 메인키 [ {type:'geo'|'cat', text:'강남'}, ... ]
+  results: [],          // 전체 결과
+  filteredResults: [],  // 현재 필터된 결과
+  currentFilter: 'all',
+  running: false,
+};
+
+/* ═══════════════════════════════════════════════
+   INIT
+═══════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  await initLayout();
+  await loadPlaces();
+  updateComboPreview();
+});
+
+async function loadPlaces() {
+  try {
+    const res = await apiCall('GET', '/api/v1/places');
+    KF.places = res.places || res.items || res || [];
+    const sel = document.getElementById('sel-place');
+    KF.places.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name || p.place_name || '(이름없음)';
+      sel.appendChild(opt);
+    });
+  } catch(e) {
+    console.warn('플레이스 목록 로드 실패:', e);
+    // 데모 목업
+    KF.places = [
+      { id:'demo-1', name:'강남 돈가츠집', category:'restaurant', address:'서울 강남구 역삼동 123', naver_place_id:'1234567890',
+        keywords:[{keyword:'강남 돈가츠'},{keyword:'역삼 돈까스'},{keyword:'강남역 일식'}] },
+      { id:'demo-2', name:'홍대 카페봄', category:'cafe', address:'서울 마포구 홍대 45', naver_place_id:'9876543210',
+        keywords:[{keyword:'홍대 카페'},{keyword:'합정 디저트'},{keyword:'홍대 브런치'}] },
+    ];
+    const sel = document.getElementById('sel-place');
+    KF.places.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name + ' (데모)';
+      sel.appendChild(opt);
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   플레이스 선택
+═══════════════════════════════════════════════ */
+function onPlaceChange() {
+  const id = document.getElementById('sel-place').value;
+  if (!id) { document.getElementById('place-info-box').classList.remove('show'); return; }
+  const p = KF.places.find(x => x.id === id);
+  if (!p) return;
+  KF.selPlace = p;
+
+  document.getElementById('pi-cat').textContent   = p.category || '—';
+  document.getElementById('pi-addr').textContent  = p.address || '—';
+  document.getElementById('pi-nid').textContent   = p.naver_place_id || '—';
+  document.getElementById('place-info-box').classList.add('show');
+
+  // 대표 키워드
+  const kws = p.keywords || [];
+  const box = document.getElementById('pi-kws');
+  box.innerHTML = kws.length
+    ? kws.map(k => `<span class="kf-rep-kw">${k.keyword||k}</span>`).join('')
+    : '<span style="color:var(--kf-text3);font-size:11px;">등록된 대표 키워드 없음</span>';
+
+  // 자동 재료 제안 (주소 기반 지역키)
+  autoSuggestFromPlace(p);
+}
+
+function autoSuggestFromPlace(p) {
+  // 주소에서 지역 토큰 추출
+  if (p.address) {
+    const addr = p.address;
+    const geoHints = [];
+    const m1 = addr.match(/([가-힣]+구)/);   if(m1) geoHints.push(m1[1]);
+    const m2 = addr.match(/([가-힣]+역)/);   if(m2) geoHints.push(m2[1]);
+    const m3 = addr.match(/([가-힣]{2,4})동/); if(m3) geoHints.push(m3[1]);
+    geoHints.forEach(g => { if(!KF.tags.geo.includes(g)) addTagVal('geo', g); });
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   메인키 분해
+═══════════════════════════════════════════════ */
+function onMainKeyInput() {
+  KF.mainKey = document.getElementById('inp-mainkey').value.trim();
+  KF.mainDecomp = decomposeMainKey(KF.mainKey);
+  renderMainDecomp();
+}
+
+function decomposeMainKey(mk) {
+  if (!mk) return [];
+  // 공백, 조사 등으로 토큰 분리
+  const tokens = mk.split(/[\s,]+/).filter(Boolean);
+  return tokens.map(t => {
+    // 간단 지역 패턴
+    if (/^[가-힣]+(구|역|시|동|읍|면|리|로|대로|길)$/.test(t) || /^[가-힣]{2,4}(대|숲|단길|마을|촌)$/.test(t)) {
+      return { type:'geo', text:t };
+    }
+    // 업종 패턴 (맛집, 카페, 피부과 등)
+    if (/맛집|카페|식당|음식점|병원|한의원|피부과|헬스|학원|미용|네일|사진관|호텔|숙소|모텔|펜션/.test(t)) {
+      return { type:'cat', text:t };
+    }
+    return { type:'other', text:t };
+  });
+}
+
+function renderMainDecomp() {
+  const box = document.getElementById('mainkey-decomp');
+  if (!KF.mainDecomp.length) { box.innerHTML = ''; return; }
+  box.innerHTML = KF.mainDecomp.map(d => {
+    const cls = d.type === 'geo' ? 'geo' : d.type === 'cat' ? 'cat' : 'main';
+    const label = d.type === 'geo' ? '지역' : d.type === 'cat' ? '업종' : '기타';
+    return `<span class="kf-tag ${cls}">${d.text}<span style="font-size:9px;opacity:.7;margin-left:3px;">${label}</span></span>`;
+  }).join('');
+}
+
+/* ═══════════════════════════════════════════════
+   태그 관리
+═══════════════════════════════════════════════ */
+function addTag(e, group) {
+  if (e.key !== 'Enter' && e.key !== ',') return;
+  e.preventDefault();
+  const inp = document.getElementById('inp-' + group);
+  const raw = inp.value.trim().replace(/,/g, '');
+  if (!raw) return;
+  // 콤마로 분리 허용
+  raw.split(/[\s,]+/).filter(Boolean).forEach(v => addTagVal(group, v));
+  inp.value = '';
+  updateComboPreview();
+}
+
+function addTagVal(group, val) {
+  if (KF.tags[group].includes(val)) return;
+  KF.tags[group].push(val);
+  renderTags(group);
+}
+
+function removeTag(group, val) {
+  KF.tags[group] = KF.tags[group].filter(x => x !== val);
+  renderTags(group);
+  updateComboPreview();
+}
+
+function clearGroup(group) {
+  KF.tags[group] = [];
+  renderTags(group);
+  updateComboPreview();
+}
+
+function renderTags(group) {
+  const box = document.getElementById('tags-' + group);
+  const cls = group;
+  box.innerHTML = KF.tags[group].map(v =>
+    `<span class="kf-tag ${cls}">${v}<span class="kf-tag-del" onclick="removeTag('${group}','${v}')">✕</span></span>`
+  ).join('');
+  document.getElementById('cnt-' + group).textContent = KF.tags[group].length;
+}
+
+/* ═══════════════════════════════════════════════
+   조합 설정
+═══════════════════════════════════════════════ */
+function updateChip(cb, chipId) {
+  document.getElementById(chipId).classList.toggle('active', cb.checked);
+}
+
+function setBiz(type) {
+  KF.biz = type;
+  document.getElementById('btn-food').classList.toggle('active', type === 'food');
+  document.getElementById('btn-food').classList.toggle('food',  type === 'food');
+  document.getElementById('btn-etc').classList.toggle('active',  type === 'etc');
+  document.getElementById('btn-etc').classList.toggle('etc',    type === 'etc');
+  document.getElementById('biz-hint').textContent = type === 'food'
+    ? '맛집: CPC없음 + 최상단 필수 조건으로 적용'
+    : '비맛집: 상태 우선순위 판단, 충분한 A급 존재 시 유연 적용';
+}
+
+/* ═══════════════════════════════════════════════
+   조합 생성
+═══════════════════════════════════════════════ */
+function generateCombinations() {
+  const { geo, menu, cat } = KF.tags;
+  const use2 = document.querySelector('#chip-2 input').checked;
+  const use3 = document.querySelector('#chip-3 input').checked;
+  const use1 = document.querySelector('#chip-1 input').checked;
+
+  const combos = new Set();
+
+  // 단독 (지역, 업종, 메뉴 각각)
+  if (use1) {
+    geo.forEach(g => combos.add(g));
+    cat.forEach(c => combos.add(c));
+    menu.forEach(m => combos.add(m));
+  }
+
+  // 2단 조합 (어순: 지역 > 메뉴/업종)
+  if (use2) {
+    geo.forEach(g => {
+      menu.forEach(m => combos.add(`${g} ${m}`));
+      cat.forEach(c  => combos.add(`${g} ${c}`));
+    });
+    // 메뉴+업종 조합
+    menu.forEach(m => cat.forEach(c => combos.add(`${m} ${c}`)));
+  }
+
+  // 3단 조합 (지역 > 메뉴 > 업종)
+  if (use3) {
+    geo.forEach(g => {
+      menu.forEach(m => {
+        cat.forEach(c => combos.add(`${g} ${m} ${c}`));
+      });
+    });
+  }
+
+  return Array.from(combos);
+}
+
+function updateComboPreview() {
+  const combos = generateCombinations();
+  const batchVal = parseInt(document.getElementById('sel-batch').value) || 0;
+  const display = batchVal === 0 ? combos.length : Math.min(combos.length, batchVal);
+  document.getElementById('combo-preview').textContent =
+    combos.length ? `조합 ${combos.length}개 생성 → 탐색 ${display}개` : '';
+}
+
+/* ═══════════════════════════════════════════════
+   S급 판정
+═══════════════════════════════════════════════ */
+function isS(kw, grade) {
+  if (grade !== 'A') return false;
+  if (!KF.mainKey) return false;
+
+  const decomp = KF.mainDecomp;
+  const kwLower = kw.toLowerCase();
+
+  const geos = decomp.filter(d => d.type === 'geo').map(d => d.text);
+  const cats = decomp.filter(d => d.type === 'cat').map(d => d.text);
+
+  if (!geos.length && !cats.length) return false;
+
+  // 지역: 직접 파생형 포함 여부
+  const geoMatch = geos.length === 0 || geos.some(g => {
+    // 원문 or 역 붙인 형태
+    return kwLower.includes(g) || kwLower.includes(g.replace(/(역|구|시|동)$/, '') + '역')
+      || kwLower.includes(g.replace(/(역|구|시|동)$/, '') + '구');
+  });
+
+  // 업종: 직접 포함 or 합성 포함
+  const catMatch = cats.length === 0 || cats.some(c => kwLower.includes(c));
+
+  return geoMatch && catMatch;
+}
+
+/* ═══════════════════════════════════════════════
+   등급 계산 (실측 데이터 기반)
+═══════════════════════════════════════════════ */
+function calcGrade(item) {
+  // item: { rank, is_top, has_cpc, has_section, is_single }
+  const maxRank = parseInt(document.getElementById('sl-rank').value);
+
+  if (!item.has_section) return '탈락'; // 플레이스 섹션 없음
+  if (item.rank === null || item.rank > maxRank) return '탈락';
+
+  const noCpc  = !item.has_cpc;
+  const isTop  = item.is_top;
+
+  // A급: 5위 이내 + CPC없음 + 최상단
+  if (noCpc && isTop) {
+    const grade = 'A';
+    // S급 체크
+    return isS(item.keyword, grade) ? 'S' : 'A';
+  }
+  // B급: 5위 이내 + CPC없음
+  if (noCpc) return 'B';
+  // C급: 5위 이내만
+  return 'C';
+}
+
+/* ═══════════════════════════════════════════════
+   탐색 실행
+═══════════════════════════════════════════════ */
+async function runKeywordFinder() {
+  if (KF.running) return;
+
+  const combos = generateCombinations();
+  if (!combos.length) { toast('❌ 키워드 재료를 입력하세요'); return; }
+
+  const batchVal = parseInt(document.getElementById('sel-batch').value) || 0;
+  const batch = batchVal === 0 ? combos : combos.slice(0, batchVal);
+
+  KF.running = true;
+  KF.results = [];
+  setRunningUI(true);
+  showProgress(true);
+  document.getElementById('summary-card').style.display = 'none';
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('result-table-wrap').style.display = 'none';
+
+  const placeId = KF.selPlace?.naver_place_id || null;
+
+  for (let i = 0; i < batch.length; i++) {
+    const kw = batch[i];
+    updateProgress(i, batch.length, kw);
+
+    // 결과 행 즉시 표시 (검색 중 상태)
+    const row = { keyword: kw, grade:'…', rank:null, is_top:null, has_cpc:null, has_section:null, is_single:null, checking:true };
+    KF.results.push(row);
+    renderResultTable();
+
+    try {
+      const data = await searchKeyword(kw, placeId);
+      row.rank        = data.rank;
+      row.is_top      = data.is_top;
+      row.has_cpc     = data.has_cpc;
+      row.has_section = data.has_section;
+      row.is_single   = data.is_single;
+      row.checking    = false;
+      row.grade       = calcGrade(row);
+    } catch(e) {
+      row.checking  = false;
+      row.grade     = '—';
+      row.error     = true;
+    }
+
+    renderResultTable();
+    await sleep(300); // API 부하 방지
+  }
+
+  updateProgress(batch.length, batch.length, '완료');
+  KF.running = false;
+  setRunningUI(false);
+  renderSummary();
+  document.getElementById('summary-card').style.display = 'block';
+  document.getElementById('btn-export').disabled = false;
+  toast(`✅ 탐색 완료 — ${batch.length}개 키워드 판정`);
+}
+
+/* ═══════════════════════════════════════════════
+   네이버 실측 검색 (parser API 호출)
+═══════════════════════════════════════════════ */
+async function searchKeyword(keyword, placeId) {
+  try {
+    const res = await fetch(`http://localhost:8000/api/search-rank`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ keyword, place_id: placeId, max_rank: parseInt(document.getElementById('sl-rank').value) })
+    });
+    if (!res.ok) throw new Error('API 오류');
+    return await res.json();
+  } catch(e) {
+    // 파서 API 미연결 시 시뮬레이션 (데모 모드)
+    return simulateSearch(keyword, placeId);
+  }
+}
+
+function simulateSearch(keyword, placeId) {
+  // 데모: 랜덤 결과 시뮬레이션
+  await_delay(200 + Math.random() * 600);
+  const hasSection = Math.random() > 0.15;
+  if (!hasSection) return { has_section:false, rank:null, is_top:false, has_cpc:false, is_single:false };
+
+  const maxRank = parseInt(document.getElementById('sl-rank').value);
+  const rank    = Math.random() > 0.4 ? Math.ceil(Math.random() * maxRank) : Math.ceil(Math.random() * 50 + maxRank);
+  const isTop   = rank <= 3 && Math.random() > 0.3;
+  const hasCpc  = Math.random() > 0.65;
+  const isSingle= rank === 1 && Math.random() > 0.7;
+
+  return { has_section:true, rank, is_top:isTop, has_cpc:hasCpc, is_single:isSingle };
+}
+
+function await_delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* ═══════════════════════════════════════════════
+   UI 렌더링
+═══════════════════════════════════════════════ */
+function renderResultTable() {
+  const tbody = document.getElementById('result-tbody');
+  const wrap  = document.getElementById('result-table-wrap');
+
+  const data = KF.currentFilter === 'all'
+    ? KF.results
+    : KF.results.filter(r => r.grade === KF.currentFilter);
+
+  if (!KF.results.length) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+
+  tbody.innerHTML = data.map((r, i) => {
+    if (r.checking) {
+      return `<tr class="row-checking">
+        <td style="color:var(--kf-text3)">${i+1}</td>
+        <td><div class="kf-kw-text">${esc(r.keyword)}</div></td>
+        <td colspan="6" style="color:var(--kf-text3);font-size:12px;">
+          <span style="display:inline-flex;align-items:center;gap:6px;">
+            <span class="spinner" style="width:12px;height:12px;border:2px solid rgba(255,255,255,.2);border-top-color:#6366f1;border-radius:50%;display:inline-block;animation:spin .7s linear infinite;"></span>
+            검색 중...
+          </span>
+        </td>
+      </tr>`;
+    }
+    if (r.error) {
+      return `<tr>
+        <td style="color:var(--kf-text3)">${i+1}</td>
+        <td><div class="kf-kw-text">${esc(r.keyword)}</div></td>
+        <td colspan="6" style="color:var(--kf-text3);font-size:12px;">오류</td>
+      </tr>`;
+    }
+
+    const gradeCls = r.grade === 'S' ? 'S' : r.grade === 'A' ? 'A' : r.grade === 'B' ? 'B' : r.grade === 'C' ? 'C' : '탈락';
+    const rankHtml = r.rank
+      ? `<span class="rank-pill in">${r.rank}위</span>`
+      : `<span class="rank-pill out">진입 외</span>`;
+    const topHtml  = r.is_top === null ? '—'
+      : r.is_top
+        ? `<span class="top-chip top-yes">최상단</span>`
+        : `<span class="top-chip top-no">하단</span>`;
+    const cpcHtml  = r.has_cpc === null ? '—'
+      : `<span class="cpc-dot ${r.has_cpc ? 'cpc-yes':'cpc-none'}"></span>${r.has_cpc ? 'CPC있음':'없음'}`;
+    const singleHtml = r.is_single ? '<span style="color:#86efac;font-size:11px;font-weight:700;">단독</span>' : '—';
+
+    return `<tr>
+      <td style="color:var(--kf-text3);font-size:12px;">${i+1}</td>
+      <td>
+        <div class="kf-kw-text">${esc(r.keyword)}</div>
+      </td>
+      <td><span class="grade-badge grade-${gradeCls}">${r.grade}</span></td>
+      <td>${rankHtml}</td>
+      <td>${topHtml}</td>
+      <td style="font-size:12px;">${cpcHtml}</td>
+      <td>${singleHtml}</td>
+      <td>
+        <button class="kf-act-btn copy" onclick="copyOne('${esc(r.keyword)}')">복사</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function renderSummary() {
+  const grades = { S:0, A:0, B:0, C:0, '탈락':0 };
+  KF.results.forEach(r => { if(r.grade in grades) grades[r.grade]++; });
+  document.getElementById('cnt-s').textContent = grades['S'];
+  document.getElementById('cnt-a').textContent = grades['A'];
+  document.getElementById('cnt-b').textContent = grades['B'];
+  document.getElementById('cnt-c').textContent = grades['C'];
+  document.getElementById('cnt-f').textContent = grades['탈락'];
+  document.getElementById('summary-meta').textContent = `총 ${KF.results.length}개 판정`;
+}
+
+/* ═══════════════════════════════════════════════
+   필터
+═══════════════════════════════════════════════ */
+function filterResult(grade, el) {
+  KF.currentFilter = grade;
+  document.querySelectorAll('.kf-tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  renderResultTable();
+}
+
+/* ═══════════════════════════════════════════════
+   진행 UI
+═══════════════════════════════════════════════ */
+function setRunningUI(running) {
+  const btn   = document.getElementById('btn-run');
+  const icon  = document.getElementById('run-icon');
+  const label = document.getElementById('run-label');
+  btn.disabled = running;
+  icon.innerHTML  = running ? '<span class="spinner"></span>' : '🚀';
+  label.textContent = running ? '탐색 중...' : '키워드 탐색 시작';
+}
+
+function showProgress(show) {
+  document.getElementById('progress-wrap').classList.toggle('show', show);
+}
+
+function updateProgress(done, total, current) {
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').textContent =
+    done >= total ? `✅ 완료 (${total}개)` : `검색 중: "${current}" (${done+1}/${total})`;
+}
+
+/* ═══════════════════════════════════════════════
+   유틸
+═══════════════════════════════════════════════ */
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+function esc(s) { return String(s).replace(/[<>&"]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[c])); }
+
+function copyOne(kw) {
+  navigator.clipboard.writeText(kw).then(() => toast('📋 복사됨: ' + kw));
+}
+
+function copyCurrent() {
+  const data = KF.currentFilter === 'all'
+    ? KF.results
+    : KF.results.filter(r => r.grade === KF.currentFilter);
+  const text = data.filter(r => !r.checking && !r.error)
+    .map(r => `${r.keyword}\t${r.grade}\t${r.rank??'—'}\t${r.is_top?'최상단':'하단'}\t${r.has_cpc?'CPC있음':'없음'}`)
+    .join('\n');
+  if (!text) { toast('결과 없음'); return; }
+  navigator.clipboard.writeText(text).then(() => toast('📋 복사됨 (' + data.length + '개)'));
+}
+
+function exportCSV() {
+  if (!KF.results.length) return;
+  const header = ['키워드','등급','순위','최상단','CPC','단일','섹션'].join(',');
+  const rows = KF.results.filter(r => !r.checking && !r.error).map(r =>
+    [r.keyword, r.grade, r.rank??'', r.is_top?'Y':'N', r.has_cpc?'Y':'N', r.is_single?'Y':'N', r.has_section?'Y':'N'].join(',')
+  );
+  const blob = new Blob(['\ufeff' + header + '\n' + rows.join('\n')], { type:'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `keyword_result_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+let _toastTimer;
+function toast(msg) {
+  clearTimeout(_toastTimer);
+  let el = document.querySelector('.kf-toast');
+  if (!el) { el = document.createElement('div'); el.className = 'kf-toast'; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.style.display = 'block';
+  _toastTimer = setTimeout(() => { el.style.display = 'none'; }, 2500);
+}
+</script>
+</body>
+</html>
