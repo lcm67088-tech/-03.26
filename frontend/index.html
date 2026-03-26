@@ -167,17 +167,25 @@
       <!-- 데모 계정 안내 -->
       <div class="demo-badge-wrap">
         <div class="demo-badge-title">
-          <span>ℹ️</span> 테스트 계정
+          <span>ℹ️</span> 테스트 계정 (클릭하면 자동 입력)
         </div>
-        <div class="demo-row" onclick="switchRole('user')" style="cursor:pointer;">
-          <span class="demo-role user">일반</span>
+        <div class="demo-row" onclick="fillCred('user@nplace.io','user1234','user')" style="cursor:pointer;">
+          <span class="demo-role user">유저</span>
           <div class="demo-cred">
-            <code>admin@nplace.io</code>
+            <code>user@nplace.io</code>
             <span style="color:var(--text3)">／</span>
-            <code>password123</code>
+            <code>user1234</code>
           </div>
         </div>
-        <div class="demo-row" onclick="switchRole('admin')" style="cursor:pointer;">
+        <div class="demo-row" onclick="fillCred('test@nplace.io','test1234','user')" style="cursor:pointer;">
+          <span class="demo-role user">유저</span>
+          <div class="demo-cred">
+            <code>test@nplace.io</code>
+            <span style="color:var(--text3)">／</span>
+            <code>test1234</code>
+          </div>
+        </div>
+        <div class="demo-row" onclick="fillCred('superadmin@nplace.io','admin1234!','admin')" style="cursor:pointer;">
           <span class="demo-role admin">어드민</span>
           <div class="demo-cred">
             <code>superadmin@nplace.io</code>
@@ -185,7 +193,6 @@
             <code>admin1234!</code>
           </div>
         </div>
-        <div class="demo-click-hint">👆 클릭하면 자동 입력됩니다</div>
       </div>
 
       <!-- 계정 유형 탭 -->
@@ -264,7 +271,7 @@ if (CURRENT_USER) {
 
 let currentRole = 'user';
 const PRESETS = {
-  user:  { email: 'admin@nplace.io',      pw: 'password123', title: '로그인',        sub: '계속하려면 로그인하세요' },
+  user:  { email: 'user@nplace.io',       pw: 'user1234',    title: '로그인',        sub: '계속하려면 로그인하세요' },
   admin: { email: 'superadmin@nplace.io', pw: 'admin1234!',  title: '어드민 로그인', sub: '어드민 계정으로 로그인하세요' },
 };
 
@@ -273,10 +280,22 @@ function switchRole(role) {
   document.getElementById('tab-user').classList.toggle('active',  role === 'user');
   document.getElementById('tab-admin').classList.toggle('active', role === 'admin');
   const p = PRESETS[role];
-  document.getElementById('form-title').textContent  = p.title;
-  document.getElementById('form-sub').textContent    = p.sub;
-  document.getElementById('login-email').value       = p.email;
-  document.getElementById('login-pw').value          = p.pw;
+  document.getElementById('form-title').textContent = p.title;
+  document.getElementById('form-sub').textContent   = p.sub;
+  document.getElementById('login-email').value      = p.email;
+  document.getElementById('login-pw').value         = p.pw;
+}
+
+// 계정 클릭 시 직접 입력
+function fillCred(email, pw, role) {
+  document.getElementById('login-email').value = email;
+  document.getElementById('login-pw').value    = pw;
+  // 탭도 맞춰서 전환
+  const isAdmin = role === 'admin';
+  document.getElementById('tab-user').classList.toggle('active',  !isAdmin);
+  document.getElementById('tab-admin').classList.toggle('active', isAdmin);
+  document.getElementById('form-title').textContent = isAdmin ? '어드민 로그인' : '로그인';
+  document.getElementById('form-sub').textContent   = isAdmin ? '어드민 계정으로 로그인하세요' : '계속하려면 로그인하세요';
 }
 
 // 기본값 세팅

@@ -56,14 +56,34 @@ async function apiCall(path, opts = {}) {
 ═══════════════════════════════════════════════ */
 const DEMO_USERS = [
   {
-    email: 'admin@nplace.io',
-    password: 'password123',
-    name: '김대표',
+    email: 'user@nplace.io',
+    password: 'user1234',
+    name: '김사장',
     plan: 'pro',
     isAdmin: false,
-    workspace: '맛있는 식당 본점',
+    workspace: '강남 카페 운영',
     wsPlan: 'pro',
     balance: 52000,
+  },
+  {
+    email: 'test@nplace.io',
+    password: 'test1234',
+    name: '이운영',
+    plan: 'pro',
+    isAdmin: false,
+    workspace: '홍대 맛집 관리',
+    wsPlan: 'pro',
+    balance: 30000,
+  },
+  {
+    email: 'admin@nplace.io',
+    password: 'password123',
+    name: '관리자',
+    plan: 'pro',
+    isAdmin: false,
+    workspace: '테스트 워크스페이스',
+    wsPlan: 'pro',
+    balance: 0,
   },
   {
     email: 'superadmin@nplace.io',
