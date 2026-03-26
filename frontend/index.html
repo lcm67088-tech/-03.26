@@ -5,7 +5,147 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>nplace.io — 로그인</title>
 <link rel="icon" href="favicon.ico">
-    <link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/style.css">
+<style>
+/* ── 로그인 페이지 오버라이드 ── */
+.login-page {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); padding: 20px;
+  background-image:
+    radial-gradient(ellipse 700px 500px at 10% 70%, rgba(var(--cyan-rgb),.07) 0%, transparent 60%),
+    radial-gradient(ellipse 600px 500px at 90% 15%, rgba(var(--purple-rgb),.07) 0%, transparent 60%),
+    radial-gradient(ellipse 400px 300px at 50% 95%, rgba(99,102,241,.04) 0%, transparent 60%);
+}
+
+/* ── 브랜드 헤더 ── */
+.login-brand {
+  text-align: center;
+  margin-bottom: 28px;
+}
+.login-brand-mark {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 52px; height: 52px; border-radius: 14px;
+  background: linear-gradient(135deg, var(--cyan), #6366f1);
+  font-size: 22px; font-weight: 900; color: #fff;
+  margin-bottom: 10px;
+  box-shadow: 0 8px 24px rgba(0,212,255,.25);
+}
+.login-brand-name {
+  font-size: 22px; font-weight: 800; color: var(--text-title);
+  letter-spacing: -0.5px;
+}
+.login-brand-sub {
+  font-size: 12px; color: var(--text3);
+  margin-top: 4px;
+}
+
+/* ── 데모 배지 ── */
+.demo-badge-wrap {
+  background: rgba(var(--cyan-rgb),.06);
+  border: 1px solid rgba(var(--cyan-rgb),.15);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+.demo-badge-title {
+  font-size: 11px; font-weight: 700; letter-spacing: .5px;
+  color: var(--cyan); text-transform: uppercase; margin-bottom: 6px;
+  display: flex; align-items: center; gap: 5px;
+}
+.demo-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 8px; border-radius: 6px;
+  background: rgba(255,255,255,.03);
+  margin-bottom: 4px;
+}
+.demo-row:last-child { margin-bottom: 0; }
+.demo-role {
+  font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;
+  min-width: 44px; text-align: center; flex-shrink: 0;
+}
+.demo-role.user  { background: rgba(var(--cyan-rgb),.15); color: var(--cyan); }
+.demo-role.admin { background: rgba(var(--purple-rgb),.15); color: #a78bfa; }
+.demo-cred {
+  font-size: 11px; color: var(--text2);
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+}
+.demo-cred code {
+  background: rgba(255,255,255,.06); border-radius: 3px;
+  padding: 1px 5px; font-family: 'Fira Code', monospace, inherit;
+  font-size: 11px; color: var(--text1);
+}
+.demo-click-hint {
+  font-size: 10px; color: var(--text3); margin-top: 6px;
+  text-align: center;
+}
+
+/* ── 카드 ── */
+.login-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 18px; padding: 36px 32px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.5);
+}
+
+/* ── 탭 ── */
+.login-role-tabs {
+  display: flex; gap: 4px;
+  background: var(--bg-tab); border: 1px solid var(--border);
+  border-radius: 10px; padding: 4px; margin-bottom: 22px;
+}
+.login-role-tab {
+  flex: 1; padding: 8px; border-radius: 7px; border: none;
+  background: transparent; color: var(--text2);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  transition: .15s; font-family: inherit; text-align: center;
+}
+.login-role-tab.active {
+  background: rgba(var(--cyan-rgb),.15); color: var(--cyan); font-weight: 700;
+}
+
+/* ── 소셜 버튼 ── */
+.social-btn {
+  width: 100%; padding: 11px; margin-bottom: 10px;
+  background: var(--bg-hover2); border: 1px solid var(--border);
+  border-radius: 9px; color: var(--text2);
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; transition: .15s;
+}
+.social-btn:hover { background: var(--bg-hover); border-color: var(--border2); color: var(--text1); }
+
+/* ── 구분선 ── */
+.or-divider {
+  display: flex; align-items: center; gap: 12px;
+  color: var(--text3); font-size: 12px; margin: 16px 0;
+}
+.or-divider::before, .or-divider::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ── 로그인 버튼 ── */
+.btn-login {
+  width: 100%; padding: 13px;
+  background: linear-gradient(135deg, var(--cyan), #6366f1);
+  color: #fff; font-size: 15px; font-weight: 800; border: none;
+  border-radius: 10px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: .2s; box-shadow: 0 4px 20px rgba(0,212,255,.25);
+  letter-spacing: -.2px;
+}
+.btn-login:hover { opacity: .9; box-shadow: 0 6px 28px rgba(0,212,255,.35); transform: translateY(-1px); }
+.btn-login:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── 비밀번호 토글 ── */
+.pw-toggle {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text3); cursor: pointer; padding: 4px;
+}
+.pw-toggle:hover { color: var(--text2); }
+.input-wrap { position: relative; }
+</style>
 </head>
 <body>
 <div id="toast-container"></div>
@@ -13,34 +153,49 @@
 <div class="login-page">
   <div style="width:100%;max-width:420px">
 
-    <div style="text-align:center;margin-bottom:32px">
-      <div class="login-logo">
-        <div class="logo-mark" style="width:44px;height:44px;font-size:18px">N</div>
-        <span class="login-logo-text" style="font-size:24px">nplace.io</span>
+    <!-- 브랜드 헤더 -->
+    <div class="login-brand">
+      <div>
+        <div class="login-brand-mark">N</div>
       </div>
-      <p style="font-size:13px;color:var(--text2);line-height:1.7">
-        네이버 플레이스 마케팅 최적화 플랫폼
-      </p>
+      <div class="login-brand-name">nplace.io</div>
+      <div class="login-brand-sub">네이버 플레이스 마케팅 최적화 플랫폼</div>
     </div>
 
     <div class="login-card">
-      <!-- 데모 안내 -->
-      <div class="demo-notice" id="demo-notice">
-        <span style="font-size:16px;flex-shrink:0">ℹ️</span>
-        <div>
-          <strong>일반 계정</strong> — admin@nplace.io / password123<br>
-          <strong>어드민 계정</strong> — superadmin@nplace.io / admin1234!
+
+      <!-- 데모 계정 안내 -->
+      <div class="demo-badge-wrap">
+        <div class="demo-badge-title">
+          <span>ℹ️</span> 테스트 계정
         </div>
+        <div class="demo-row" onclick="switchRole('user')" style="cursor:pointer;">
+          <span class="demo-role user">일반</span>
+          <div class="demo-cred">
+            <code>admin@nplace.io</code>
+            <span style="color:var(--text3)">／</span>
+            <code>password123</code>
+          </div>
+        </div>
+        <div class="demo-row" onclick="switchRole('admin')" style="cursor:pointer;">
+          <span class="demo-role admin">어드민</span>
+          <div class="demo-cred">
+            <code>superadmin@nplace.io</code>
+            <span style="color:var(--text3)">／</span>
+            <code>admin1234!</code>
+          </div>
+        </div>
+        <div class="demo-click-hint">👆 클릭하면 자동 입력됩니다</div>
       </div>
 
       <!-- 계정 유형 탭 -->
       <div class="login-role-tabs">
-        <button class="login-role-tab active" id="tab-user" onclick="switchRole('user')">👤 일반 계정</button>
-        <button class="login-role-tab" id="tab-admin" onclick="switchRole('admin')">🛡️ 어드민</button>
+        <button class="login-role-tab active" id="tab-user"  onclick="switchRole('user')">👤 일반 계정</button>
+        <button class="login-role-tab"        id="tab-admin" onclick="switchRole('admin')">🛡️ 어드민</button>
       </div>
 
-      <h2 class="login-title" style="font-size:18px;margin-bottom:4px" id="form-title">로그인</h2>
-      <p class="login-sub" style="margin-bottom:20px;font-size:12px" id="form-sub">계속하려면 로그인하세요</p>
+      <h2 class="login-title" id="form-title" style="font-size:18px;margin-bottom:4px">로그인</h2>
+      <p  class="login-sub"   id="form-sub"   style="margin-bottom:20px;font-size:12px">계속하려면 로그인하세요</p>
 
       <!-- 소셜 로그인 -->
       <button class="social-btn" onclick="toast('소셜 로그인은 데모에서 지원하지 않습니다','info')">
@@ -60,18 +215,21 @@
         <input class="input" type="email" id="login-email" placeholder="이메일 주소"
           autocomplete="email" onkeydown="if(event.key==='Enter')doLoginForm()">
       </div>
-      <div class="input-group" style="margin-bottom:20px">
+      <div class="input-group" style="margin-bottom:22px">
         <label class="input-label">비밀번호</label>
         <div class="input-wrap">
           <input class="input" type="password" id="login-pw" placeholder="비밀번호"
             autocomplete="current-password" onkeydown="if(event.key==='Enter')doLoginForm()">
           <button class="pw-toggle" type="button" onclick="togglePw(this)">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
           </button>
         </div>
       </div>
 
-      <button class="btn btn-primary btn-full btn-lg" id="login-btn" onclick="doLoginForm()">
+      <button class="btn-login" id="login-btn" onclick="doLoginForm()">
         🚀 로그인
       </button>
 
@@ -83,7 +241,7 @@
     <!-- 테마 토글 -->
     <div style="text-align:center;margin-top:16px">
       <button class="btn btn-ghost btn-sm" id="theme-toggle-btn" onclick="toggleTheme()" style="color:var(--text3)">
-        <span id="theme-icon">☀️</span> 라이트 모드
+        <span id="theme-icon">🌙</span> 다크 모드
       </button>
     </div>
 
@@ -106,28 +264,28 @@ if (CURRENT_USER) {
 
 let currentRole = 'user';
 const PRESETS = {
-  user:  { email: 'admin@nplace.io',       pw: 'password123',  title: '로그인',       sub: '계속하려면 로그인하세요' },
-  admin: { email: 'superadmin@nplace.io',  pw: 'admin1234!',   title: '어드민 로그인', sub: '어드민 계정으로 로그인하세요' },
+  user:  { email: 'admin@nplace.io',      pw: 'password123', title: '로그인',        sub: '계속하려면 로그인하세요' },
+  admin: { email: 'superadmin@nplace.io', pw: 'admin1234!',  title: '어드민 로그인', sub: '어드민 계정으로 로그인하세요' },
 };
 
 function switchRole(role) {
   currentRole = role;
-  document.getElementById('tab-user').classList.toggle('active', role === 'user');
+  document.getElementById('tab-user').classList.toggle('active',  role === 'user');
   document.getElementById('tab-admin').classList.toggle('active', role === 'admin');
   const p = PRESETS[role];
-  document.getElementById('form-title').textContent = p.title;
-  document.getElementById('form-sub').textContent = p.sub;
-  document.getElementById('login-email').value = p.email;
-  document.getElementById('login-pw').value = p.pw;
+  document.getElementById('form-title').textContent  = p.title;
+  document.getElementById('form-sub').textContent    = p.sub;
+  document.getElementById('login-email').value       = p.email;
+  document.getElementById('login-pw').value          = p.pw;
 }
 
 // 기본값 세팅
 switchRole('user');
 
 function togglePw(btn) {
-  const input = btn.previousElementSibling;
+  const input  = btn.previousElementSibling;
   const isText = input.type === 'text';
-  input.type = isText ? 'password' : 'text';
+  input.type   = isText ? 'password' : 'text';
   btn.innerHTML = isText
     ? '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
     : '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>';
@@ -141,7 +299,7 @@ function doLoginForm() {
   if (!email) return toast('이메일을 입력해 주세요', 'error');
   if (!pw)    return toast('비밀번호를 입력해 주세요', 'error');
 
-  btn.textContent = '로그인 중...';
+  btn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:6px;"></span> 로그인 중...';
   btn.disabled = true;
 
   doLoginAPI(email, pw)
@@ -153,7 +311,7 @@ function doLoginForm() {
     })
     .catch(err => {
       btn.innerHTML = '🚀 로그인';
-      btn.disabled = false;
+      btn.disabled  = false;
       toast(err.message || '이메일 또는 비밀번호가 올바르지 않습니다', 'error');
     });
 }
@@ -164,7 +322,7 @@ window.toggleTheme = function() {
   _origToggleTheme();
   const isLight = document.body.classList.contains('light');
   const btn = document.getElementById('theme-toggle-btn');
-  if (btn) btn.innerHTML = isLight ? '🌙 다크 모드' : '☀️ 라이트 모드';
+  if (btn) btn.innerHTML = (isLight ? '🌙 다크 모드' : '☀️ 라이트 모드');
 };
 </script>
 </body>
